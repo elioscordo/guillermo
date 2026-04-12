@@ -1,0 +1,280 @@
+from django.db import models
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.utils.translation import gettext_lazy as _
+from django.db.models import Q
+from django.conf import settings
+from django.utils.safestring import mark_safe
+
+from django.template.loader import render_to_string
+
+def format_html(html):
+    return html
+
+class Task(models.Model):
+    """
+        A task is executed by the queue.
+    """
+    TASK_STATUS_STARTED = 0
+    TASK_STATUS_PENDING = 1
+    TASK_STATUS_HOLDING = 2
+    TASK_STATUS_ERROR = 3
+    TASK_STATUS_SUCCESS = 4
+
+    TASK_STATUS_PROCESSABLE = [
+        TASK_STATUS_PENDING,
+        TASK_STATUS_HOLDING,
+        TASK_STATUS_ERROR
+    ]
+    TASK_STATUS_CHOICES = (
+        (TASK_STATUS_PENDING, "Pending"),
+        (TASK_STATUS_STARTED, "Started"),
+        (TASK_STATUS_SUCCESS, "Success"),
+        (TASK_STATUS_ERROR, "Error"),
+        (TASK_STATUS_HOLDING, "Holding")
+    )
+    
+    TASK_STATUS_DICT = dict(TASK_STATUS_CHOICES)
+
+    COLOR_DICT = {
+        TASK_STATUS_STARTED: 'blue',
+        TASK_STATUS_PENDING: 'orange',
+        TASK_STATUS_HOLDING: 'purple',
+        TASK_STATUS_SUCCESS: 'green',
+        TASK_STATUS_ERROR: 'red',
+    }
+    
+    
+    TASK_TYPE_DICT = dict(settings.TASK_TYPE_CHOICES)
+
+    QUEUE_NORMAL = 'queue.normal'
+    QUEUE_HEAVY = 'queue.heavy'
+    
+
+    subject_ct = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        related_name="subject"
+    )
+    subject_id = models.PositiveIntegerField()
+    subject = GenericForeignKey('subject_ct', 'subject_id')
+
+    obj_ct = models.ForeignKey(
+        ContentType,
+        related_name="object",
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True
+    )
+    obj_id = models.PositiveIntegerField(
+        blank=True,
+        null=True
+    )
+    obj = GenericForeignKey('obj_ct', 'obj_id')
+    thr_ct = models.ForeignKey(
+        ContentType,
+        related_name="thr",
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True
+    )
+    thr_id = models.PositiveIntegerField(
+        blank=True,
+        null=True
+    )
+    thr = GenericForeignKey('thr_ct', 'thr_id')
+
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
+
+    status = models.IntegerField(choices=TASK_STATUS_CHOICES, default=1)
+    payload = models.JSONField(blank=True, null=True)
+    task_type = models.SlugField(choices=settings.TASK_TYPE_CHOICES)
+
+    next = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True
+    )
+    owner = models.ForeignKey(
+        "auth.User",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE
+    )
+
+    class Meta:
+        ordering = ['status', '-modified']
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+    def set_status(self, status):
+        self.status = status
+        self.save()
+
+    def color(self):
+        return self.COLOR_DICT[self.status]
+
+    def status_label(self):
+        return self.TASK_STATUS_DICT[self.status]
+
+    def type_label(self):
+        return self.TASK_TYPE_DICT[self.task_type]
+
+    def is_processable(self):
+        return self.status in self.TASK_STATUS_PROCESSABLE
+
+    def has_pending_previous(self):
+        not_success = ~Q(status=self.TASK_STATUS_SUCCESS)
+        out = self.task_set.filter(not_success).count() > 0
+        return out
+
+    def process(self):
+        from .tasks import process_task
+        process_task.apply_async(kwargs={'task_id': self.id})
+
+    def get_queue(self):
+        queue = self.QUEUE_NORMAL
+        if self.task_type in self.QUEUE_DICT:
+            return Task.QUEUE_DICT[self.task_type]
+        return queue
+
+    @staticmethod
+    def createTaskIfQueueEnabled(subject,
+            task_type,
+            next=None,
+            owner=None,
+            obj=None,
+            thr=None,
+            process=True):
+        if settings.USE_TASK_QUEUE:
+            return  Task.createTask(
+                subject=subject,
+                task_type=task_type,
+                next=next,
+                owner=owner,
+                obj=obj,
+                thr=thr,
+                process=process
+            )
+        return None
+
+    @staticmethod
+    def createTask(
+            subject,
+            task_type,
+            next=None,
+            owner=None,
+            obj=None,
+            thr=None,
+            process=True
+    ):
+        task = Task.objects.create(
+           subject=subject,
+           task_type=task_type,
+           obj=obj,
+           thr=thr,
+           owner=owner,
+           next=next
+        )
+        if process:
+            task.process()
+        return task
+
+    def log(self, message, level='error'):
+        log = TaskLog.objects.create(
+            task=self,
+            level=level,
+            text=message
+        )
+        return log
+    
+    def html_status(self):
+        out = render_to_string(
+            'task_status.html',
+            {'item': self}
+        )
+        return mark_safe(out)
+
+
+
+
+class TaskLog(models.Model):
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
+
+    TASK_LOG_LEVEL_ERROR = 'error'
+    TASK_LOG_LEVEL_WARNING = 'warning'
+
+    TASK_LOG_LEVELS = (
+        (TASK_LOG_LEVEL_ERROR, 'Error'),
+        (TASK_LOG_LEVEL_WARNING, 'Warning')
+    )
+    task = models.ForeignKey(Task, on_delete=models.CASCADE)
+    
+    text = models.TextField()
+    level = models.SlugField(
+        choices=TASK_LOG_LEVELS,
+        default=TASK_LOG_LEVEL_ERROR
+    )
+
+class TaskPreset(models.Model):
+    PRESET_TYPE_CHOICES = settings.TASK_TYPE_CHOICES
+    name = models.CharField(
+        max_length=1024,
+        unique=True
+    )
+    description = models.TextField()
+    preset_type = models.SlugField(choices=PRESET_TYPE_CHOICES)
+    system_default = models.BooleanField(_("Default"), default=False)
+    preset = models.JSONField()
+
+    @staticmethod
+    def get(preset_type):
+        presets = TaskPreset.objects.filter(
+            system_default=True,
+            preset_type=preset_type
+        )
+        preset = None
+        if presets.exists():
+            preset = presets.first().preset
+
+        return preset
+
+    def __str__(self):
+        return f'{self.name}'
+    
+class TaskHolder:
+    """
+    Mixin to add tasks functionality
+    """
+    @property
+    def tasks(self):
+        ctype = ContentType.objects.get_for_model(self.__class__)
+        obj = Q(obj_ct__pk=ctype.id, obj_id=self.id)
+        subject = Q(
+            subject_ct__pk=ctype.id,
+            subject_id=self.id
+        )
+        thr = Q(
+            thr_ct__pk=ctype.id,
+            thr_id=self.id
+        )
+        tasks = Task.objects.filter(
+           subject | obj | thr
+        )
+        return tasks
+
+    def last_tasks(self):
+        """
+        mark in the admin with the last tasks
+        """
+        out = render_to_string(
+            'task_dropdown.html',
+            {'tasks': self.tasks, 'instance': self}
+        )
+        return mark_safe(out)
+    
+    

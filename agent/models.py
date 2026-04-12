@@ -1,0 +1,319 @@
+from email.mime import text
+from google import genai
+import random
+import os
+import time
+import instructor
+from google.genai import types
+from django.conf import settings
+from google.genai.types import FinishReason, GenerateContentConfig, ImageConfig, Part
+from django.db import models
+from agent.utils import wave_file
+from PIL import Image
+from io import BytesIO
+from filer.models.imagemodels import Image as FilerImage
+from django.utils.text import slugify
+from easy_thumbnails.files import get_thumbnailer
+from task.models import Task
+from PIL import Image
+
+
+
+class GetContentsMixin:
+    PRESET_REFINE = "refine"
+    PRESET_VIDEO = "video_image"
+    PRESET_VIDEO_FIRST_LAST = "video_first_last"
+    PRESET_COMIC = "comic"
+    PRESET_VOICE = "voice"
+
+    def get_contents(self, generate_self=True, preset=None):
+         # remove generate self and add preset regenerate_image
+        parts = [self.context_text(generate_self=generate_self, preset=preset)]
+        if not generate_self or preset in [self.PRESET_REFINE, self.PRESET_COMIC]:
+            if hasattr(self, 'image') and self.image:
+                parts.append(self.get_thumbnail(preset=preset))
+        return parts
+    
+    def get_thumbnail(self, preset=None):
+        if self.image:
+            # half the size to make it cheaper
+            try:
+                thumbnail = get_thumbnailer(self.image.file).get_thumbnail({'size': (0, self.image.height/2)})
+                return Image.open(thumbnail.path)
+            except Exception as e:
+                print(f"Error occurred while generating thumbnail: {e}")
+        return None
+    
+    def generate_image(self, user=None):
+        agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_IMAGE).first()
+        self.image = agent.generate(self, user=user)
+        self.save()
+        return self.image
+    
+    def refine_image(self, save=True, user=None):
+        image_agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_IMAGE).first()
+        out = image_agent.generate(self, preset=self.PRESET_REFINE, user=user)
+        if save and out:
+            self.image = out
+            self.save()
+        return out
+    
+    def generate_video(self, preset, user=None):
+        agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_VIDEO).first()
+        self.video = agent.generate(self, preset=preset, user=user)
+        self.save()
+        return self.video
+
+    def generate_voice(self, preset, user=None):
+        agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_VOICE).first()
+        self.voice = agent.generate(self, preset=preset, user=user)
+        self.save()
+        return self.voice
+
+
+class AgentModel(models.Model):
+    name = models.CharField(max_length=100, default="name")
+    def __str__(self):
+        return "{}".format(self.name)
+
+class Voice(models.Model):
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=100)
+
+    def __str__(self):
+        return "{}".format(self.name)
+    
+class Agent(models.Model):
+    OUTPUT_TYPE_IMAGE = "image"
+    OUTPUT_TYPE_TEXT = "text"
+    OUTPUT_TYPE_VOICE = "voice"
+    
+    OUTPUT_TYPE_STRUCTURED = "structured"
+    OUTPUT_TYPE_VIDEO = "video"
+
+    
+    name = models.CharField(max_length=100, default="name")
+    prompt = models.TextField(null=True, blank=True)
+    agent_model = models.ForeignKey(AgentModel, related_name='agents', on_delete=models.CASCADE)
+    output_type = models.CharField(max_length=100, default=OUTPUT_TYPE_TEXT, choices=[
+        (OUTPUT_TYPE_IMAGE, "Image"),
+        (OUTPUT_TYPE_TEXT, "Text"),
+        (OUTPUT_TYPE_STRUCTURED, "Structured"),
+        (OUTPUT_TYPE_VIDEO, "Video"),
+        (OUTPUT_TYPE_VOICE, "Voice"),
+    ])
+
+    def get_genai_client(self, user):
+        if user and hasattr(user, 'agent_profile') and user.agent_profile.google_api_key:
+            api_key = user.agent_profile.google_api_key.api_key
+            genai_client = genai.Client(
+                vertexai=True,
+                api_key=api_key
+            )
+            return genai_client
+        else:
+            raise Exception("User does not have an API key configured. Please set up your API key in your profile settings.")
+
+    def save_usage(self, user, response):
+        usage = response.usage_metadata
+        usage_dict = {
+            "prompt_token_count": str(usage.prompt_token_count),
+            "candidates_token_count": str(usage.candidates_token_count),
+            "total_token_count": str(usage.total_token_count),
+            "api_key_id": user.agent_profile.google_api_key.id,
+            
+            # Fields for advanced features (if available)
+        }
+        TokenUsage.objects.create(
+            user=user,
+            json_report=usage_dict,
+            tokens= usage_dict.get("total_token_count", 0),
+        )
+
+    def get_instructor(self, user=None):
+        out = instructor.from_genai(
+            self.get_genai_client(user),
+            mode=instructor.Mode.GENAI_STRUCTURED_OUTPUTS,
+            use_async=True,
+        )
+        return out
+
+    def __str__(self):
+        return "{}".format(self.name)
+    
+    def generate_text(self, response, prompt_obj):
+        return "to be implemented"
+
+    def generate_voice(self, preset, prompt_obj, user=None):
+        # Check for errors if voice is not generated
+        out = None
+        client = self.get_genai_client(user)
+        contents = prompt_obj.get_contents(generate_self=True, preset=preset)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-preview-tts",
+            contents=contents['prompt'],
+            config=types.GenerateContentConfig(
+                response_modalities=["AUDIO"],
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                        voice_name='Kore',
+                        )
+                    )
+                ),
+            )
+        )
+        data = response.candidates[0].content.parts[0].inline_data.data
+        self.save_usage(user, response)
+        name = f"voice_{slugify(prompt_obj.__class__.__name__)}_{slugify(prompt_obj.name)}_{slugify(self.name)}_{random.randint(1000,9999)}.wav"
+        filepath_relative = f"agent_voices/{name}"
+        filepath_abs = os.path.join( settings.MEDIA_ROOT, filepath_relative)
+        wave_file(filepath_abs, data)
+        out = FilerImage.objects.create(
+            original_filename=name,
+            file=filepath_relative,
+            name=name
+        )
+        return out
+
+    def generate_video(self, preset, prompt_obj, user=None):
+        # Check for errors if a video is not generated
+        out = None
+        client = self.get_genai_client(user)
+        contents = prompt_obj.get_contents(generate_self=True, preset=preset)
+        if preset == GetContentsMixin.PRESET_VIDEO:
+            operation = client.models.generate_videos(
+                model=self.agent_model.name,
+                prompt=contents['prompt'],
+                image=contents['image'] if 'image' in contents else None
+            )
+        elif preset == GetContentsMixin.PRESET_VIDEO_FIRST_LAST:
+            operation = client.models.generate_videos(
+                model=self.agent_model.name,
+                prompt=contents['prompt'],
+                image=contents['image_first'] if 'image_first' in contents else None,
+                config=types.GenerateVideosConfig(
+                    last_frame=contents['image_last'] if 'image_last' in contents else None
+                ),
+            )
+        # Poll the operation status until the video is ready.
+        while not operation.done:
+            print("Waiting for video generation to complete...")
+            time.sleep(5)
+            operation = client.operations.get(operation)
+        # Download the generated video.
+        if operation.response.generated_videos is None:
+            raise Exception(operation.response.rai_media_filtered_reasons)
+        generated_video = operation.response.generated_videos[0]
+        self.save_usage(user, operation.response)
+
+        name = f"video_{slugify(prompt_obj.__class__.__name__)}_{slugify(prompt_obj.name)}_{slugify(self.name)}_{random.randint(1000,9999)}.mp4"
+        filepath_relative = f"agent_videos/{name}"
+        filepath_abs = os.path.join( settings.MEDIA_ROOT, filepath_relative)
+        generated_video.video.save(filepath_abs)
+        out = FilerImage.objects.create(
+            original_filename=name,
+            file=filepath_relative,
+            name=name
+        )
+        return out
+
+    def save_image(self, response, prompt_obj):
+        # Check for errors if an image is not generated
+        out = None
+        if response.candidates[0].finish_reason != FinishReason.STOP:
+            reason = response.candidates[0].finish_reason
+            raise ValueError(f"Prompt Content Error: {reason}")
+        
+        for part in response.candidates[0].content.parts:
+            if part.inline_data:
+                image_data = BytesIO(part.inline_data.data)
+                out =  Image.open(image_data)
+                name = f"{slugify(prompt_obj.__class__.__name__)}_{slugify(prompt_obj.name)}_{slugify(self.name)}_{random.randint(1000,9999)}"
+                filepath_relative = f"agent_images/{name}.png"
+                filepath_abs = os.path.join( settings.MEDIA_ROOT, filepath_relative)
+                out.save(filepath_abs, format="PNG")
+                out = FilerImage.objects.create(
+                    original_filename=name,
+                    file=filepath_relative,
+                    name=name
+                )
+        return out
+    
+
+    def generate(self, obj, preset=None, user=None):
+        # Placeholder for agent generation logic
+        config = None
+        # video has  a different config and response handling so handle it separately
+        if self.output_type == self.OUTPUT_TYPE_VIDEO:
+            return self.generate_video(preset, obj, user=user)
+        if self.output_type == self.OUTPUT_TYPE_VOICE:
+            return self.generate_voice(preset, obj, user=user)
+        if self.output_type == self.OUTPUT_TYPE_IMAGE:
+            config = types.GenerateContentConfig(
+                image_config=types.ImageConfig(
+                    aspect_ratio="9:16",
+                )
+            )
+        contents = obj.get_contents(generate_self=True, preset=preset)
+        prompts = Prompt.instructions(preset)
+        prompts.extend(contents)
+        out = None
+        with self.get_genai_client(user) as client:
+            response = client.models.generate_content(
+                model=self.agent_model.name,
+                contents=contents,
+                config=config
+            )
+            out = None
+            self.save_usage(user,response)
+            if self.output_type == self.OUTPUT_TYPE_TEXT:
+                out =  self.generate_text(response, obj)
+            elif self.output_type == self.OUTPUT_TYPE_IMAGE:
+                out = self.save_image(response, obj)
+        return out
+
+class Prompt(models.Model):
+    CHOICES = (
+        ("general", "General"),
+        (GetContentsMixin.PRESET_REFINE, "Refine"),
+        (GetContentsMixin.PRESET_VIDEO, "Video"),
+        (GetContentsMixin.PRESET_VIDEO_FIRST_LAST, "Video First Last"),
+        (GetContentsMixin.PRESET_COMIC, "Comic"),
+    )
+    name= models.CharField(max_length=100, default="name")
+    prompt = models.TextField(null=True, blank=True)
+    category = models.CharField(max_length=100, default="general", choices=CHOICES)
+    
+    @classmethod
+    def instructions(cls, preset):
+        out =  [item.prompt for item in cls.objects.filter(category=preset) ]
+        return out
+
+class TokenUsage(models.Model):
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
+    agent = models.ForeignKey(Agent, related_name='token_usages', on_delete=models.SET_NULL, null=True, blank=True)
+    task = models.ForeignKey(Task, related_name='token_usages', on_delete=models.SET_NULL, null=True, blank=True)
+    tokens = models.PositiveIntegerField(default=0)
+    json_report = models.JSONField(null=True, blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='token_usages', on_delete=models.SET_NULL, null=True, blank=True)
+
+class GoogleApiKey(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='api_keys', on_delete=models.CASCADE)
+    name = models.CharField(unique=True, max_length=255, null=True, blank=True)
+    api_key = models.TextField(null=True, blank=True)
+         
+    def __str__(self):
+        return "{}-{}".format(self.name, self.user.username)
+
+class AgentProfile(models.Model):
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='agent_profile', on_delete=models.CASCADE)
+    credits = models.PositiveIntegerField(default=0)
+    google_api_key = models.ForeignKey(GoogleApiKey, related_name='agent_profiles', on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'AI User Profile'
+        verbose_name_plural = 'AI User Profiles'
+

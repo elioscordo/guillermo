@@ -1,0 +1,100 @@
+from django.contrib import admin
+from unfold.admin import ModelAdmin
+
+from agent.models import AgentModel, Agent, GoogleApiKey, Prompt, TokenUsage, Voice, AgentProfile
+from agent.utils import get_genai_client
+
+from django.contrib import admin
+
+
+@admin.action(description="List available genai models")
+def list_models(modeladmin, request, queryset):
+    client = get_genai_client()
+    models = client.models.list()
+    for model in models:
+        if not AgentModel.objects.filter(name=model.name).exists():
+            AgentModel.objects.create(name=model.name)
+            modeladmin.message_user(request, "Model '{}' created.".format(model.name))
+
+@admin.register(AgentModel)
+class AgentModelAdmin(ModelAdmin):
+    list_display = ('name',)
+    list_display_links = ('name',)
+    actions = [list_models]
+
+@admin.register(Prompt)
+class PromptAdmin(ModelAdmin):
+    list_display = ('id', 'name', 'prompt', 'category')
+    list_editable = ('name', 'prompt', 'category')
+    list_display_links = ('id',)
+
+@admin.register(Agent)
+class AgentAdmin(ModelAdmin):
+    list_display = ('name', )
+    list_display_links = ('name',)
+
+@admin.register(Voice)
+class VoiceAdmin(ModelAdmin):
+    list_display = ('name', )
+    list_display_links = ('name',)
+
+
+
+
+
+
+@admin.register(GoogleApiKey)
+class GoogleApiKeyAdmin(ModelAdmin):
+    list_display = ('name', 'user')
+    list_display_links = ('name',)
+    autocomplete_fields = ['user']
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        # Users only see themselves
+        return qs.filter(id=request.user.id)
+
+    def has_change_permission(self, request, obj=None):
+        if not obj:
+            return True
+        return obj.user == request.user or request.user.is_superuser
+
+
+@admin.register(AgentProfile)
+class AgentProfileAdmin(ModelAdmin):
+    list_display = ('user', 'credits')
+    list_display_links = ('user',)
+    autocomplete_fields = ['user']
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        # Users only see themselves
+        return qs.filter(id=request.user.id)
+
+    def has_change_permission(self, request, obj=None):
+        if not obj:
+            return True
+        return obj.user == request.user or request.user.is_superuser
+
+
+@admin.register(TokenUsage)
+class TokenUsageAdmin(ModelAdmin):
+    list_display = ('id', 'user', 'tokens', 'created')
+    list_display_links = ('id',)
+    autocomplete_fields = ['user']
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        # Users only see themselves
+        return qs.filter(user=request.user)
+
+    def has_change_permission(self, request, obj=None):
+        if not obj:
+            return True
+        return obj.user == request.user or request.user.is_superuser
+

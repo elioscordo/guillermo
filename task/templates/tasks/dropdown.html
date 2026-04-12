@@ -1,0 +1,9 @@
+<!-- Example split danger button -->
+<div class="btn-group">
+    <button type="button" class="btn btn-{{tasks.0.badge}} dropdown-toggle"  data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" >{{tasks.0.status_label}}</button>
+    <div class="dropdown-menu">
+       {%for task in tasks %}
+         <a class="dropdown-item" href="#">{{ task.type_label }} ({{ task.id }}) <span class="badge badge-{{task.badge}}">{{ task.status_label }}</span> </a>
+       {% endfor %}
+    </div>
+  </div>

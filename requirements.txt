@@ -1,0 +1,14 @@
+Django
+django-jazzmin
+django-filer
+instructor[vertexai, google-genai]==1.13.0
+google-genai
+python-dotenv==1.1.0
+django-jazzmin
+celery
+nautilus_trader[ib,docker]
+django-jazzmin-admin-rangefilter
+moviepy
+sqlalchemy
+django-modeladmin-reorder
+django-unfold

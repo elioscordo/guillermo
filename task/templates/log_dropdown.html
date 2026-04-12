@@ -1,0 +1,9 @@
+<!-- Example split danger button -->
+<div class="btn-group">
+    <button type="button" class="btn btn-{{logs.0.level}}"  data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" >Logs</button>
+    <div class="dropdown-menu">
+       {%for log in logs %}
+         <a class="dropdown-item" href="#">{{log}}</a>
+       {% endfor %}
+    </div>
+  </div>
