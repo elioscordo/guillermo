@@ -208,3 +208,6 @@ __marimo__/
 media/
 catalog/
 db.sqlite3
+
+
+staticfiles/
