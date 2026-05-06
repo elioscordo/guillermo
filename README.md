@@ -1,5 +1,5 @@
-# guillermo
-created to create
+# genartist.ai
+Collaborative ai cinema platform
 
 ## Google Voices
 Google voice are supported. To use a voices 
