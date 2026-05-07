@@ -7,7 +7,7 @@ from task.models import Task
 from django.urls import path
 from .models import Character, Scene, Action, Background, StoryGroup, Style, Prop, ComicAction, VideoItem, VideoAction, SceneVideo, Story, StoryProfile, VoiceAction
 from django.utils.html import format_html
-from .mixins import ACTION_FIELDSETS, ImgShowMixin, SceneFilterMixin, StaffReadOnlyMixin, StoryFilterMixin, ViewYourOwnMixin
+from .mixins import ACTION_FIELDSETS, ELEMENT_FIELDSETS, ImgShowMixin, SceneFilterMixin, StaffReadOnlyMixin, StoryFilterMixin, ViewYourOwnMixin
 from unfold.sections import TableSection, render_to_string
 from rangefilter.filters import NumericRangeFilter
 from django.http import JsonResponse
@@ -16,8 +16,6 @@ DEFAULT_IMAGE_AGENT_NAME = "DIGA"
 from django.apps import apps
 
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.auth.admin import GroupAdmin as BaseGroupAdmin
-from django.contrib.auth.models import User, Group
 
 class AjaxSectionAdminMixin:
     def get_urls(self):
@@ -268,7 +266,7 @@ class StoryGroupAdmin(ModelAdmin):
     list_display = ('id', 'name', 'story')
     list_editable = ('name', 'story')
     list_display_links = ('id',)
-    autocomplete_fields = ['story']
+    autocomplete_fields = ['story', 'users']
     search_fields = ['name']
 
 @admin.register(StoryProfile)
@@ -294,6 +292,7 @@ class CharacterAdmin(StoryFilterMixin, AjaxTaskModelAdmin, ImgShowMixin,):
     autocomplete_fields = ['story']
     actions = [clone, default_generate_image, default_refine_image]
     search_fields = ['name']
+    fieldsets = ELEMENT_FIELDSETS
 
 @admin.register(Background)
 class BackgroundAdmin(StoryFilterMixin, AjaxTaskModelAdmin, ImgShowMixin):
@@ -303,6 +302,8 @@ class BackgroundAdmin(StoryFilterMixin, AjaxTaskModelAdmin, ImgShowMixin):
     autocomplete_fields = ['story']
     actions = [clone, default_generate_image, default_refine_image]
     search_fields = ['name']
+    fieldsets = ELEMENT_FIELDSETS
+
 
 @admin.register(Prop)
 class PropAdmin(StoryFilterMixin, AjaxTaskModelAdmin, ImgShowMixin):
@@ -313,7 +314,7 @@ class PropAdmin(StoryFilterMixin, AjaxTaskModelAdmin, ImgShowMixin):
     autocomplete_fields = ['story']
     actions = [clone, default_generate_image, default_refine_image]
     search_fields = ['name']
-
+    fieldsets = ELEMENT_FIELDSETS
 
 @admin.register(Scene)
 class SceneAdmin(StoryFilterMixin, ModelAdmin, ImgShowMixin):

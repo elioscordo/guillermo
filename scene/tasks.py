@@ -61,6 +61,16 @@ class TaskGenerateComic:
         item.image_comic = item.generate_comic(user=self.task.owner)
         item.save()
 
+class TaskGenerateText:
+    def __init__(self, task):
+        self.task = task
+    def process(self):
+        item = self.task.subject
+        agent = self.task.thr
+        item.generate_text(user=self.task.owner, agent=agent)
+        item.save()
+
+
 class TaskGenerateSceneVideo:
     def __init__(self, task):
         self.task = task

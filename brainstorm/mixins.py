@@ -20,8 +20,8 @@ class EmailSenderMixin:
         )
 
 class UserCreatorMixin:
-
-    def create_users(self, email, obj):
+    
+    def create_user(self, email, obj):
         username = email.split('@')[0]
         # 1. Generate a secure random string
         alphabet = string.ascii_letters + string.digits
@@ -38,7 +38,7 @@ class UserCreatorMixin:
             {'user': user, 
                 'game': obj, 
                 'password': password, 
-                'login_url': settings.SITE_URL + f'/admin/game/storygame/?id__exact={obj.id}'
+                'cta': settings.SITE_URL + f'/admin/brainstorm/session/?id__exact={obj.id}'
             }
         )
         plain_message = strip_tags(html_message)

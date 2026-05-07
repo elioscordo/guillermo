@@ -27,6 +27,7 @@ class GetContentsMixin:
     PRESET_VOICE = "voice"
     PRESET_CHARACTER = "character"
     PRESET_WRITER = "writer"
+    PRESET_REFINE_PROMPT = "refine_prompt"
     
 
     def get_contents(self, generate_self=True, preset=None):
@@ -73,6 +74,22 @@ class GetContentsMixin:
         self.save()
         return self.voice
 
+    def refine_image(self, save=True, user=None):
+        image_agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_IMAGE).first()
+        out = image_agent.generate(self, preset=self.PRESET_REFINE_PROMPT, user=user)
+        if save and out:
+            self.image = out
+            self.save()
+        return out
+    
+    def refine_prompt(self, save=True, user=None, agent=None):
+        if agent is None:
+            text_agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_TEXT).first()
+        out = text_agent.generate(self, preset=self.PRESET_REFINE, user=user)
+        if save and out:
+            self.image = out
+            self.save()
+        return out
 
 class AgentModel(models.Model):
     name = models.CharField(max_length=100, default="name")
@@ -145,7 +162,12 @@ class Agent(models.Model):
         return "{}".format(self.name)
     
     def generate_text(self, response, prompt_obj):
-        return "to be implemented"
+        try:
+            return response.text
+        except ValueError:
+            if response.candidates:
+                return f"Response blocked. Finish reason: {response.candidates[0].finish_reason}"
+            return "No text was generated."
 
     def generate_voice(self, preset, prompt_obj, user=None):
         # Check for errors if voice is not generated
@@ -258,6 +280,7 @@ class Agent(models.Model):
                     aspect_ratio="9:16",
                 )
             )
+        
         contents = obj.get_contents(generate_self=True, preset=preset)
         prompts = Prompt.instructions(preset)
         prompts.extend(contents)
@@ -269,7 +292,7 @@ class Agent(models.Model):
                 config=config
             )
             out = None
-            self.save_usage(user,response)
+            self.save_usage(user, response)
             if self.output_type == self.OUTPUT_TYPE_TEXT:
                 out =  self.generate_text(response, obj)
             elif self.output_type == self.OUTPUT_TYPE_IMAGE:
@@ -285,6 +308,7 @@ class Prompt(models.Model):
         (GetContentsMixin.PRESET_COMIC, "Comic"),
         (GetContentsMixin.PRESET_WRITER, "Writer"),
         (GetContentsMixin.PRESET_CHARACTER, "Character"),
+        (GetContentsMixin.PRESET_REFINE_PROMPT, "Refine Prompt"),
         
     )
     name= models.CharField(max_length=100, default="name")

@@ -1,5 +1,16 @@
 from django.utils.html import format_html
 
+ELEMENT_FIELDSETS = (
+        ("Write", {
+            "classes": ["tab"],
+            "fields": ["prompt", 'action'],
+        }),
+        ("Settings", {
+            "classes": ["tab"],
+            "fields": ["prompt_refine", "story", ],
+        }),
+    )
+
 ACTION_FIELDSETS = (
         ("Composition", {
             "classes": ["tab"],

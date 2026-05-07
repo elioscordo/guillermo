@@ -6,7 +6,7 @@
             {{ item.name }}
         </h3>
   
-    <div class="px-4 {% if card_included == 1 %}-m-6{% else %} flex flex-col grow lg:border lg:border-base-200 lg:overflow-hidden lg:rounded-default lg:shadow-xs{% endif %} lg:dark:border-base-800 dark:bg-base-900">
+    <div class="px-4 {% if card_included == 1 %}-m-6{% else %} flex flex-col grow {% endif %} lg:dark:border-base-800 dark:bg-base-900">
         <div {% if height %}style="max-height: {{ height }}px;" data-simplebar{% endif %}>
            {{item.prompt|linebreaks}}
         </div> 

@@ -14,6 +14,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 from django.urls import reverse_lazy
+from httpcore import request
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(dotenv_path=os.path.join(BASE_DIR, '.env'))
@@ -51,8 +52,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'easy_thumbnails',
     'filer',
-    'scene',
-    'agent',
+    'scene.apps.SceneConfig',
+    'agent.apps.AgentConfig',
     'task',
     'rangefilter',
     'game'
@@ -89,13 +90,19 @@ WSGI_APPLICATION = 'project.wsgi.application'
 
 
 def agentprofile(request):
-    return "/admin/agent/agentprofile/"
-
+    try:
+        return f"/admin/agent/agentprofile/{request.user.story_profile.id}/change/?next=/admin/scene/story/"
+    except:
+         return "/admin/agent/agentprofile/"
 def token_usage_link(request):
     return "/admin/agent/tokenusage/"
 
 def storyprofile(request):
-    return "/admin/scene/storyprofile/"
+    try:
+        return f"/admin/scene/storyprofile/{request.user.story_profile.id}/change/?next=/admin/scene/story/"
+    except:
+        return "/admin/scene/storyprofile/"
+
 from django.templatetags.static import static
 
 UNFOLD = {
@@ -276,6 +283,8 @@ TASK_TYPE_GENERATE_VIDEO_FIRST_LAST = 'generate_video_first_last'
 TASK_TYPE_GENERATE_COMIC = 'generate_comic'
 TASK_TYPE_GENERATE_SCENE_VIDEO = 'generate_scene_video'
 TASK_TYPE_GENERATE_VOICE = 'generate_voice'
+TASK_TYPE_GENERATE_VOICE = 'generate_voice'
+TASK_TYPE_GENERATE_TEXT = 'generate_text'
 
 
 
@@ -288,6 +297,7 @@ TASK_DELEGATES = {
     TASK_TYPE_GENERATE_COMIC: 'scene.tasks.TaskGenerateComic',
     TASK_TYPE_GENERATE_SCENE_VIDEO: 'scene.tasks.TaskGenerateSceneVideo',
     TASK_TYPE_GENERATE_VOICE: 'scene.tasks.TaskGenerateVoice',
+    TASK_TYPE_GENERATE_TEXT: 'scene.tasks.TaskGenerateText'
 }
 
 TASK_TYPE_CHOICES = (
@@ -298,6 +308,7 @@ TASK_TYPE_CHOICES = (
     (TASK_TYPE_GENERATE_COMIC, "Generate Comic"),
     (TASK_TYPE_GENERATE_SCENE_VIDEO, "Generate Scene Video"),
     (TASK_TYPE_GENERATE_VOICE, "Generate Voice"),
+    (TASK_TYPE_GENERATE_TEXT, "Generate Text")
 )
 
 

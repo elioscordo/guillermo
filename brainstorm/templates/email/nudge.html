@@ -32,29 +32,29 @@
 <body>
     <div class="wrapper">
         <div class="header">
-            <h1>Brainstorming Session {{item.session.game.name}}. It is your turn!</h1>
+            <h1>Brainstorming Session {{item.session.theme.name}}. It is your turn!</h1>
         </div>
         <div class="body">
-            <div class="greeting">Hello {{receiver.username}}.</div>
-            <p class="text">{{item.sender.message}} sent you a nudge!</p>
+            <div class="greeting">Hello {{item.receiver.username}}.</div>
+            <p class="text">{{item.sender.username}} sent you a nudge!</p>
             <p class="text">{{item.message}}</p>
             
             <p class="text"> Theme: {{ item.session.theme.name }}</p>
-            <p class="text"> Description: {{ item.session.theme.prompt }}</p>
+            <p class="text"> Description: {{ item.session.theme.prompt|linebreaks  }}</p>
             
 
             {% if item.session.turns.all %}
             <div class="auth-card">
                 {% for turn in item.session.turns.all %}
                 <div class="field">
-                    <div class="label">{{ turn.player.username }}</div>
-                    <div class="value">{{ turn.prompt }}</div>
+                    <div class="label">{{ turn.participant.username }}</div>
+                    <div class="value">{{ turn.prompt|linebreaks }}</div>
                 </div>
                 {% endfor %}
             </div>
             {% endif %}
 
-            <a href="{{ login_url }}" class="btn">Launch Game Dashboard</a>
+            <a href="{{ cta }}" class="btn">Add your turn!</a>
         </div>
         <div class="footer">
             Sent via <strong>Guillermo</strong>

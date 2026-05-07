@@ -1,14 +1,19 @@
 /* Container for the filer field */
-
-
 .filerFile {
     display: flex;
     align-items: center;
     gap: 1rem;
     padding: 0.5rem;
-    background-color: #f9fafb; /* Light gray to match Unfold */
-    border: 1px solid #e5e7eb;
+    background-color: #f9fafb !important;
+    border: 1px solid #e5e7eb !important;
+    color: #111827 !important;
     border-radius: 0.5rem;
+}
+
+.dark .filerFile {
+    background-color: var(--color-bg-secondary, #1f2937) !important;
+    border-color: var(--color-border-primary, #374151) !important;
+    color: var(--color-text-primary, #f3f4f6) !important;
 }
 
 /* The thumbnail / icon */
@@ -23,12 +28,20 @@
     display: inline-flex;
     align-items: center;
     padding: 0.375rem 0.75rem;
-    background-color: #ffffff;
-    border: 1px solid #d1d5db;
+    background-color: #ffffff !important;
+    border: 1px solid #d1d5db !important;
+    color: #374151 !important;
     border-radius: 0.375rem;
     font-size: 0.875rem;
     font-weight: 500;
     transition: all 0.2s;
+}
+
+.dark .filerFile .related-lookup, 
+.dark .filerFile .filerClearer {
+    background-color: var(--color-bg-primary, #111827) !important;
+    border-color: var(--color-border-primary, #374151) !important;
+    color: var(--color-text-primary, #d1d5db) !important;
 }
 
 .filerFile .related-lookup:hover {
@@ -43,7 +56,7 @@
 form .form-row .filer-dropzone {
     /* Reset the forced legacy background and border */
     background-color: transparent !important; 
-    border: 2px dashed var(--color-border-primary, #374151) !important;
+    border: 2px dashed #d1d5db !important;
     border-radius: 0.75rem !important; /* Matches Unfold's rounded look */
     padding: 1rem !important;
     min-width: 0 !important; /* Allow it to shrink to its parent container */
@@ -52,19 +65,28 @@ form .form-row .filer-dropzone {
     transition: border-color 0.2s ease;
 }
 
+.dark form .form-row .filer-dropzone {
+    border-color: var(--color-border-primary, #374151) !important;
+}
+
 /* Hover state for the dropzone */
 form .form-row .filer-dropzone:hover {
     border-color: var(--color-primary-500, #3b82f6) !important;
-    background-color: rgba(255, 255, 255, 0.05) !important;
+    background-color: var(--color-bg-secondary) !important;
 }
 
 /* Style the text and icons inside the dropzone */
 .filer-dropzone .filerFile {
-    background-color: var(--color-bg-secondary, #1f2937) !important;
-    border: 1px solid var(--color-border-primary, #374151) !important;
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
     box-shadow: var(--tw-shadow-sm) !important;
     margin: 0 !important;
     width: 100% !important;
+}
+
+.dark .filer-dropzone .filerFile {
+    background-color: var(--color-bg-primary, #111827) !important;
+    border-color: var(--color-border-primary, #374151) !important;
 }
 
 /* Fix the "Upload" text color in dark mode */
@@ -104,11 +126,17 @@ form .form-row .filer-dropzone .filerFile .filerEditor {
     justify-content: center;
     width: 32px !important;      /* Standard Unfold button size */
     height: 32px !important;
-    background-color: var(--color-bg-tertiary, #374151) !important;
-    border: 1px solid var(--color-border-primary, #4b5563) !important;
+    background-color: #ffffff !important;
+    border: 1px solid #d1d5db !important;
     border-radius: 0.375rem !important;
     transition: all 0.2s ease;
     text-decoration: none !important;
+}
+
+.dark form .form-row .filer-dropzone .filerFile a.filerClearer,
+.dark form .form-row .filer-dropzone .filerFile .related-lookup {
+    background-color: var(--color-bg-primary, #111827) !important;
+    border-color: var(--color-border-primary, #374151) !important;
 }
 
 form .form-row .filer-dropzone .filerFile .related-lookup.related-lookup-change {
@@ -130,8 +158,15 @@ form .form-row .filer-dropzone .filerFile .related-lookup.related-lookup-change 
     transition: all 0.2s ease !important;
     box-shadow: none !important;
     text-transform: none !important;
-    background-color: var(--color-bg-tertiary, #374151) !important;
-    border: 1px solid var(--color-border-primary, #4b5563) !important;
+    background-color: #f9fafb !important;
+    border: 1px solid #e5e7eb !important;
+    color: #111827 !important;
+}
+
+.dark .filebrowser .navigator-list .column-action .action-button,
+.dark .filebrowser .navigator-table .column-action .action-button {
+    background-color: var(--color-bg-secondary, #1f2937) !important;
+    border-color: var(--color-border-primary, #374151) !important;
     color: var(--color-text-primary, #f3f4f6) !important;
 }
 
@@ -156,21 +191,30 @@ form .form-row .filer-dropzone .filerFile .related-lookup.related-lookup-change 
 
 /* 3. Specifically fix the "Folder" and "File" rows in the table */
 .filebrowser .navigator-table tr {
-    border-bottom: 1px solid var(--color-border-primary, #374151) !important;
+    border-bottom: 1px solid #e5e7eb !important;
     background-color: transparent !important;
 }
 
+.dark .filebrowser .navigator-table tr {
+    border-bottom-color: var(--color-border-primary, #374151) !important;
+}
+
 .filebrowser .navigator-table tr:hover {
-    background-color: var(--color-bg-secondary, rgba(255,255,255,0.02)) !important;
+    background-color: var(--color-bg-secondary) !important;
 }
 
 /* 4. Fix Navigator Breadcrumbs/Path styling */
 .filebrowser .navigator-breadcrumbs {
-    background-color: var(--color-bg-secondary, #1f2937) !important;
-    border: 1px solid var(--color-border-primary, #374151) !important;
+    background-color: #f9fafb !important;
+    border: 1px solid #e5e7eb !important;
     border-radius: 0.5rem;
     padding: 0.5rem 1rem !important;
     margin-bottom: 1rem !important;
+}
+
+.dark .filebrowser .navigator-breadcrumbs {
+    background-color: var(--color-bg-secondary, #1f2937) !important;
+    border-color: var(--color-border-primary, #374151) !important;
 }
 
 .filebrowser .navigator-breadcrumbs a {

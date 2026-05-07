@@ -89,12 +89,15 @@
         </div>
 
         {% if not table.rows %}
-            <p class="bg-white border border-base-200 flex grow items-center justify-center py-2 rounded-default shadow-xs dark:bg-base-900 lg:border-0 lg:rounded-none lg:shadow-none">
+            <p class="px-4 bg-white border border-base-200 flex grow py-2 rounded-default shadow-xs dark:bg-base-900 lg:border-0 lg:rounded-none lg:shadow-none">
                 {% trans "No data" %}
             </p>
         {% endif %}
-        <p class="mt-2 bg-white border border-base-200 flex grow items-center justify-center py-2 rounded-default shadow-xs dark:bg-base-900 lg:border-0 lg:rounded-none lg:shadow-none">
-                <a href="/admin/brainrain/turn/add/?player={{ player.id }}&session={{ session.id }}&turn_type={{ session.turn_type }}" class="btn btn-primary">Add Your {{session.turn_type|capfirst}}</a>
+        <p class="px-4 mt-2  border border-base-200 flex grow py-2  shadow-xs dark:bg-base-900 lg:border-0 lg:rounded-none lg:shadow-none">
+                <a  class= "btn btn-primary" href="/admin/brainstorm/turn/add/?participant={{ participant.id }}&session={{ session.id }}&type=scene" class="btn btn-primary"><b> Add  your scene now! </b></a>
+            </p>
+            <p class="px-4 mt-2  border border-base-200 flex grow py-2  shadow-xs dark:bg-base-900 lg:border-0 lg:rounded-none lg:shadow-none">
+                <a  class= "btn btn-primary" href="/admin/brainstorm/turn/add/?participant={{ participant.id }}&session={{ session.id }}&type=plot" class="btn btn-primary"><b> Add  your plot now! </b></a>
             </p>
     </div>
 </div>

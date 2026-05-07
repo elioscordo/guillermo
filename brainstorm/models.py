@@ -1,11 +1,13 @@
 import email
 
 from django.db import models
-from django.contrib.auth.models import User
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.utils.html import strip_tags
 from brainstorm.mixins import EmailSenderMixin            
+from task.models import TaskHolder
+from agent.models import Agent
+from agent.models import GetContentsMixin
 
 class Theme(models.Model):
     name = models.CharField(max_length=100, default='New Game')
@@ -17,8 +19,8 @@ class Theme(models.Model):
 class Nudge(models.Model, EmailSenderMixin):
     email_template = 'email/nudge.html'
 
-    sender = models.ForeignKey('auth.User', related_name='sent_nudges', on_delete=models.CASCADE, null=True, blank=True)
-    receiver = models.ForeignKey('auth.User', related_name='received_nudges', on_delete=models.CASCADE, null=True, blank=True)
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='sent_nudges', on_delete=models.CASCADE, null=True, blank=True)
+    receiver = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='received_nudges', on_delete=models.CASCADE, null=True, blank=True)
     session = models.ForeignKey('Session', related_name='nudges', on_delete=models.CASCADE, null=True, blank=True)
     message = models.TextField(null=True, blank=True, help_text="Optional message to include in the nudge email.")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -35,11 +37,16 @@ class Nudge(models.Model, EmailSenderMixin):
         if self.sender == self.receiver:
             raise ValueError("Sender and receiver cannot be the same user.")
         if not self.id:
+            participant = Participant.objects.filter(session=self.session, user=self.receiver).first()
+            cta_url = ""
+            if participant:
+                cta_url = settings.SITE_URL + f'/admin/brainstorm/turn/add?session={self.session.id}&participant={participant.id}&type={self.session.turn_type()}'
+            
             self.send_email(
                 subject=f"Brainstorming: {self.session.theme.name}. {self.sender.username} nudged you!",
                 context={
                     'item': self,
-                    'login_url': settings.SITE_URL + f'/admin/brainstorm/session/?id__exact={self.session.theme.id}'
+                    'cta': cta_url
                 },
                 recipient_list=[self.receiver.email]
             )
@@ -81,11 +88,14 @@ class Session(models.Model):
             return self.state
         return self.STATE_SCENE
 
+    def get_agent(self):
+        agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_TEXT).first()
+        return agent
 
 class Participant(models.Model):
     session = models.ForeignKey('Session', related_name='participants', on_delete=models.CASCADE, null=True, blank=True)
     order = models.IntegerField(default=0)
-    user = models.ForeignKey('auth.User', related_name='participants', on_delete=models.CASCADE, null=True, blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='participants', on_delete=models.CASCADE, null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
@@ -94,12 +104,12 @@ class Participant(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return "{}".format(self.user.username)
+        return "{}".format(self.user.username if self.user else self.email)
 
     def username(self):
         return self.user.username if self.user else self.email
 
-class Turn(models.Model):
+class Turn(models.Model, TaskHolder, GetContentsMixin):
     TYPE_HELP = 'help'
     TURN_TYPES = [
         (Session.STATE_SCENE, 'Scene'),
@@ -108,7 +118,7 @@ class Turn(models.Model):
     ]
 
     type = models.CharField(max_length=100, choices=TURN_TYPES, default=Session.STATE_SCENE)
-    prompt = models.TextField(null=True, blank=True)
+    prompt = models.TextField(null=True, default="#Location\n#Characters\n#Actions\n", blank=True)
     prompt_refine = models.TextField(null=True, blank=True)
     session = models.ForeignKey('Session', related_name='turns', on_delete=models.CASCADE, null=True, blank=True)
     participant = models.ForeignKey('Participant', related_name='turns', on_delete=models.CASCADE, null=True, blank=True)
@@ -116,8 +126,25 @@ class Turn(models.Model):
     pass_turn = models.BooleanField(default=False, help_text="If true, the turn will be passed to the next player")
     
     def __str__(self):
-        return "{}".format(self.participant.user.username)
+        return "{}".format(self.participant.user.username if self.participant and self.participant.user else "Turn {}".format(self.id))
 
+    def generate_text(self, user, agent):
+        prompt = agent.generate(self, preset=self.PRESET_REFINE_PROMPT, user=user)
+        self.prompt = prompt
+        self.save()
+        return prompt
+    
+    def context_text(self, generate_self=True, preset=None):
+       
+        return 
+
+    def get_contents(self, generate_self=True, preset=None):
+         # remove generate self and add preset regenerate_image
+        parts = [self.prompt_refine]
+        parts.append("following prompt to be improved")
+        parts.append(self.prompt)
+        return parts
+       
 """    def save(self, *args, **kwargs):
         if not self.game and self.player:
             self.game = self.player.game

@@ -7,7 +7,7 @@
 }
 
 .result-list a, .data-row a  {
-    text-decoration: underline;
+    font-weight: 500;
 }
 .markdown h1 {
     font-weight: bold; 
