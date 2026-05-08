@@ -3,12 +3,12 @@
     flex-direction: column;
     align-items: end;
     line-height: 20px;
-    align-content: flex-e
+    align-content: flex-start;
 }
 
 .result-list a, .data-row a  {
     font-weight: 500;
 }
-.markdown h1 {
+.markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6  {
     font-weight: bold; 
 }

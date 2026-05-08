@@ -46,9 +46,11 @@ class AgentModelAdmin(ModelAdmin):
 
 @admin.register(Prompt)
 class PromptAdmin(ModelAdmin):
-    list_display = ('id', 'name', 'prompt', 'category')
+    list_display = ('id', 'name', 'prompt', 'category', 'content_type')
+    list_filter = ('category', 'content_type')
     list_editable = ('name', 'prompt', 'category')
     list_display_links = ('id',)
+
 
 @admin.register(Agent)
 class AgentAdmin(ModelAdmin):
@@ -59,11 +61,6 @@ class AgentAdmin(ModelAdmin):
 class VoiceAdmin(ModelAdmin):
     list_display = ('name', )
     list_display_links = ('name',)
-
-
-
-
-
 
 @admin.register(GoogleApiKey)
 class GoogleApiKeyAdmin(ModelAdmin):

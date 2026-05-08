@@ -7,6 +7,7 @@ import instructor
 from google.genai import types
 from django.conf import settings
 from google.genai.types import FinishReason, GenerateContentConfig, ImageConfig, Part
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from agent.utils import wave_file
 from PIL import Image
@@ -102,6 +103,34 @@ class Voice(models.Model):
 
     def __str__(self):
         return "{}".format(self.name)
+
+class Prompt(models.Model):
+    CHOICES = (
+        ("general", "General"),
+        (GetContentsMixin.PRESET_REFINE, "Refine"),
+        (GetContentsMixin.PRESET_VIDEO, "Video"),
+        (GetContentsMixin.PRESET_VIDEO_FIRST_LAST, "Video First Last"),
+        (GetContentsMixin.PRESET_COMIC, "Comic"),
+        (GetContentsMixin.PRESET_WRITER, "Writer"),
+        (GetContentsMixin.PRESET_CHARACTER, "Character"),
+        (GetContentsMixin.PRESET_REFINE_PROMPT, "Refine Prompt"),
+        
+    )
+    name= models.CharField(max_length=100, default="name")
+    prompt = models.TextField(null=True, blank=True)
+    category = models.CharField(max_length=100, default="general", choices=CHOICES)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
+
+    @classmethod
+    def instructions(cls, preset, obj):
+        from_preset =  [item.prompt for item in cls.objects.filter(category=preset) ]
+        content_type = ContentType.objects.get_for_model(obj.__class__)
+        from_content = [item.prompt for item in cls.objects.filter(content_type=content_type)]
+        out = from_preset + from_content
+        return out
+
+    def __str__(self):
+        return "{}".format(self.name)
     
 class Agent(models.Model):
     OUTPUT_TYPE_IMAGE = "image"
@@ -113,7 +142,7 @@ class Agent(models.Model):
 
     
     name = models.CharField(max_length=100, default="name")
-    prompt = models.TextField(null=True, blank=True)
+    instructions = models.ManyToManyField("Prompt", related_name='agents', blank=True)
     agent_model = models.ForeignKey(AgentModel, related_name='agents', on_delete=models.CASCADE)
     output_type = models.CharField(max_length=100, default=OUTPUT_TYPE_TEXT, choices=[
         (OUTPUT_TYPE_IMAGE, "Image"),
@@ -265,9 +294,15 @@ class Agent(models.Model):
                 )
         return out
     
-
+    def get_instructions(self, user=None, preset=None, obj=None):
+        instructions = [ item.prompt for item in self.instructions.all()]
+        if preset:
+            instructions += Prompt.instructions(preset, obj)
+        return instructions
+    
     def generate(self, obj, preset=None, user=None):
         # Placeholder for agent generation logic
+        contents = obj.get_contents(generate_self=True, preset=preset)
         config = None
         # video has  a different config and response handling so handle it separately
         if self.output_type == self.OUTPUT_TYPE_VIDEO:
@@ -280,10 +315,12 @@ class Agent(models.Model):
                     aspect_ratio="9:16",
                 )
             )
+        if self.output_type in [self.OUTPUT_TYPE_TEXT, self.OUTPUT_TYPE_STRUCTURED]:
+            
+            config = types.GenerateContentConfig(
+                system_instruction= self.get_instructions(user=user, preset=preset, obj=obj)
+            )
         
-        contents = obj.get_contents(generate_self=True, preset=preset)
-        prompts = Prompt.instructions(preset)
-        prompts.extend(contents)
         out = None
         with self.get_genai_client(user) as client:
             response = client.models.generate_content(
@@ -299,26 +336,6 @@ class Agent(models.Model):
                 out = self.save_image(response, obj)
         return out
 
-class Prompt(models.Model):
-    CHOICES = (
-        ("general", "General"),
-        (GetContentsMixin.PRESET_REFINE, "Refine"),
-        (GetContentsMixin.PRESET_VIDEO, "Video"),
-        (GetContentsMixin.PRESET_VIDEO_FIRST_LAST, "Video First Last"),
-        (GetContentsMixin.PRESET_COMIC, "Comic"),
-        (GetContentsMixin.PRESET_WRITER, "Writer"),
-        (GetContentsMixin.PRESET_CHARACTER, "Character"),
-        (GetContentsMixin.PRESET_REFINE_PROMPT, "Refine Prompt"),
-        
-    )
-    name= models.CharField(max_length=100, default="name")
-    prompt = models.TextField(null=True, blank=True)
-    category = models.CharField(max_length=100, default="general", choices=CHOICES)
-    
-    @classmethod
-    def instructions(cls, preset):
-        out =  [item.prompt for item in cls.objects.filter(category=preset) ]
-        return out
 
 class TokenUsage(models.Model):
     created = models.DateTimeField(auto_now_add=True)
@@ -346,6 +363,9 @@ class AgentProfile(models.Model):
     class Meta:
         verbose_name = 'AI User Profile'
         verbose_name_plural = 'AI User Profiles'
+
+    def __str__(self):
+        return "{}".format(self.user.username)
 
 class ChatMessage(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, related_name='chat_messages', on_delete=models.CASCADE)
