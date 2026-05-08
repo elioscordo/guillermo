@@ -32,6 +32,7 @@ MEDIA_URL = '/media/'
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
 
+SITE_URL = os.getenv("SITE_URL")
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
