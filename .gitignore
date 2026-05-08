@@ -211,3 +211,5 @@ db.sqlite3
 
 
 staticfiles/
+db-old.sqlite3
+*.sqlite3
