@@ -194,7 +194,7 @@ class StoryGroup(models.Model):
 
 
 class StoryProfile(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='story_profile', on_delete=models.CASCADE)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='story_profile', on_delete=models.PROTECT)
     story = models.ForeignKey(Story, related_name='story_profiles', on_delete=models.SET_NULL, null=True, blank=True)
     scene = models.ForeignKey(Scene, related_name='story_profiles', on_delete=models.SET_NULL, null=True, blank=True)
     group = models.ForeignKey(StoryGroup, related_name='story_profiles', on_delete=models.SET_NULL, null=True, blank=True)

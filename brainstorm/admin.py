@@ -113,7 +113,7 @@ class TurnTableSection(TableSection):
     def prompt(self, obj):
         return mark_safe(f"<div class='markdown'>{markdown.markdown(obj.prompt)}</div>")
     
-    fields = ['participant','prompt', 'type']
+    fields = ['prompt', 'participant', 'type']
     extra = 0
     show_count = True  # This will run `count()`
     collapsible = False
@@ -127,7 +127,7 @@ class ThemeAdmin(ModelAdmin):
         return format_html("<a href='/admin/brainstorm/session/?theme__id__exact={0}'>{1} sessions</a>", obj.id, obj.sessions.count())
 
 @admin.register(Session)
-class SessionAdmin(ModelAdmin, UserCreatorMixin):
+class SessionAdmin(ModelAdmin, ):
     exclude = ('state',)
     inlines = [ParticipantInline]
     autocomplete_fields = ['group']
@@ -149,8 +149,8 @@ class SessionAdmin(ModelAdmin, UserCreatorMixin):
     create_users.short_description = "Create user accounts for participants without users"
 
     def turns_links(self, obj):
-        return format_html("<a href='/admin/brainstorm/turn/?session__id__exact={0}'>{1} turns</a>", obj.id, obj.turns.count())
-    turns_links.short_description = "Turns"
+        return format_html("<a href='/admin/brainstorm/turn/?session__id__exact={0}'>{1}</a>", obj.id, obj.turns.count())
+    turns_links.short_description = "Contributions"
 
 
 @admin.register(Turn)

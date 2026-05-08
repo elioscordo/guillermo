@@ -4,7 +4,7 @@ from django.db import models
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.utils.html import strip_tags
-from brainstorm.mixins import EmailSenderMixin            
+from brainstorm.mixins import EmailSenderMixin, UserCreatorMixin            
 from task.models import TaskHolder
 from agent.models import Agent
 from agent.models import GetContentsMixin
@@ -52,7 +52,7 @@ class Nudge(models.Model, EmailSenderMixin):
             )
         super().save(*args, **kwargs)
 
-class Session(models.Model):
+class Session(models.Model, UserCreatorMixin):
     name = models.CharField(max_length=100, null=True, blank=True,help_text="When time comes give it a name to remember it by!")
     theme = models.ForeignKey('Theme', on_delete=models.CASCADE, null=True, blank=True)
     group = models.ForeignKey('scene.StoryGroup', help_text="Auto create participants from this group, it happens only when the session is saved for the first time",  on_delete=models.CASCADE, null=True, blank=True)
@@ -78,10 +78,18 @@ class Session(models.Model):
                     Participant.objects.create(session=self, user=member)
 
     def save(self, *args, **kwargs):
-        do_import = not self.id and self.group
+        do_import = not self.id and self.group is not None
         super().save(*args, **kwargs)
         if do_import:
             self.import_group_members()
+        self.check_emails()
+
+    def check_emails(self):
+        for participant in self.participants.filter(user__isnull=True):
+            if participant.email:
+                user = self.create_user(participant.email)
+                participant.user = user
+                participant.save()
 
     def turn_type(self):
         if self.state in [self.STATE_SCENE, self.STATE_PLOT]:
@@ -153,5 +161,14 @@ class Turn(models.Model, TaskHolder, GetContentsMixin):
         self.session.should_play(self.player, self.type)
         super().save(*args, **kwargs)
 """
+
+
+class ContactRequest(models.Model):
+    name = models.CharField(max_length=255)
+    email = models.EmailField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.email})"
 
      

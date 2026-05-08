@@ -2,11 +2,11 @@
 
 <div class="flex flex-col {% if class %}{{ class }}{% endif %}">
   
-        <h3 class="px-2 font2 font-semibold mb-1 text-font-important-light text-sm dark:text-font-important-dark">
+        <h3 class="font2 font-semibold mb-1 text-font-important-light text-sm dark:text-font-important-dark">
             {{ item.name }}
         </h3>
   
-    <div class="px-4 {% if card_included == 1 %}-m-6{% else %} flex flex-col grow {% endif %} lg:dark:border-base-800 dark:bg-base-900">
+    <div class="px-2 flex flex-col grow">
         <div {% if height %}style="max-height: {{ height }}px;" data-simplebar{% endif %}>
            {{item.prompt|linebreaks}}
         </div> 

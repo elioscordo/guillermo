@@ -1,13 +1,14 @@
 {% load i18n unfold %}
 
 <div class="flex flex-col {% if class %}{{ class }}{% endif %}">
-    {% if title %}
-        <h3 class="font-semibold mb-1 text-font-important-light text-sm dark:text-font-important-dark">
-            {{ title }}
-        </h3>
-    {% endif %}
-
-    <div class="{% if card_included == 1 %}-m-6{% else %} bg-white flex flex-col grow lg:border lg:border-base-200 lg:overflow-hidden lg:rounded-default lg:shadow-xs{% endif %} lg:dark:border-base-800 dark:bg-base-900">
+        <h2 class="mb-2 font-semibold mb-1 text-font-important-light text-sm dark:text-font-important-dark">
+            Scenes and Plots
+        </h2>
+        <p class="px-2 mb-2 text-sm text-font-secondary-light dark:text-font-secondary-dark">
+            {% trans "Each participant can add a scene or a plot turn." %}
+        </p>
+    
+    <div class="px-2 {% if card_included == 1 %}-m-6{% else %} bg-white flex flex-col grow lg:border lg:border-base-200 lg:overflow-hidden lg:rounded-default lg:shadow-xs{% endif %} lg:dark:border-base-800 dark:bg-base-900">
         <div {% if height %}style="max-height: {{ height }}px;" data-simplebar{% endif %}>
             <table class="block border-spacing-none border-separate w-full lg:table">
                 {% if table.headers %}
@@ -90,14 +91,15 @@
 
         {% if not table.rows %}
             <p class="px-4 bg-white border border-base-200 flex grow py-2 rounded-default shadow-xs dark:bg-base-900 lg:border-0 lg:rounded-none lg:shadow-none">
-                {% trans "No data" %}
+                {% trans "No scenes or plots yet. Add yours!" %}
             </p>
         {% endif %}
         <p class="px-4 mt-2  border border-base-200 flex grow py-2  shadow-xs dark:bg-base-900 lg:border-0 lg:rounded-none lg:shadow-none">
-                <a  class= "btn btn-primary" href="/admin/brainstorm/turn/add/?participant={{ participant.id }}&session={{ session.id }}&type=scene" class="btn btn-primary"><b> Add  your scene now! </b></a>
+               It is your turn to contribute. Do not overthink it!
+               Add  <a  class= "px-1 btn btn-primary" href="/admin/brainstorm/turn/add/?participant={{ participant.id }}&session={{ session.id }}&type=scene" class="btn btn-primary"><b>  a scene </b></a> or 
+                <a  class= "px-1 btn btn-primary" href="/admin/brainstorm/turn/add/?participant={{ participant.id }}&session={{ session.id }}&type=plot" class="btn btn-primary"><b> a plot </b></a>
+           
             </p>
-            <p class="px-4 mt-2  border border-base-200 flex grow py-2  shadow-xs dark:bg-base-900 lg:border-0 lg:rounded-none lg:shadow-none">
-                <a  class= "btn btn-primary" href="/admin/brainstorm/turn/add/?participant={{ participant.id }}&session={{ session.id }}&type=plot" class="btn btn-primary"><b> Add  your plot now! </b></a>
-            </p>
+           
     </div>
 </div>

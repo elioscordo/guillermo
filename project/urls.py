@@ -18,8 +18,10 @@ from django.contrib import admin
 from django.conf import settings
 from django.urls import path
 from django.conf.urls.static import static
+from brainstorm.views import LandingView
 
 
 urlpatterns = [
+    path('', LandingView.as_view(), name='landing'),
     path('admin/', admin.site.urls),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

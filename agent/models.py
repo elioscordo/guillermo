@@ -1,4 +1,3 @@
-from email.mime import text
 from google import genai
 import random
 import os
