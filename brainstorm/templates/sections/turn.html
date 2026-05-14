@@ -95,15 +95,16 @@
                 {% trans "No scenes or plots yet. Add yours!" %}
             </p>
         {% endif %}
-        <p class="px-4 mt-2  border border-base-200 flex grow py-2  shadow-xs dark:bg-base-900 lg:border-0 lg:rounded-none lg:shadow-none">
-             {% if participant %}   
+        <div class="px-4 mt-2  border border-base-200 py-2  shadow-xs dark:bg-base-900 lg:border-0 lg:rounded-none lg:shadow-none">
+            <h2 class="mb-2 font-semibold mb-1 text-font-important-light text-sm dark:text-font-important-dark">Contribute!</h2> 
+            {% if participant %}   
             It is your turn to contribute. Do not overthink it!
                Add  <a  class= "px-1 btn btn-primary" href="/admin/brainstorm/turn/add/?participant={{ participant.id }}&session={{ session.id }}&type=scene" class="btn btn-primary"><b>  a scene </b></a> or 
                 <a  class= "px-1 btn btn-primary" href="/admin/brainstorm/turn/add/?participant={{ participant.id }}&session={{ session.id }}&type=plot" class="btn btn-primary"><b> a plot </b></a>
            {% else %}
            you are not a participant yet. Just  add youself by editing the object.
            {%endif %}
-            </p>
+        </div>
            
     </div>
 </div>

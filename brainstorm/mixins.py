@@ -36,7 +36,7 @@ class UserCreatorMixin:
         html_message = render_to_string(
             'email/invitation.html', 
             {'user': user, 
-                'obj': obj, 
+                'obj': obj,
                 'password': password, 
                 'cta': settings.SITE_URL + f'/admin/brainstorm/session/?id__exact={obj.id}'
             }
