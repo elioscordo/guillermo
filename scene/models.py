@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from agent.models import Agent, Voice
+from agent.models import Agent, Prompt, Voice
 from filer.fields.image import FilerImageField, FilerFileField
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -65,6 +65,7 @@ class Prop(models.Model, GetContentsMixin, TaskHolder):
         parts = super().get_contents(generate_self=generate_self, preset=preset)
         if self.story and self.story.style and generate_self:
             parts.extend(self.story.style.get_contents())
+            parts.extend(Prompt.prompt_for_model(self))
         return parts
 
 class Character(models.Model, GetContentsMixin, TaskHolder):
@@ -103,6 +104,7 @@ class Character(models.Model, GetContentsMixin, TaskHolder):
         parts = super().get_contents(generate_self=generate_self, preset=preset)
         if self.story and self.story.style and generate_self:
             parts.extend(self.story.style.get_contents(generate_self=False))
+            parts.extend(Prompt.prompt_for_model(self))
         return  parts # reverse to have the character prompt last so it is more important
 
     class Meta:
@@ -148,6 +150,7 @@ class Background(models.Model, GetContentsMixin, TaskHolder):
         parts = super().get_contents(generate_self=generate_self, preset=preset)
         if self.story and self.story.style and generate_self and not preset == self.PRESET_REFINE:
             parts.extend(self.story.style.get_contents())
+            parts.extend(Prompt.prompt_for_model(self))
         return parts
 
     class Meta:
@@ -169,6 +172,7 @@ class Scene(models.Model):
         contents = []
         if self.story and self.story.style:
             contents.extend(self.story.style.get_contents(generate_self=False))
+            contents.extend(Prompt.prompt_for_model(self))
         return contents
 
     class Meta:
@@ -194,7 +198,7 @@ class StoryGroup(models.Model):
 
 
 class StoryProfile(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='story_profile', on_delete=models.PROTECT)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='story_profile', on_delete=models.CASCADE)
     story = models.ForeignKey(Story, related_name='story_profiles', on_delete=models.SET_NULL, null=True, blank=True)
     scene = models.ForeignKey(Scene, related_name='story_profiles', on_delete=models.SET_NULL, null=True, blank=True)
     group = models.ForeignKey(StoryGroup, related_name='story_profiles', on_delete=models.SET_NULL, null=True, blank=True)

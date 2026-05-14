@@ -9,6 +9,13 @@ from task.models import TaskHolder
 from agent.models import Agent
 from agent.models import GetContentsMixin
 
+def dashboard_callback(request, context):
+    session = []
+    if request.user.is_authenticated:
+            sessions =  Session.objects.filter(participants__user=request.user).distinct()
+    context.update({'sessions':sessions})
+    return context
+
 class Theme(models.Model):
     name = models.CharField(max_length=100, default='New Game')
     prompt = models.TextField(null=True, blank=True)
@@ -52,7 +59,7 @@ class Nudge(models.Model, EmailSenderMixin):
             )
         super().save(*args, **kwargs)
 
-class Session(models.Model, UserCreatorMixin):
+class Session(models.Model):
     name = models.CharField(max_length=100, null=True, blank=True,help_text="When time comes give it a name to remember it by!")
     theme = models.ForeignKey('Theme', on_delete=models.CASCADE, null=True, blank=True)
     group = models.ForeignKey('scene.StoryGroup', help_text="Auto create participants from this group, it happens only when the session is saved for the first time",  on_delete=models.CASCADE, null=True, blank=True)
@@ -68,11 +75,15 @@ class Session(models.Model, UserCreatorMixin):
     ]
     state = models.CharField(max_length=100, choices=STATES, default=STATE_SCENE)
 
+    class Meta:
+        verbose_name = 'Script'
+        verbose_name_plural = 'Scripts'
+
     def __str__(self):
-        return "{}".format(self.name if self.name else self.theme.name if self.theme else "Session {}".format(self.id)  )
+        return "{}".format(self.name if self.name else f"{self.id} ({self.theme.name})" if self.theme else "Script {}".format(self.id)  )
     
     def import_group_members(self):
-        if self.group:
+        if self.group is not None:
             for member in self.group.users.all():
                 if not Participant.objects.filter(session=self, user=member).exists():
                     Participant.objects.create(session=self, user=member)
@@ -82,14 +93,6 @@ class Session(models.Model, UserCreatorMixin):
         super().save(*args, **kwargs)
         if do_import:
             self.import_group_members()
-        self.check_emails()
-
-    def check_emails(self):
-        for participant in self.participants.filter(user__isnull=True):
-            if participant.email:
-                user = self.create_user(participant.email)
-                participant.user = user
-                participant.save()
 
     def turn_type(self):
         if self.state in [self.STATE_SCENE, self.STATE_PLOT]:
@@ -100,7 +103,7 @@ class Session(models.Model, UserCreatorMixin):
         agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_TEXT).first()
         return agent
 
-class Participant(models.Model):
+class Participant(models.Model, UserCreatorMixin):
     session = models.ForeignKey('Session', related_name='participants', on_delete=models.CASCADE, null=True, blank=True)
     order = models.IntegerField(default=0)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='participants', on_delete=models.CASCADE, null=True, blank=True)
@@ -109,7 +112,11 @@ class Participant(models.Model):
     def save(self, *args, **kwargs):
         if not self.email and not self.user:
             raise ValueError("Either email or user must be provided.")
+        if self.email and self.user is None:
+            user = self.create_user(self.session, self.email)
+            self.user = user
         super().save(*args, **kwargs)
+           
 
     def __str__(self):
         return "{}".format(self.user.username if self.user else self.email)
@@ -142,9 +149,6 @@ class Turn(models.Model, TaskHolder, GetContentsMixin):
         self.save()
         return prompt
     
-    def context_text(self, generate_self=True, preset=None):
-       
-        return 
 
     def get_contents(self, generate_self=True, preset=None):
          # remove generate self and add preset regenerate_image

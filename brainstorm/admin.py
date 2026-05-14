@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.conf import settings
 from django.utils.html import format_html, strip_tags
-
+from django.views.decorators.cache import never_cache
 from task.models import Task
 from .models import Session, Nudge, Theme, Turn, Participant
 from .mixins import UserCreatorMixin
@@ -16,13 +16,6 @@ from scene.admin import AjaxTaskModelAdmin
 from django.shortcuts import get_object_or_404
 import markdown
 
-"""
-height: fit-content;
-flex-direction: column;
-align-items: end;
-line-height: 20px;
-align-content: flex-e
-"""
 
 class ParticipantInline(StackedInline):
     model = Participant 
@@ -33,6 +26,8 @@ class ParticipantInline(StackedInline):
 class ParticipantTableSection(TableSection):
     model = Participant
     NO_USER_LABEL = "Use Create User Action"
+    verbose_name = "Participants"
+    
     def name(self, obj):
         return f"{obj.user.username if obj.user else obj.email}"
     
@@ -132,24 +127,14 @@ class SessionAdmin(ModelAdmin, ):
     inlines = [ParticipantInline]
     autocomplete_fields = ['group']
     list_sections = [
-        ThemeSection,
         TurnTableSection,
         ParticipantTableSection,
+        ThemeSection
     ]
     list_display = ['__str__', 'turns_links']
-    actions = ['create_users',]
-
-    def create_users(self, request, queryset):
-        for obj in queryset:
-            for participant in obj.participants.filter(user__isnull=True):
-                if participant.email:
-                    user = self.create_user(participant.email, obj)
-                    participant.user = user
-                    participant.save()
-    create_users.short_description = "Create user accounts for participants without users"
 
     def turns_links(self, obj):
-        return format_html("<a href='/admin/brainstorm/turn/?session__id__exact={0}'>{1}</a>", obj.id, obj.turns.count())
+        return format_html("<a href='/admin/brainstorm/turn/?session__id__exact={0}'>Edit Contributions ({1})</a>", obj.id, obj.turns.count())
     turns_links.short_description = "Contributions"
 
 
@@ -187,6 +172,7 @@ class TurnAdmin(AjaxTaskModelAdmin):
                 obj.participant = participant
         super().save_model(request, obj, form, change)
 
+    @never_cache
     def ajax_update_view(self, request, object_id):
         # Implementation of the view logic from step 1
         # Use 'self' instead of passing model_admin

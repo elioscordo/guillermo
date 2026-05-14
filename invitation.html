@@ -85,16 +85,16 @@
         </div>
         <div class="content">
             <h1>You've been invited</h1>
-            <p class="text-secondary">You are invited to join a new collaborative brainstorming session.</p>
+            <p class="text-secondary">You are invited to join a new collaborative script.</p>
             
             <div class="session-card">
-                {{ session.theme.name }}
+                {{ obj.get_name }}
             </div>
 
-            <a href="{{ cta_url }}" class="cta-button">Join Session</a>
+            <a href="{{ cta_url }}" class="cta-button">Contribute to the script</a>
         </div>
         <div class="footer">
-            This invitation was sent to you because you were added to a story group in Guillermo.
+            This invitation was sent to you because a friend invited you.
         </div>
     </div>
 </body>

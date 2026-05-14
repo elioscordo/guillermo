@@ -128,6 +128,12 @@ class Prompt(models.Model):
         out = from_preset + from_content
         return out
 
+    @classmethod
+    def prompt_for_model(cls, obj):
+        content_type = ContentType.objects.get_for_model(obj.__class__)
+        from_content = [item.prompt for item in cls.objects.filter(content_type=content_type)]
+        return from_content
+
     def __str__(self):
         return "{}".format(self.name)
     

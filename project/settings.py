@@ -81,7 +81,7 @@ TEMPLATES = [
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+                'django.contrib.messages.context_processors.messages'
             ],
         },
     },
@@ -104,6 +104,7 @@ def storyprofile(request):
     except:
         return "/admin/scene/storyprofile/"
 
+
 from django.templatetags.static import static
 
 UNFOLD = {
@@ -114,41 +115,40 @@ UNFOLD = {
         lambda request: static("css/unfold_filer_custom.css"),
         lambda request: static("css/custom.css"),
     ],
-    "ACCOUNT": {
-        "navigation": [
-            {
-                "title": "Story Filters",
-                "link": storyprofile,
-            },
-            {
-                "title": "My Apis",
-                "link": agentprofile,
-            },
-            {
-                "title": "Token Usage",
-                "link": token_usage_link,
-            }
-        ],
+    "DASHBOARD_CALLBACK": "brainstorm.models.dashboard_callback",
+    "ACCOUNT": {}, # Empty this to prevent duplication at the bottom
+    
+    "COLORS": {
+      "font": {
+            "subtle-light": "var(--color-base-500)",  # text-base-500
+            "subtle-dark": "var(--color-base-400)",  # text-base-400
+            "default-light": "var(--color-base-600)",  # text-base-600
+            "default-dark": "var(--color-base-300)",  # text-base-300
+            "important-light": "var(--color-base-700)",  # text-base-900
+            "important-dark": "var(--color-base-300)",  # text-base-100
+        },  
     },
     "SIDEBAR": {
-        "show_search": False,              # Search in application/model names
-        "command_search": False,           # Use command palette for search
         "show_all_applications": True,
-        
+        "show_user": True,                 # Ensure user profile is visible at the bottom
         "navigation": [
             {
-                "title": "Cowriting",
-                "separator": True,
+                "title": "Co-Writing Scripts",
                 "items": [
                     {
                         "title": "Themes",
-                        "icon": "dashboard",
+                        "icon": "palette",
                         "link": reverse_lazy("admin:brainstorm_theme_changelist"),
                     },
                     {
-                        "title": "Sessions",
-                        "icon": "dashboard",
+                        "title": "Scripts",
+                        "icon": "edit_note",
                         "link": reverse_lazy("admin:brainstorm_session_changelist"),
+                    },
+                    {
+                        "title": "Creative Groups",
+                        "icon": "groups",
+                        "link": reverse_lazy("admin:scene_storygroup_changelist"),
                     }
 
                 ],
@@ -159,50 +159,71 @@ UNFOLD = {
                 "items": [
                     {
                         "title": "Stories",
-                        "icon": "dashboard",
+                        "icon": "auto_stories",
                         "link": reverse_lazy("admin:scene_story_changelist"),
                     },
                     {
                         "title": "Elements",
-                        "icon": "dashboard",
+                        "icon": "category",
                         "link": reverse_lazy("admin:scene_prop_changelist"),
                     },
                     {
                         "title": "Characters",
-                        "icon": "dashboard",
+                        "icon": "person",
                         "link": reverse_lazy("admin:scene_character_changelist"),
                     },
                     {
                         "title": "Locations",
-                        "icon": "dashboard",
+                        "icon": "location_on",
                         "link": reverse_lazy("admin:scene_background_changelist"),
                     },
                     {
                         "title": "Scenes",
-                        "icon": "dashboard",
+                        "icon": "movie",
                         "link": reverse_lazy("admin:scene_scene_changelist"),
                     },
 
                     {
                         "title": "Actions",
-                        "icon": "dashboard",
+                        "icon": "play_arrow",
                         "link": reverse_lazy("admin:scene_action_changelist"),
                     },
                     {
                         "title": "Comic Actions",
-                        "icon": "dashboard",
+                        "icon": "auto_awesome",
                         "link": reverse_lazy("admin:scene_comicaction_changelist"),
                     },
                     {
                         "title": "Video Actions",
-                        "icon": "dashboard",
+                        "icon": "videocam",
                         "link": reverse_lazy("admin:scene_videoaction_changelist"),
                     },
                     {
                         "title": "Voice Actions",
-                        "icon": "dashboard",
+                        "icon": "mic",
                         "link": reverse_lazy("admin:scene_voiceaction_changelist"),
                     },
+                ],
+            },
+             {
+                "title": "Personal Area",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Story Filters",
+                        "icon": "settings",
+                        "link": storyprofile,
+                    },
+                    {
+                        "title": "My Apis",
+                        "icon": "api",
+                        "link": agentprofile,
+                    },
+                    {
+                        "title": "Token Usage",
+                        "icon": "monitoring",
+                        "link": token_usage_link,
+                    }
                 ],
             },
             {
@@ -211,12 +232,12 @@ UNFOLD = {
                 "items": [
                     {
                         "title": "Videos",
-                        "icon": "dashboard",
+                        "icon": "video_library",
                         "link": reverse_lazy("admin:scene_scenevideo_changelist"),
                     },
                     {
                         "title": "Video Shots",
-                        "icon": "dashboard",
+                        "icon": "grid_view",
                         "link": reverse_lazy("admin:scene_videoitem_changelist"),
                     },
                 ],
@@ -330,3 +351,11 @@ TASK_TYPE_CHOICES = (
 import os
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER

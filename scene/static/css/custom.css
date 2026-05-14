@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;700&display=swap');
+
 .data-row .field-my_prompt, .data-row .field-pic, .data-row .field-prompt , .data-row .field-prompt_refine {
     height: fit-content;
     flex-direction: column;
@@ -6,9 +8,36 @@
     align-content: flex-start;
 }
 
-.result-list a, .data-row a  {
-    font-weight: 500;
+
+/* Apply light font and custom color to desktop headers and responsive mobile labels */
+.unfold-table thead th, 
+.changelist-form table thead th,
+.unfold-table th,
+.unfold-table td::before {
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 300 !important;
+    color: #6b7280 !important; /* Tailwind gray-500 for a lighter look */
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
 }
+
+/* Darker, heavier links for items in the change list */
+.unfold-table tbody td a,
+.changelist-form table tbody td a,
+.unfold-table td a,
+.result-list a, 
+.data-row a {
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 700 !important;
+    color: #111827 !important; /* Tailwind gray-900 for high contrast */
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
 .markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6  {
     font-weight: bold; 
+}
+
+.unfold-table tbody td a:hover {
+    color: #4f46e5 !important; /* Indigo hover state */
 }

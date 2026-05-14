@@ -21,7 +21,7 @@ class EmailSenderMixin:
 
 class UserCreatorMixin:
     
-    def create_user(self, email):
+    def create_user(self, obj, email):
         username = email.split('@')[0]
         # 1. Generate a secure random string
         alphabet = string.ascii_letters + string.digits
@@ -36,14 +36,14 @@ class UserCreatorMixin:
         html_message = render_to_string(
             'email/invitation.html', 
             {'user': user, 
-                'game': self, 
+                'obj': obj, 
                 'password': password, 
-                'cta': settings.SITE_URL + f'/admin/brainstorm/session/?id__exact={self.id}'
+                'cta': settings.SITE_URL + f'/admin/brainstorm/session/?id__exact={obj.id}'
             }
         )
         plain_message = strip_tags(html_message)
         send_mail(
-            f'Invitation to join the brainstorming: {self.name}', plain_message, settings.DEFAULT_FROM_EMAIL, [email],
+            f'Invitation to join the brainstorming: {self}', plain_message, settings.DEFAULT_FROM_EMAIL, [email],
             html_message=html_message # <--- HTML added here
         )
         return user

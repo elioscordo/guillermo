@@ -3,11 +3,11 @@ from django.utils.html import format_html
 ELEMENT_FIELDSETS = (
         ("Write", {
             "classes": ["tab"],
-            "fields": ["prompt", 'action'],
+            "fields": ["name","prompt",  'action'],
         }),
         ("Settings", {
             "classes": ["tab"],
-            "fields": ["prompt_refine", "story", ],
+            "fields": ["image","prompt_refine", "story" ],
         }),
     )
 
@@ -26,7 +26,7 @@ ACTION_FIELDSETS = (
         }),
         ("Execute On Save", {
             "classes": ["tab"],
-            "fields": ["exec_on_save"],
+            "fields": ["action"],
         }),
     )
 
