@@ -46,6 +46,7 @@ ALLOWED_HOSTS = ['178.238.234.86', 'guillermoai.duckdns.org', 'www.guillermoai.d
 
 INSTALLED_APPS = [
     'unfold',
+    'rest_framework',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

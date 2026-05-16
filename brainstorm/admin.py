@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.conf import settings
+from django.http import JsonResponse
 from django.utils.html import format_html, strip_tags
 from django.views.decorators.cache import never_cache
 from task.models import Task
@@ -134,7 +135,7 @@ class SessionAdmin(ModelAdmin, ):
     list_display = ['__str__', 'turns_links']
 
     def turns_links(self, obj):
-        return format_html("<a href='/admin/brainstorm/turn/?session__id__exact={0}'>Edit Contributions ({1})</a>", obj.id, obj.turns.count())
+        return format_html("<a href='/admin/brainstorm/turn/?session__id__exact={0}'>Edit ({1})</a>", obj.id, obj.turns.count())
     turns_links.short_description = "Contributions"
 
 
@@ -160,8 +161,8 @@ class TurnAdmin(AjaxTaskModelAdmin):
     def my_session(self, obj):
         return mark_safe(f"<a href='/admin/brainstorm/session/?id__exact={obj.session.id}'>{obj.session}</a>")
 
-    list_display = ['id', 'my_session', 'participant',  'my_prompt', 'prompt_refine', 'last_tasks' ]
-    list_editable = ['prompt_refine']
+    list_display = ['id', 'my_session', 'participant',  'prompt', 'prompt_refine', 'last_tasks' ]
+    list_editable = ['prompt', 'prompt_refine']
     
     list_filter = ['session',]
 
@@ -172,7 +173,6 @@ class TurnAdmin(AjaxTaskModelAdmin):
                 obj.participant = participant
         super().save_model(request, obj, form, change)
 
-    @never_cache
     def ajax_update_view(self, request, object_id):
         # Implementation of the view logic from step 1
         # Use 'self' instead of passing model_admin
@@ -180,9 +180,11 @@ class TurnAdmin(AjaxTaskModelAdmin):
         if request.POST.get('prompt_refine') is not None:
             obj.prompt_refine = request.POST.get('prompt_refine')
             obj.save()
-            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_TEXT, thr=obj.session.get_agent(), owner=request.user) is None:
-                obj.generate_text()
-   
+            agent = obj.session.get_agent()
+            if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_TEXT, thr=agent, owner=request.user) is None:
+                obj.generate_text(request.user, agent)
+        return JsonResponse({'status': 'success'})
+
 
 @admin.register(Participant)
 class ParticipantAdmin(ModelAdmin):

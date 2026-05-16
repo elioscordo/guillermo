@@ -14,6 +14,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 DEFAULT_IMAGE_AGENT_NAME = "DIGA"
 from django.apps import apps
+from .serializers import get_generic_serializer
 
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
@@ -219,10 +220,15 @@ class AjaxTaskModelAdmin(ModelAdmin):
     def get_last_tasks(self, request, object_id):
         # 1. Get the object
         obj = get_object_or_404(self.model, pk=object_id)
-    
-        return JsonResponse({
+        last_task = obj.tasks.first()
+        status = last_task.status if last_task else None
+        serializer_class = get_generic_serializer(self.model)
+        response_data = {
             'html': obj.last_tasks(),
-        })
+            'status': status,#
+            'object': serializer_class(obj).data
+        }
+        return JsonResponse(response_data)
     
     def ajax_update_view(self, request, object_id):
         # Implementation of the view logic from step 1

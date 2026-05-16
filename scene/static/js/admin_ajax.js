@@ -1,3 +1,6 @@
+let pollingInterval = null;
+const monitoredObjectIds = new Set();
+
 const updateRowState = (row, status) => {
         // Define which statuses lock the row
         const isLocked = ["0", "1"].includes(status);
@@ -15,14 +18,29 @@ const updateRowState = (row, status) => {
             saveBtn.style.pointerEvents = isLocked ? 'none' : 'auto';
         }
     };
+
+const startPolling = () => {
+    if (!pollingInterval) {
+        pollingInterval = setInterval(pollStatus, 5000);
+    }
+};
+
 const pollStatus = () => {
-        const dropdowns = document.querySelectorAll('.inline-block[id^="task-"]');
-        
-        dropdowns.forEach(el => {
-            const objectId = el.id.split('-')[1];
-            const status = el.getAttribute('data-status');
-            const isLocked = ["0", "1"].includes(status);
-            if (!isLocked) return;
+        if (monitoredObjectIds.size === 0) {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+            console.log("Clearing polling interval, no more objects to monitor.");
+            return;
+        }
+        console.log(`Polling for updates on object IDs: ${Array.from(monitoredObjectIds).join(', ')}`);
+        monitoredObjectIds.forEach(objectId => {
+            const el = document.getElementById(`task-${objectId}`);
+            if (!el) {
+                monitoredObjectIds.delete(objectId);
+                return;
+            }
             const row = el.closest('tr');
         
             fetch(`ajax-last-tasks/${objectId}/`)
@@ -30,23 +48,31 @@ const pollStatus = () => {
                 .then(data => {
                     // 1. Update the HTML of the dropdown container
                     el.innerHTML = data.html;
-                    const status = el.getAttribute('data-status');
+                    el.setAttribute('data-status', String(data.status));
+
+                    // Remove from monitoring if terminal status reached (specifically 4 as requested)
+                    // We also check for any status that isn't pending (0 or 1) to avoid infinite polling on errors
+                    if (data.status == "4" || (data.status != "0" && data.status != "1")) {
+                        monitoredObjectIds.delete(objectId);
+                    }
+                    
+                    // 2. If task succeeded, update row content with serialized data
+                    if (data.object) {
+                        // Update editable inputs in the row
+                        Object.keys(data.object).forEach(key => {
+                            const input = row.querySelector(`[name$="-${key}"]`);
+                            if (input && input.value !== String(data.object[key])) {
+                                input.value = data.object[key];
+                            }
+                        });
+                    }
+
+                    
                     // 3. Toggle row inputs based on new status
-                    updateRowState(row, status);
+                    updateRowState(row, String(data.status));
                 });
         });
     };
-
-document.addEventListener('DOMContentLoaded', function() {
-
-    // Run enforcement immediately on load
-    document.querySelectorAll('.inline-block[id^="task-"]').forEach(el => {
-        updateRowState(el.closest('tr'), el.getAttribute('data-status'));
-    });
-
-    // Start Polling every 5 seconds
-    setInterval(pollStatus, 5000);
-});
 
 
 document.addEventListener('keydown', function(e) {
@@ -79,9 +105,11 @@ document.addEventListener('keydown', function(e) {
                 if (response.ok) {
                     const dropdowns = row.querySelector('.inline-block[id^="task-"]');
                     dropdowns.setAttribute('data-status', '1');
-                     // Set to "completed"
-                    input.style.backgroundColor = '#d4edda';
-                    setTimeout(() => input.style.backgroundColor = '', 500);
+                    monitoredObjectIds.add(objectId);
+                    
+                    startPolling();
+                   
+                   
                 }
             });
         }

@@ -3,9 +3,7 @@ import random
 import os
 import time
 import instructor
-from google.genai import types
 from django.conf import settings
-from google.genai.types import FinishReason, GenerateContentConfig, ImageConfig, Part
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from agent.utils import wave_file
@@ -205,6 +203,8 @@ class Agent(models.Model):
 
     def generate_voice(self, preset, prompt_obj, user=None):
         # Check for errors if voice is not generated
+        from google.genai import types
+
         out = None
         client = self.get_genai_client(user)
         contents = prompt_obj.get_contents(generate_self=True, preset=preset)
@@ -237,6 +237,7 @@ class Agent(models.Model):
 
     def generate_video(self, preset, prompt_obj, user=None):
         # Check for errors if a video is not generated
+        from google.genai import types
         out = None
         client = self.get_genai_client(user)
         contents = prompt_obj.get_contents(generate_self=True, preset=preset)
@@ -280,6 +281,7 @@ class Agent(models.Model):
     def save_image(self, response, prompt_obj):
         # Check for errors if an image is not generated
         out = None
+        from google.genai.types import FinishReason
         if response.candidates[0].finish_reason != FinishReason.STOP:
             reason = response.candidates[0].finish_reason
             raise ValueError(f"Prompt Content Error: {reason}")
@@ -306,6 +308,7 @@ class Agent(models.Model):
         return instructions
     
     def generate(self, obj, preset=None, user=None):
+        from google.genai import types
         # Placeholder for agent generation logic
         contents = obj.get_contents(generate_self=True, preset=preset)
         config = None

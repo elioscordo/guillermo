@@ -2,9 +2,6 @@ from django.db import models
 from django.conf import settings
 from agent.models import Agent, Prompt, Voice
 from filer.fields.image import FilerImageField, FilerFileField
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
-from google.genai import types
 from agent.models import GetContentsMixin
 from task.models import TaskHolder, Task
 

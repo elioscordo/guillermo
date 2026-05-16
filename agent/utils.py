@@ -1,21 +1,9 @@
 import base64
-from fileinput import filename
 from django.conf import settings
-from google.oauth2 import service_account
-from google import genai
-import wave
-
-
-# Set up the wave file to save the output:
-def wave_file(filename, pcm, channels=1, rate=24000, sample_width=2):
-   with wave.open(filename, "wb") as wf:
-      wf.setnchannels(channels)
-      wf.setsampwidth(sample_width)
-      wf.setframerate(rate)
-      wf.writeframes(pcm)
 
 
 def get_genai_client(user=None):
+    from google import genai
     if user and hasattr(user, 'agent_profile') and user.agent_profile.google_api_key:
         api_key = user.agent_profile.google_api_key.api_key
         genai_client = genai.Client(
@@ -29,6 +17,7 @@ def get_genai_client(user=None):
 
 # Set up the wave file to save the output:
 def wave_file(filename, pcm, channels=1, rate=24000, sample_width=2):
+    import wave
     with wave.open(filename, "wb") as wf:
         wf.setnchannels(channels)
         wf.setsampwidth(sample_width)

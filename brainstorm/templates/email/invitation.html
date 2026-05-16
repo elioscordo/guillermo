@@ -32,14 +32,13 @@
 <body>
     <div class="wrapper">
         <div class="header">
-            <h1>Brainstorming Game</h1>
+            <h1>You have been invited to Guillermo, colaborative ai script creation</h1>
         </div>
         <div class="body">
-            <div class="greeting">Welcome to the session, {{ user_name }}!</div>
-            <p class="text">You have been invited to participate in a new brainstorming challenge. Access your player account using the secure credentials below.</p>
+            <div class="greeting">Welcome to the Guillermo, {{ user.username }}!</div>
+            <p class="text">You have been invited to participae in a new colaborative ai script. Access your player account using the secure credentials below.</p>
             
-            <p class="text"> Theme: {{ item.session.theme.name }}</p>
-            <p class="text"> Description: {{ item.session.theme.prompt }}</p>
+            <p class="text"> Script: {{ obj.get_name }}</p>
             
             <div class="auth-card">
                 <div class="field">
@@ -52,7 +51,7 @@
                 </div>
             </div>
 
-            <a href="{{ cta }}" class="btn">Launch Brainstorming Session (expand the row to the details)</a>
+            <a href="{{ cta }}" class="btn"> Login and add your contribution</a>
         </div>
         <div class="footer">
             Sent via <strong>Guillermo</strong>

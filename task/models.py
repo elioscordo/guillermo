@@ -105,7 +105,7 @@ class Task(models.Model):
     )
 
     class Meta:
-        ordering = ['status', '-modified']
+        ordering = ['-modified', 'status']
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
