@@ -86,6 +86,7 @@ class AgentProfileAdmin(ModelAdmin):
     list_display = ('user', 'credits')
     list_display_links = ('user',)
     autocomplete_fields = ['user']
+    
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         if request.user.is_superuser:

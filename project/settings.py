@@ -322,8 +322,8 @@ TASK_TYPE_GENERATE_VIDEO_FIRST_LAST = 'generate_video_first_last'
 TASK_TYPE_GENERATE_COMIC = 'generate_comic'
 TASK_TYPE_GENERATE_SCENE_VIDEO = 'generate_scene_video'
 TASK_TYPE_GENERATE_VOICE = 'generate_voice'
-TASK_TYPE_GENERATE_VOICE = 'generate_voice'
 TASK_TYPE_GENERATE_TEXT = 'generate_text'
+TASK_TYPE_GENERATE_SCENE = 'generate_scene'
 
 
 
@@ -336,7 +336,8 @@ TASK_DELEGATES = {
     TASK_TYPE_GENERATE_COMIC: 'scene.tasks.TaskGenerateComic',
     TASK_TYPE_GENERATE_SCENE_VIDEO: 'scene.tasks.TaskGenerateSceneVideo',
     TASK_TYPE_GENERATE_VOICE: 'scene.tasks.TaskGenerateVoice',
-    TASK_TYPE_GENERATE_TEXT: 'scene.tasks.TaskGenerateText'
+    TASK_TYPE_GENERATE_TEXT: 'scene.tasks.TaskGenerateText',
+    TASK_TYPE_GENERATE_SCENE: 'scene.tasks.TaskGenerateScene'
 }
 
 TASK_TYPE_CHOICES = (
@@ -347,7 +348,8 @@ TASK_TYPE_CHOICES = (
     (TASK_TYPE_GENERATE_COMIC, "Generate Comic"),
     (TASK_TYPE_GENERATE_SCENE_VIDEO, "Generate Scene Video"),
     (TASK_TYPE_GENERATE_VOICE, "Generate Voice"),
-    (TASK_TYPE_GENERATE_TEXT, "Generate Text")
+    (TASK_TYPE_GENERATE_TEXT, "Generate Text"),
+    (TASK_TYPE_GENERATE_SCENE, "Generate Scene")
 )
 
 

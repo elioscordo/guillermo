@@ -8,7 +8,8 @@ from brainstorm.mixins import EmailSenderMixin, UserCreatorMixin
 from task.models import TaskHolder
 from agent.models import Agent
 from agent.models import GetContentsMixin
-
+from scene.models import Scene, Story
+        
 def dashboard_callback(request, context):
     session = []
     if request.user.is_authenticated:
@@ -63,6 +64,8 @@ class Session(models.Model):
     name = models.CharField(max_length=100, null=True, blank=True,help_text="When time comes give it a name to remember it by!")
     theme = models.ForeignKey('Theme', on_delete=models.CASCADE, null=True, blank=True)
     group = models.ForeignKey('scene.StoryGroup', help_text="Auto create participants from this group, it happens only when the session is saved for the first time",  on_delete=models.CASCADE, null=True, blank=True)
+    scene = models.ForeignKey('scene.Story', null=True, blank=True, on_delete=models.SET_NULL)
+    story = models.ForeignKey('scene.Story', null=True, blank=True, related_name='sessions', on_delete=models.SET_NULL)
     
     STATE_SCENE = 'scene'
     STATE_PLOT = 'plot'   
@@ -81,6 +84,9 @@ class Session(models.Model):
 
     def __str__(self):
         return "{}".format(self.name if self.name else f"{self.id} ({self.theme.name})" if self.theme else "Script {}".format(self.id)  )
+    
+    def get_name(self):
+        return self.name if self.name else f"{self.id} ({self.theme.name})" if self.theme else "Script {}".format(self.id)
     
     def import_group_members(self):
         if self.group is not None:
@@ -102,6 +108,13 @@ class Session(models.Model):
     def get_agent(self):
         agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_TEXT).first()
         return agent
+
+    def get_story(self):
+        if self.story is None:
+            name = self.get_name()
+            self.story = Story.objects.create(name=name)
+            self.save()
+        return self.story
 
 class Participant(models.Model, UserCreatorMixin):
     session = models.ForeignKey('Session', related_name='participants', on_delete=models.CASCADE, null=True, blank=True)
@@ -139,7 +152,8 @@ class Turn(models.Model, TaskHolder, GetContentsMixin):
     participant = models.ForeignKey('Participant', related_name='turns', on_delete=models.CASCADE, null=True, blank=True)
     agent = models.ForeignKey('agent.Agent', on_delete=models.CASCADE, null=True, blank=True)
     pass_turn = models.BooleanField(default=False, help_text="If true, the turn will be passed to the next player")
-    
+    scene = models.ForeignKey('scene.Scene', null=True, blank=True, on_delete=models.SET_NULL)
+
     def __str__(self):
         return "{}".format(self.participant.user.username if self.participant and self.participant.user else "Turn {}".format(self.id))
 
@@ -148,7 +162,6 @@ class Turn(models.Model, TaskHolder, GetContentsMixin):
         self.prompt = prompt
         self.save()
         return prompt
-    
 
     def get_contents(self, generate_self=True, preset=None):
          # remove generate self and add preset regenerate_image
@@ -156,7 +169,18 @@ class Turn(models.Model, TaskHolder, GetContentsMixin):
         parts.append("following prompt to be improved")
         parts.append(self.prompt)
         return parts
-       
+
+    def get_story(self):
+        return self.session.get_story()
+    
+    def get_scene(self, creation_name=None): 
+        if self.scene is None:
+            if creation_name is None:
+                creation_name = f"Exported from {self.id}"
+            self.scene = Scene.objects.create(name=creation_name, story=self.get_story())
+            self.save()
+        return self.scene
+    
 """    def save(self, *args, **kwargs):
         if not self.game and self.player:
             self.game = self.player.game

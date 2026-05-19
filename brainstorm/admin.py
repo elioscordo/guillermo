@@ -165,6 +165,13 @@ class TurnAdmin(AjaxTaskModelAdmin):
     list_editable = ['prompt', 'prompt_refine']
     
     list_filter = ['session',]
+    actions = ['extract_scene']
+
+    @admin.action(description="Extract Scene")
+    def extract_scene(self, request, queryset):
+        for obj in queryset:
+            obj.generate_scene(user=request.user)
+            self.message_user(request, f"Extracting scene from turn {obj.id} in session {obj.session.id}.")
 
     def save_model(self, request, obj, form, change):
         if not obj.participant and obj.session:

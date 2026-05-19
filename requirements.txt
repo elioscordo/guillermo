@@ -2,7 +2,7 @@ Django
 django-jazzmin
 django-filer
 instructor[vertexai, google-genai]==1.13.0
- google-genai[aiohttp]
+google-genai[aiohttp]
 python-dotenv==1.1.0
 django-jazzmin
 celery
@@ -15,3 +15,4 @@ django-unfold
 django-allauth
 markdown-it-py==4.0.0
 psycopg2-binary
+djantic2

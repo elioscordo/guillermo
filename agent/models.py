@@ -4,6 +4,7 @@ import os
 import time
 import instructor
 from django.conf import settings
+
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from agent.utils import wave_file
@@ -12,6 +13,7 @@ from io import BytesIO
 from filer.models.imagemodels import Image as FilerImage
 from django.utils.text import slugify
 from easy_thumbnails.files import get_thumbnailer
+
 from task.models import Task
 from PIL import Image
 
@@ -26,6 +28,7 @@ class GetContentsMixin:
     PRESET_CHARACTER = "character"
     PRESET_WRITER = "writer"
     PRESET_REFINE_PROMPT = "refine_prompt"
+    PRESET_SCENE = "generate_scene"
     
 
     def get_contents(self, generate_self=True, preset=None):
@@ -71,6 +74,13 @@ class GetContentsMixin:
         self.voice = agent.generate(self, preset=preset, user=user)
         self.save()
         return self.voice
+    
+    def generate_scene(self, preset=PRESET_SCENE, user=None):
+        agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_STRUCTURED).first()
+        scene = agent.generate(self, preset=preset, user=user)
+        self.scene = scene
+        self.save()
+        return self.scene
 
     def refine_image(self, save=True, user=None):
         image_agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_IMAGE).first()
@@ -111,6 +121,7 @@ class Prompt(models.Model):
         (GetContentsMixin.PRESET_WRITER, "Writer"),
         (GetContentsMixin.PRESET_CHARACTER, "Character"),
         (GetContentsMixin.PRESET_REFINE_PROMPT, "Refine Prompt"),
+        (GetContentsMixin.PRESET_SCENE, "Sync Scene"),
         
     )
     name= models.CharField(max_length=100, default="name")
@@ -309,6 +320,7 @@ class Agent(models.Model):
     
     def generate(self, obj, preset=None, user=None):
         from google.genai import types
+        from scene.schemas import SceneSchema
         # Placeholder for agent generation logic
         contents = obj.get_contents(generate_self=True, preset=preset)
         config = None
@@ -317,14 +329,20 @@ class Agent(models.Model):
             return self.generate_video(preset, obj, user=user)
         if self.output_type == self.OUTPUT_TYPE_VOICE:
             return self.generate_voice(preset, obj, user=user)
-        if self.output_type == self.OUTPUT_TYPE_IMAGE:
+        if self.output_type == self.OUTPUT_TYPE_STRUCTURED and preset == GetContentsMixin.PRESET_SCENE:
+            config=types.GenerateContentConfig(
+                system_instruction= self.get_instructions(user=user, preset=preset, obj=obj),
+                response_mime_type="application/json",
+                response_schema=SceneSchema, # This now correctly refers to the BaseModel SceneSchema
+                temperature=0.1 # Low temperature ensures unchanged values are copied verbatim
+            )
+        elif self.output_type == self.OUTPUT_TYPE_IMAGE:
             config = types.GenerateContentConfig(
                 image_config=types.ImageConfig(
                     aspect_ratio="9:16",
                 )
             )
-        if self.output_type in [self.OUTPUT_TYPE_TEXT, self.OUTPUT_TYPE_STRUCTURED]:
-            
+        elif self.output_type in self.OUTPUT_TYPE_TEXT:
             config = types.GenerateContentConfig(
                 system_instruction= self.get_instructions(user=user, preset=preset, obj=obj)
             )
@@ -342,6 +360,11 @@ class Agent(models.Model):
                 out =  self.generate_text(response, obj)
             elif self.output_type == self.OUTPUT_TYPE_IMAGE:
                 out = self.save_image(response, obj)
+            elif self.output_type == self.OUTPUT_TYPE_STRUCTURED and preset:
+                # refactor this to use the schema directly for syncing instead of going through json
+                from scene.schemas import SceneSchema # This imports the BaseModel SceneSchema
+                data = SceneSchema.model_validate_json(response.text)
+                out  = data.sync_model(obj) # Call sync_model on the instance 'data'
         return out
 
 

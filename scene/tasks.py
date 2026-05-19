@@ -105,3 +105,11 @@ class TaskGenerateSceneVideo:
             )
             item.video = out
             item.save()
+
+class TaskGenerateScene:
+    def __init__(self, task):
+        self.task = task
+    def process(self):
+        item = self.task.subject
+        item.generate_scene(user=self.task.owner)
+        item.save()

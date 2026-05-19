@@ -2,6 +2,10 @@
 
 Guillermo is an AI-powered storytelling and multimedia generation platform. It leverages Google's Vertex AI (Gemini) to generate text, images, video, and audio content based on user-defined stories, characters, and scenes.
 
+## Live Demo
+
+The platform is accessible at [https://guillermoai.duckdns.org/](https://guillermoai.duckdns.org/). Please request access to the platform if you wish to evaluate its capabilities.
+
 ## Core Features
 
 - **AI Agents:** Configurable agents for different modalities (Text, Image, Video, Voice).
