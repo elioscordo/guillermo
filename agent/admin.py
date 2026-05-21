@@ -40,7 +40,7 @@ def list_models(modeladmin, request, queryset):
 
 @admin.register(AgentModel)
 class AgentModelAdmin(ModelAdmin):
-    list_display = ('name',)
+    list_display = ('name', )
     list_display_links = ('name',)
     actions = [list_models]
 
@@ -54,7 +54,7 @@ class PromptAdmin(ModelAdmin):
 
 @admin.register(Agent)
 class AgentAdmin(ModelAdmin):
-    list_display = ('name', )
+    list_display = ('name', 'output_type', 'schema')
     list_display_links = ('name',)
 
 @admin.register(Voice)

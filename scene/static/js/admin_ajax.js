@@ -1,4 +1,5 @@
-let pollingInterval = null;
+let pollingTimer = null;
+let pollIteration = 0;
 const monitoredObjectIds = new Set();
 
 const updateRowState = (row, status) => {
@@ -20,20 +21,18 @@ const updateRowState = (row, status) => {
     };
 
 const startPolling = () => {
-    if (!pollingInterval) {
-        pollingInterval = setInterval(pollStatus, 5000);
+    pollIteration = 0; // Reset counter whenever a new task is added to trigger fast polling
+    if (!pollingTimer) {
+        pollingTimer = setTimeout(pollStatus, 1000);
     }
 };
 
 const pollStatus = () => {
-        if (monitoredObjectIds.size === 0) {
-            if (pollingInterval) {
-                clearInterval(pollingInterval);
-                pollingInterval = null;
-            }
-            console.log("Clearing polling interval, no more objects to monitor.");
-            return;
-        }
+    if (monitoredObjectIds.size === 0) {
+        pollingTimer = null;
+        console.log("No more objects to monitor.");
+        return;
+    }
         console.log(`Polling for updates on object IDs: ${Array.from(monitoredObjectIds).join(', ')}`);
         monitoredObjectIds.forEach(objectId => {
             const el = document.getElementById(`task-${objectId}`);
@@ -72,6 +71,11 @@ const pollStatus = () => {
                     updateRowState(row, String(data.status));
                 });
         });
+
+        // Calculate next delay: 1s for the first 3 polls, then 5s
+        const delay = pollIteration < 3 ? 1000 : 5000;
+        pollIteration++;
+        pollingTimer = setTimeout(pollStatus, delay);
     };
 
 

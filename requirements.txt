@@ -16,3 +16,4 @@ django-allauth
 markdown-it-py==4.0.0
 psycopg2-binary
 djantic2
+redis

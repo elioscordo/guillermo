@@ -112,12 +112,12 @@ def video_to_scene_video(modeladmin, request, queryset):
 def clone(modeladmin, request, queryset):
     for obj in queryset:
         props = None
-        extras = None
+        cast = None
         many_to_many_count = 0
         if hasattr(obj, 'props'):
             props = obj.props.all()
-        if hasattr(obj, 'extras'):
-            extras = obj.extras.all()
+        if hasattr(obj, 'cast'):
+            cast = obj.cast.all()
         obj.pk = None
         if hasattr(obj, 'name'):
             obj.name = f"{obj.name} (Clone)"
@@ -127,9 +127,9 @@ def clone(modeladmin, request, queryset):
         if props is not None:
             obj.props.set(props)
             many_to_many_count  += obj.props.count() 
-        if extras is not None:
-            obj.extras.set(extras)
-            many_to_many_count  += obj.extras.count()
+        if cast is not None:
+            obj.cast.set(cast)
+            many_to_many_count  += obj.cast.count()
 
     modeladmin.message_user(request, "Selected actions have been cloned.")
 
@@ -333,14 +333,14 @@ class SceneAdmin(StoryFilterMixin, ModelAdmin, ImgShowMixin):
 
 @admin.register(Action)
 class ActionAdmin(SceneFilterMixin, AjaxTaskModelAdmin, ImgShowMixin):
-    list_display = ('id', 'pic', 'prompt','prompt_refine', 'last_tasks')
+    list_display = ('get_name', 'pic', 'prompt','prompt_refine', 'last_tasks')
     list_editable = ( 'prompt', 'prompt_refine')
     list_filter = ["scene", "order"]
     ordering_field = "order"
     hide_ordering_field = True
-    list_display_links = ('id',)
-    autocomplete_fields = ['actor', 'props', 'extras', 'background', 'consistent_with', 'scene']
-    search_fields = ['name']
+    list_display_links = ('get_name',)
+    autocomplete_fields = ['actor', 'props', 'cast', 'background', 'consistent_with', 'scene']
+    search_fields = ['get_name']
     actions = [clone, default_generate_image, default_refine_image]
     fieldsets = ACTION_FIELDSETS
 

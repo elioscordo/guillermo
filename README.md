@@ -38,6 +38,8 @@ The platform is accessible at [https://guillermoai.duckdns.org/](https://guiller
    DJANGO_SECRET_KEY=your-django-secret
    GOOGLE_GENAI_VERTEX_API_KEY=your-vertex-ai-api-key
    SITE_URL=http://localhost:8000
+   DATABASE_TYPE=sqlite
+   CELERY_BROKER_TYPE=sqlite
    ```
 
 ## Usage

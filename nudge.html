@@ -86,7 +86,7 @@
         <div class="content">
             <h1>{{ item.sender.username }} is waiting for you</h1>
             <p class="text-secondary">
-                You received a nudge regarding the session <strong>{{ item.session.theme.name }}</strong>. 
+                You received a nudge regarding the script <strong>{{ item.script.get_name }}</strong>. 
                 It's your turn to contribute to the story.
             </p>
 
@@ -98,8 +98,7 @@
 
             <div style="text-align: center; margin-top: 8px;">
                 <a href="{{ cta }}" class="cta-button">
-                    Enter Brainstorming Session
-                </a>
+                    Script                </a>
             </div>
         </div>
         <div class="footer">

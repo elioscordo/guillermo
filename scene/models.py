@@ -221,7 +221,7 @@ class Action(models.Model, GetContentsMixin, TaskHolder):
     background = models.ForeignKey(Background, related_name='actions', on_delete=models.SET_NULL, null=True, blank=True)
     actor = models.ForeignKey(Character, related_name='actions', on_delete=models.SET_NULL, null=True, blank=True)
     props = models.ManyToManyField(Prop, related_name='actions', blank=True)
-    extras = models.ManyToManyField(Character, related_name='actions_extras', blank=True)
+    cast = models.ManyToManyField(Character, related_name='actions_cast', blank=True)
     consistent_with = models.ForeignKey('self', related_name='consistent_actions', on_delete=models.SET_NULL, null=True, blank=True)
     prompt_refine = models.TextField(null=True, blank=True)
     image_refine = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='action_refine')
@@ -239,24 +239,27 @@ class Action(models.Model, GetContentsMixin, TaskHolder):
 
     audio_voice = FilerFileField(null=True, blank=True, on_delete=models.SET_NULL, related_name='actions_audio')
     prompt_voice = models.TextField(null=True, blank=True)
-
+    text = models.TextField(null=True, blank=True)
+    
     def __str__(self):
-        return "{}_{}".format(self.scene.name, self.id)
+        return self.get_name()
     
-    
+    def get_name(self):
+        return self.name if self.name else f"#{self.id} of{self.scene.name}"
+
     class Meta:
         ordering = ['-order', 'name']
 
     def elements(self):
         props = []
-        extras = []
+        cast_members = []
         main_actor = self.actor.name if self.actor else "None"
         background = self.background.name if self.background else "None"
         if self.props:
             props.extend([prop.name for prop in self.props.all()])
-        if self.extras:
-            extras.extend([extra.name for extra in self.extras.all()])
-        output =  f"Main Actor: <b>{main_actor}</b><br/> Background: <b>{background}</b><br/> Props: <b>{', '.join(props)}</b><br/> Extras: <b>{', '.join(extras)}</b><br/>"
+        if self.cast:
+            cast_members.extend([character.name for character in self.cast.all()])
+        output =  f"Main Actor: <b>{main_actor}</b><br/> Background: <b>{background}</b><br/> Props: <b>{', '.join(props)}</b><br/> Cast: <b>{', '.join(cast_members)}</b><br/>"
         return mark_safe(output)
     
     def get_thumbnail(self, preset=None):
@@ -268,6 +271,7 @@ class Action(models.Model, GetContentsMixin, TaskHolder):
         return out
     
     def get_contents(self, generate_self=True, preset=None):
+        from google.genai import types
         if preset == self.PRESET_VIDEO:
             contents = {}
             contents['prompt'] = self.prompt_video
@@ -279,7 +283,10 @@ class Action(models.Model, GetContentsMixin, TaskHolder):
             contents['image_last'] = types.Image.from_file(location=self.image_last.path) if self.image_last else None
         elif preset == self.PRESET_VOICE:
             contents = {}
-            contents['prompt'] = self.prompt_voice
+            out = self.prompt_voice
+            if self.text is not None:
+                out = f"{out} text to speak: {self.text}"
+            contents['prompt'] = out
             contents['voice'] = self.actor.voice if self.actor and self.actor.voice else self.scene.voice if self.scene and self.scene.voice else None
         else:
             # preset refine is handled in the mixin
@@ -289,9 +296,9 @@ class Action(models.Model, GetContentsMixin, TaskHolder):
                     contents.extend(["Maximise consistency, preserve character features and objects to the following image", self.consistent_with.get_thumbnail()])
                 if self.actor:
                     contents.extend(self.actor.get_contents(generate_self=False))
-                if self.extras:
-                    for extra in self.extras.all():
-                        contents.extend(extra.get_contents(generate_self=False))
+                if self.cast:
+                    for character in self.cast.all():
+                        contents.extend(character.get_contents(generate_self=False))
                 if self.props:
                     for prop in self.props.all():
                         contents.extend(prop.get_contents(generate_self=False))
@@ -303,7 +310,9 @@ class Action(models.Model, GetContentsMixin, TaskHolder):
     
     def context_text(self, generate_self=True, preset=None):
         if preset == self.PRESET_COMIC:
-            return self.prompt_comic
+            out = self.prompt_comic 
+            if self.text is not None:
+                out = f"{out} text/content: {self.text}" 
         if preset == self.PRESET_REFINE:
             return self.prompt_refine
         if not generate_self:

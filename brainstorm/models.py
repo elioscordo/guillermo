@@ -11,10 +11,10 @@ from agent.models import GetContentsMixin
 from scene.models import Scene, Story
         
 def dashboard_callback(request, context):
-    session = []
+    scripts = []
     if request.user.is_authenticated:
-            sessions =  Session.objects.filter(participants__user=request.user).distinct()
-    context.update({'sessions':sessions})
+            scripts =  Script.objects.filter(authors__user=request.user).distinct()
+    context.update({'scripts': scripts})
     return context
 
 class Theme(models.Model):
@@ -29,7 +29,7 @@ class Nudge(models.Model, EmailSenderMixin):
 
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='sent_nudges', on_delete=models.CASCADE, null=True, blank=True)
     receiver = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='received_nudges', on_delete=models.CASCADE, null=True, blank=True)
-    session = models.ForeignKey('Session', related_name='nudges', on_delete=models.CASCADE, null=True, blank=True)
+    script = models.ForeignKey('Script', related_name='nudges', on_delete=models.CASCADE, null=True, blank=True)
     message = models.TextField(null=True, blank=True, help_text="Optional message to include in the nudge email.")
     created_at = models.DateTimeField(auto_now_add=True)
     read = models.BooleanField(default=False)
@@ -45,13 +45,13 @@ class Nudge(models.Model, EmailSenderMixin):
         if self.sender == self.receiver:
             raise ValueError("Sender and receiver cannot be the same user.")
         if not self.id:
-            participant = Participant.objects.filter(session=self.session, user=self.receiver).first()
+            author = Author.objects.filter(script=self.script, user=self.receiver).first()
             cta_url = ""
-            if participant:
-                cta_url = settings.SITE_URL + f'/admin/brainstorm/turn/add?session={self.session.id}&participant={participant.id}&type={self.session.turn_type()}'
+            if author:
+                cta_url = settings.SITE_URL + f'/admin/brainstorm/contribution/add?script={self.script.id}&author={author.id}&type={self.script.contribution_type()}'
             
             self.send_email(
-                subject=f"Brainstorming: {self.session.theme.name}. {self.sender.username} nudged you!",
+                subject=f"Brainstorming: {self.script.theme.name}. {self.sender.username} nudged you!",
                 context={
                     'item': self,
                     'cta': cta_url
@@ -60,12 +60,11 @@ class Nudge(models.Model, EmailSenderMixin):
             )
         super().save(*args, **kwargs)
 
-class Session(models.Model):
+class Script(models.Model):
     name = models.CharField(max_length=100, null=True, blank=True,help_text="When time comes give it a name to remember it by!")
     theme = models.ForeignKey('Theme', on_delete=models.CASCADE, null=True, blank=True)
-    group = models.ForeignKey('scene.StoryGroup', help_text="Auto create participants from this group, it happens only when the session is saved for the first time",  on_delete=models.CASCADE, null=True, blank=True)
-    scene = models.ForeignKey('scene.Story', null=True, blank=True, on_delete=models.SET_NULL)
-    story = models.ForeignKey('scene.Story', null=True, blank=True, related_name='sessions', on_delete=models.SET_NULL)
+    group = models.ForeignKey('scene.StoryGroup', help_text="Auto create authors from this group, it happens only when the script is saved for the first time",  on_delete=models.CASCADE, null=True, blank=True)
+    story = models.ForeignKey('scene.Story', null=True, blank=True, related_name='scripts', on_delete=models.SET_NULL)
     
     STATE_SCENE = 'scene'
     STATE_PLOT = 'plot'   
@@ -91,8 +90,8 @@ class Session(models.Model):
     def import_group_members(self):
         if self.group is not None:
             for member in self.group.users.all():
-                if not Participant.objects.filter(session=self, user=member).exists():
-                    Participant.objects.create(session=self, user=member)
+                if not Author.objects.filter(script=self, user=member).exists():
+                    Author.objects.create(script=self, user=member)
 
     def save(self, *args, **kwargs):
         do_import = not self.id and self.group is not None
@@ -100,7 +99,7 @@ class Session(models.Model):
         if do_import:
             self.import_group_members()
 
-    def turn_type(self):
+    def contribution_type(self):
         if self.state in [self.STATE_SCENE, self.STATE_PLOT]:
             return self.state
         return self.STATE_SCENE
@@ -116,17 +115,17 @@ class Session(models.Model):
             self.save()
         return self.story
 
-class Participant(models.Model, UserCreatorMixin):
-    session = models.ForeignKey('Session', related_name='participants', on_delete=models.CASCADE, null=True, blank=True)
+class Author(models.Model, UserCreatorMixin):
+    script = models.ForeignKey('Script', related_name='authors', on_delete=models.CASCADE, null=True, blank=True)
     order = models.IntegerField(default=0)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='participants', on_delete=models.CASCADE, null=True, blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='authors', on_delete=models.CASCADE, null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.email and not self.user:
             raise ValueError("Either email or user must be provided.")
         if self.email and self.user is None:
-            user = self.create_user(self.session, self.email)
+            user = self.create_user(self.script, self.email)
             self.user = user
         super().save(*args, **kwargs)
            
@@ -137,25 +136,25 @@ class Participant(models.Model, UserCreatorMixin):
     def username(self):
         return self.user.username if self.user else self.email
 
-class Turn(models.Model, TaskHolder, GetContentsMixin):
+class Contribution(models.Model, TaskHolder, GetContentsMixin):
     TYPE_HELP = 'help'
-    TURN_TYPES = [
-        (Session.STATE_SCENE, 'Scene'),
-        (Session.STATE_PLOT, 'Plot'),
+    CONTRIBUTION_TYPES = [
+        (Script.STATE_SCENE, 'Scene'),
+        (Script.STATE_PLOT, 'Plot'),
         (TYPE_HELP, 'Help')
     ]
 
-    type = models.CharField(max_length=100, choices=TURN_TYPES, default=Session.STATE_SCENE)
-    prompt = models.TextField(null=True, default="#Location\n#Characters\n#Actions\n", blank=True)
+    type = models.CharField(max_length=100, choices=CONTRIBUTION_TYPES, default=Script.STATE_SCENE)
+    prompt = models.TextField(null=True, default="#Location\n#Cast\n#Props\n#Actions\n", blank=True)
     prompt_refine = models.TextField(null=True, blank=True)
-    session = models.ForeignKey('Session', related_name='turns', on_delete=models.CASCADE, null=True, blank=True)
-    participant = models.ForeignKey('Participant', related_name='turns', on_delete=models.CASCADE, null=True, blank=True)
+    script = models.ForeignKey('Script', related_name='contributions', on_delete=models.CASCADE, null=True, blank=True)
+    author = models.ForeignKey('Author', related_name='contributions', on_delete=models.CASCADE, null=True, blank=True)
     agent = models.ForeignKey('agent.Agent', on_delete=models.CASCADE, null=True, blank=True)
     pass_turn = models.BooleanField(default=False, help_text="If true, the turn will be passed to the next player")
     scene = models.ForeignKey('scene.Scene', null=True, blank=True, on_delete=models.SET_NULL)
 
     def __str__(self):
-        return "{}".format(self.participant.user.username if self.participant and self.participant.user else "Turn {}".format(self.id))
+        return "{}".format(self.author.user.username if self.author and self.author.user else "Contribution {}".format(self.id))
 
     def generate_text(self, user, agent):
         prompt = agent.generate(self, preset=self.PRESET_REFINE_PROMPT, user=user)
@@ -164,14 +163,37 @@ class Turn(models.Model, TaskHolder, GetContentsMixin):
         return prompt
 
     def get_contents(self, generate_self=True, preset=None):
-         # remove generate self and add preset regenerate_image
-        parts = [self.prompt_refine]
-        parts.append("following prompt to be improved")
+        parts = []
+        if preset == self.PRESET_REFINE_PROMPT:
+            parts = [self.prompt_refine]
+            parts.append("following prompt to be improved")
         parts.append(self.prompt)
+        story = self.get_story()
+        if story:
+            elements_parts = []
+            backgrounds = story.backgrounds.all()
+            if backgrounds.exists():
+                elements_parts.append("Existing Locations (Backgrounds):")
+                for b in backgrounds:
+                    elements_parts.append(f"- Name: {b.name}\n  Prompt: {b.prompt}")
+            
+            characters = story.characters.all()
+            if characters.exists():
+                elements_parts.append("Existing Characters (Actors - Cast):")
+                for c in characters:
+                    elements_parts.append(f"- Name: {c.name}\n  Prompt: {c.prompt}")
+            
+            props = story.props.all()
+            if props.exists():
+                elements_parts.append("Existing Props:")
+                for p in props:
+                    elements_parts.append(f"- Name: {p.name}\n  Prompt: {p.prompt}")
+            if elements_parts:
+                parts.append("### STORY CONTEXT ###\nReuse these existing entities if they appear:\n" + "\n".join(elements_parts))
         return parts
 
     def get_story(self):
-        return self.session.get_story()
+        return self.script.get_story()
     
     def get_scene(self, creation_name=None): 
         if self.scene is None:
@@ -181,14 +203,6 @@ class Turn(models.Model, TaskHolder, GetContentsMixin):
             self.save()
         return self.scene
     
-"""    def save(self, *args, **kwargs):
-        if not self.game and self.player:
-            self.game = self.player.game
-        if self.session and self.session.state == Session .STATE_FINISHED:
-            raise ValueError("Cannot add turns to a finished game.")
-        self.session.should_play(self.player, self.type)
-        super().save(*args, **kwargs)
-"""
 
 
 class ContactRequest(models.Model):

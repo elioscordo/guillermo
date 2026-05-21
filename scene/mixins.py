@@ -14,7 +14,7 @@ ELEMENT_FIELDSETS = (
 ACTION_FIELDSETS = (
         ("Composition", {
             "classes": ["tab"],
-            "fields": ["name", "scene", "prompt","order", "actor", "props", "extras", "background", "consistent_with",  "image"],
+            "fields": ["name", "scene", "prompt","order", "actor", "props", "cast", "background", "consistent_with",  "image"],
         }),
         ("Video", {
             "classes": ["tab"],

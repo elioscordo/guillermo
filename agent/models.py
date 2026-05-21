@@ -4,6 +4,7 @@ import os
 import time
 import instructor
 from django.conf import settings
+from django.utils.module_loading import import_string
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -76,7 +77,7 @@ class GetContentsMixin:
         return self.voice
     
     def generate_scene(self, preset=PRESET_SCENE, user=None):
-        agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_STRUCTURED).first()
+        agent = Agent.objects.filter(schema=settings.SCHEMA_MULTI_SCENE).first()
         scene = agent.generate(self, preset=preset, user=user)
         self.scene = scene
         self.save()
@@ -158,13 +159,27 @@ class Agent(models.Model):
     name = models.CharField(max_length=100, default="name")
     instructions = models.ManyToManyField("Prompt", related_name='agents', blank=True)
     agent_model = models.ForeignKey(AgentModel, related_name='agents', on_delete=models.CASCADE)
-    output_type = models.CharField(max_length=100, default=OUTPUT_TYPE_TEXT, choices=[
-        (OUTPUT_TYPE_IMAGE, "Image"),
-        (OUTPUT_TYPE_TEXT, "Text"),
-        (OUTPUT_TYPE_STRUCTURED, "Structured"),
-        (OUTPUT_TYPE_VIDEO, "Video"),
-        (OUTPUT_TYPE_VOICE, "Voice"),
-    ])
+    output_type = models.CharField(
+        max_length=100,
+        default=OUTPUT_TYPE_TEXT,
+        choices=getattr(settings, "AGENT_OUTPUT_TYPE_CHOICES", [
+            (OUTPUT_TYPE_IMAGE, "Image"),
+            (OUTPUT_TYPE_TEXT, "Text"),
+            (OUTPUT_TYPE_STRUCTURED, "Structured"),
+            (OUTPUT_TYPE_VIDEO, "Video"),
+            (OUTPUT_TYPE_VOICE, "Voice"),
+        ])
+    )
+    schema = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        choices=settings.AGENT_SCHEMA_CHOICES
+    )
+
+    def get_schema_class(self):
+        schema_path = settings.AGENT_SCHEMAS.get(self.schema)
+        return import_string(schema_path) if schema_path else None
 
     def get_genai_client(self, user):
         if user and hasattr(user, 'agent_profile') and user.agent_profile.google_api_key:
@@ -320,7 +335,6 @@ class Agent(models.Model):
     
     def generate(self, obj, preset=None, user=None):
         from google.genai import types
-        from scene.schemas import SceneSchema
         # Placeholder for agent generation logic
         contents = obj.get_contents(generate_self=True, preset=preset)
         config = None
@@ -329,12 +343,13 @@ class Agent(models.Model):
             return self.generate_video(preset, obj, user=user)
         if self.output_type == self.OUTPUT_TYPE_VOICE:
             return self.generate_voice(preset, obj, user=user)
-        if self.output_type == self.OUTPUT_TYPE_STRUCTURED and preset == GetContentsMixin.PRESET_SCENE:
-            config=types.GenerateContentConfig(
-                system_instruction= self.get_instructions(user=user, preset=preset, obj=obj),
-                response_mime_type="application/json",
-                response_schema=SceneSchema, # This now correctly refers to the BaseModel SceneSchema
-                temperature=0.1 # Low temperature ensures unchanged values are copied verbatim
+        if self.output_type == self.OUTPUT_TYPE_STRUCTURED:
+            schema_class = self.get_schema_class()
+            config = types.GenerateContentConfig(
+                system_instruction=self.get_instructions(user=user, preset=preset, obj=obj),
+                response_mime_type="application/json" if schema_class else None,
+                response_schema=schema_class,
+                temperature=0.1,
             )
         elif self.output_type == self.OUTPUT_TYPE_IMAGE:
             config = types.GenerateContentConfig(
@@ -360,11 +375,11 @@ class Agent(models.Model):
                 out =  self.generate_text(response, obj)
             elif self.output_type == self.OUTPUT_TYPE_IMAGE:
                 out = self.save_image(response, obj)
-            elif self.output_type == self.OUTPUT_TYPE_STRUCTURED and preset:
-                # refactor this to use the schema directly for syncing instead of going through json
-                from scene.schemas import SceneSchema # This imports the BaseModel SceneSchema
-                data = SceneSchema.model_validate_json(response.text)
-                out  = data.sync_model(obj) # Call sync_model on the instance 'data'
+            elif self.output_type == self.OUTPUT_TYPE_STRUCTURED:
+                schema_class = self.get_schema_class()
+                if schema_class:
+                    data = schema_class.model_validate_json(response.text)
+                    out = data.sync_model(obj) if hasattr(data, "sync_model") else data
         return out
 
 
