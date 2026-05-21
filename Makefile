@@ -1,4 +1,4 @@
-.PHONY: help install migrate migrations run worker shell superuser clean
+.PHONY: help install migrate migrations run worker shell superuser clean install-postgres install-redis
 
 help:
 	@echo "Available commands:"
@@ -9,6 +9,8 @@ help:
 	@echo "  worker       - Start the Celery worker"
 	@echo "  shell        - Open the Django shell"
 	@echo "  superuser    - Create a Django superuser"
+	@echo "  install-postgres - Install PostgreSQL and development headers"
+	@echo "  install-redis    - Install Redis server"
 	@echo "  clean        - Remove python compiled files"
 
 install:
@@ -31,6 +33,12 @@ shell:
 
 superuser:
 	python manage.py createsuperuser
+
+install-postgres:
+	sudo apt-get update && sudo apt-get install -y postgresql postgresql-contrib libpq-dev
+
+install-redis:
+	sudo apt-get update && sudo apt-get install -y redis-server
 
 clean:
 	find . -type f -name "*.pyc" -delete
