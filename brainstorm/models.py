@@ -82,7 +82,7 @@ class Script(models.Model):
         verbose_name_plural = 'Scripts'
 
     def __str__(self):
-        return "{}".format(self.name if self.name else f"{self.id} ({self.theme.name})" if self.theme else "Script {}".format(self.id)  )
+        return self.get_name()
     
     def get_name(self):
         return self.name if self.name else f"{self.id} ({self.theme.name})" if self.theme else "Script {}".format(self.id)

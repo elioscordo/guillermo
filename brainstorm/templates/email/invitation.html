@@ -32,17 +32,17 @@
 <body>
     <div class="wrapper">
         <div class="header">
-            <h1>You have been invited to Guillermo, colaborative ai script creation</h1>
+            <h1>You have been invited to Guillermo, colaborative  ai script platform </h1>
         </div>
         <div class="body">
-            <div class="greeting">Welcome to the Guillermo, {{ user.username }}!</div>
-            <p class="text">You have been invited to participae in a new colaborative ai script. Access your player account using the secure credentials below.</p>
+            <div class="greeting">Hello {{ user.username }}!</div>
+            <p class="text">You have been invited to author a  script.</p>
             
             <p class="text"> Script: {{ obj.get_name }}</p>
             
             <div class="auth-card">
                 <div class="field">
-                    <div class="label">Player Username</div>
+                    <div class="label">Author Username</div>
                     <div class="value">{{ user.username }}</div>
                 </div>
                 <div class="field">
@@ -50,8 +50,7 @@
                     <div class="value">{{ password }}</div>
                 </div>
             </div>
-
-            <a href="{{ cta }}" class="btn"> Login and add your contribution</a>
+            <a href="{{ cta }}" class="btn"> Login and start writing</a>
         </div>
         <div class="footer">
             Sent via <strong>Guillermo</strong>

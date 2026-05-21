@@ -43,7 +43,7 @@ class UserCreatorMixin:
         )
         plain_message = strip_tags(html_message)
         send_mail(
-            f'Invitation to be an author of  the script: {self}', plain_message, settings.DEFAULT_FROM_EMAIL, [email],
+            f'Invitation to co-author the script: {obj.get_name()}', plain_message, settings.DEFAULT_FROM_EMAIL, [email],
             html_message=html_message # <--- HTML added here
         )
         return user
