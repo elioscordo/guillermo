@@ -1,6 +1,8 @@
-.PHONY: help install migrate migrations run worker shell superuser clean install-postgres install-redis
+.PHONY: help install migrate migrations run worker shell superuser clean install-postgres install-redis redis-start redis-stop db-shell db-create
 
 help:
+	@echo "Usage: make <command>"
+	@echo ""
 	@echo "Available commands:"
 	@echo "  install      - Install dependencies"
 	@echo "  migrate      - Apply database migrations"
@@ -11,6 +13,10 @@ help:
 	@echo "  superuser    - Create a Django superuser"
 	@echo "  install-postgres - Install PostgreSQL and development headers"
 	@echo "  install-redis    - Install Redis server"
+	@echo "  redis-start  - Start Redis server"
+	@echo "  redis-stop   - Stop Redis server"
+	@echo "  db-shell     - Access the PostgreSQL shell (psql)"
+	@echo "  db-create    - Create the 'guillermo' database"
 	@echo "  clean        - Remove python compiled files"
 
 install:
@@ -39,6 +45,18 @@ install-postgres:
 
 install-redis:
 	sudo apt-get update && sudo apt-get install -y redis-server
+
+redis-start:
+	sudo systemctl start redis-server
+
+redis-stop:
+	sudo systemctl stop redis-server
+
+db-shell:
+	sudo -u postgres psql
+
+db-create:
+	sudo -u postgres createdb guillermo
 
 clean:
 	find . -type f -name "*.pyc" -delete
