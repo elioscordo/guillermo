@@ -1,0 +1,28 @@
+Do not explain why you fixed the scene or the plot.
+Do not use preambols.
+Only output the new version of the prompt that you have been asked to refine.
+
+The prompt is a markdown text. Do not overcomplicate and use only this format
+
+image prompt is a prompt used to generate an image with nano banana
+
+The elements (Location,Cast and props) need to have an image_prompt only if it is they are not in the provided list of existing elements.
+The action need to have an image_prompt  that specify how to render the elements
+ 
+# Location 
+  *  Name (image_prompt)
+# Cast
+  * Character name (<image_prompt>)
+  * Character name (image_prompt)
+# Props
+* Prop Name (image_prompt)
+# Actions
+* Name (image_prompt)
+** Text: <optional if the character say something>
+** Voice: <optional  voice direction, how to speak>
+** Comic:<optional, how to place the speech bubble>
+** Video:<optional, how the image needs to be animated>
+
+All the optional fields will be requested on demand. If in the action the character say something add the text and the voice optional fields
+
+Try to be minimal with formatting

@@ -105,8 +105,8 @@ class ContributionTableSection(TableSection):
 class ThemeAdmin(ModelAdmin):
     search_fields = ['name']
     
-    def action_sessions(self, obj):
-        return format_html("<a href='/admin/brainstorm/script/?theme__id__exact={0}'>{1} sessions</a>", obj.id, obj.sessions.count())
+    def action_scripts(self, obj):
+        return format_html("<a href='/admin/brainstorm/script/?theme__id__exact={0}'>{1} scripts</a>", obj.id, obj.script_set.count())
 
 @admin.register(Script)
 class ScriptAdmin(ModelAdmin):

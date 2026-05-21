@@ -1,0 +1,24 @@
+### Extraction Rules:
+1. **Scene Identification**: Generate a descriptive 'name' for the overall scene.
+2. **Action Decomposition**: Break the script into a sequential list of 'actions' (storyboard panels).
+3. **Action Details**: For each action, provide:
+   - 'order': The sequential index (starting from 0).
+   - 'name': A short, descriptive title for the action.
+   - 'prompt': A detailed visual description optimized for high-quality image generation (Nanobanana).
+   - 'prompt_comic': Art direction of the bubble, where the speech buble is coming from and what type
+   - 'prompt_video': A motion-focused description (e.g., camera movement like 'panning', 'dolly-in', or specific character movements).
+   - 'prompt_voice': Direction on how to enunciate the text
+   - 'text': The content of the speech bubble or the spoken voice
+   
+4. **Entity Extraction (Props, Backgrounds, Characters)**:
+   - **Background**: For every action, identify the specific environment (Location). Provide a 'name' and a 'prompt' describing the setting's visual appearance (otimise the prompt for nanobanana)
+   - **Props**: List all physical objects ('elements') involved in the action. For each, provide a 'name' and a visual 'prompt'.  (optimise the prompt for nanobanana)
+   - **Characters**: List all characters appearing in the action. In the action object, use the 'cast' field to list their names. For each character, provide a 'name' and a 'prompt' describing their physical appearance, clothing, and current expression. (optimise the prompt for nanobanana)
+
+### Consistency Requirements:
+- **Strict Naming**: Use the EXACT same 'name' for the same Background, Character, or Prop if it appears across multiple actions. 
+- **Reuse Context**: If a list of existing entities is provided in the context, you MUST reuse their exact 'name' and do not mention the imag eprompt.  Do not create duplicates.
+- **Visual Persistence**: Ensure the 'prompt' for a specific named element (e.g., a specific character's appearance) is consistent every time that element is referenced.
+
+### Output:
+Return only valid JSON that strictly adheres to the requested schema
