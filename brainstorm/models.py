@@ -51,7 +51,7 @@ class Nudge(models.Model, EmailSenderMixin):
                 cta_url = settings.SITE_URL + f'/admin/brainstorm/contribution/add?script={self.script.id}&author={author.id}&type={self.script.contribution_type()}'
             
             self.send_email(
-                subject=f"Brainstorming: {self.script.theme.name}. {self.sender.username} nudged you!",
+                subject=f"Nudge on the script: {self.script.get_name()}. {self.sender.username} nudged you!",
                 context={
                     'item': self,
                     'cta': cta_url

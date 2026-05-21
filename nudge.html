@@ -83,28 +83,31 @@
         <div class="header">
             <div class="brand">Guillermo</div>
         </div>
-        <div class="content">
-            <h1>{{ item.sender.username }} is waiting for you</h1>
+        <div class="content">   
+            <h1>{{ item.sender.username|default:"A teammate" }} is waiting for you</h1>
             <p class="text-secondary">
-                You received a nudge regarding the script <strong>{{ item.script.get_name }}</strong>. 
+                You received a nudge regarding the script <strong>{{ item.script.get_name|default:"the project" }}</strong>. 
                 It's your turn to contribute to the story.
             </p>
 
             {% if item.message %}
             <div class="message-box">
-                <p class="message-text">"{{ item.message }}"</p>
+                <p class="message-text">"{{ item.message|linebreaksbr }}"</p>
             </div>
             {% endif %}
 
+            {% if cta %}
             <div style="text-align: center; margin-top: 8px;">
-                <a href="{{ cta }}" class="cta-button">
-                    Script                </a>
+                <a href="{{ cta }}" class="cta-button">Open Script</a>
             </div>
+            {% endif %}
         </div>
         <div class="footer">
             This is an automated notification from your cowriting workspace.<br>
+            {% if cta %}
             If the button doesn't work, copy and paste this link:<br>
             <span style="word-break: break-all; margin-top: 8px; display: block;">{{ cta }}</span>
+            {% endif %}
         </div>
     </div>
 </body>
