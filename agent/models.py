@@ -235,7 +235,7 @@ class Agent(models.Model):
         client = self.get_genai_client(user)
         contents = prompt_obj.get_contents(generate_self=True, preset=preset)
         response = client.models.generate_content(
-            model="gemini-2.5-flash-preview-tts",
+            model=self.agent_model.name,
             contents=contents['prompt'],
             config=types.GenerateContentConfig(
                 response_modalities=["AUDIO"],

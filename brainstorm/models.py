@@ -44,21 +44,21 @@ class Nudge(models.Model, EmailSenderMixin):
     def save(self, *args, **kwargs):
         if self.sender == self.receiver:
             raise ValueError("Sender and receiver cannot be the same user.")
+        
         if not self.id:
             author = Author.objects.filter(script=self.script, user=self.receiver).first()
             cta_url = ""
             if author:
                 cta_url = settings.SITE_URL + f'/admin/brainstorm/contribution/add?script={self.script.id}&author={author.id}&type={self.script.contribution_type()}'
-            
-            self.send_email(
-                subject=f"Nudge on the script: {self.script.get_name()}. {self.sender.username} nudged you!",
-                context={
-                    'item': self,
-                    'cta': cta_url
-                },
-                recipient_list=[self.receiver.email]
-            )
         super().save(*args, **kwargs)
+        self.send_email(
+            subject=f"Nudge on the script: {self.script.get_name()}. {self.sender.username} nudged you!",
+            context={
+                'item': self,
+                'cta': cta_url
+            },
+            recipient_list=[self.receiver.email]
+        )
 
 class Script(models.Model):
     name = models.CharField(max_length=100, null=True, blank=True,help_text="When time comes give it a name to remember it by!")
