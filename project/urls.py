@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.conf import settings
 from django.urls import path
 from django.conf.urls.static import static
-from brainstorm.views import LandingView
+from scene.views import LandingView
 
 
 urlpatterns = [

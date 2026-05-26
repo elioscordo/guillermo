@@ -7,15 +7,16 @@ from task.models import Task
 from .models import Script, Nudge, Theme, Contribution, Author
 from .mixins import UserCreatorMixin
 from unfold.admin import Any, HttpRequest, ModelAdmin
-from scene.admin import AjaxSectionAdminMixin, AjaxTableSection
+
 from unfold.admin import StackedInline
 from unfold.sections import TemplateSection, render_to_string
 from django.utils.safestring import mark_safe
+import markdown
+
 from .sections import TableSection
 from scene.admin import AjaxTaskModelAdmin
 
 from django.shortcuts import get_object_or_404
-import markdown
 
 
 class AuthorInline(StackedInline):
@@ -33,7 +34,7 @@ class AuthorTableSection(TableSection):
         return f"{obj.user.username if obj.user else obj.email}"
     
     def scenes(self, obj):
-        turn_type = Script.STATE_SCENE
+        turn_type = 'scene'
         turn_link = self.NO_USER_LABEL
         if obj.user:
             turn_link = format_html("<a href='/admin/brainstorm/contribution/?script__id__exact={0}&author__id__exact={1}&type__exact=scene'>{2}</a>", obj.script.id, obj.id, obj.contributions.filter(type=turn_type).count())
@@ -43,7 +44,7 @@ class AuthorTableSection(TableSection):
         return mark_safe(turn_link)
     
     def plots(self, obj):
-        turn_type = Script.STATE_PLOT
+        turn_type = 'plot'
         turn_link = self.NO_USER_LABEL
         if obj.user:
             turn_link = format_html("<a href='/admin/brainstorm/contribution/?script__id__exact={0}&author__id__exact={1}&type__exact=plot'>{2}</a>", obj.script.id, obj.id, obj.contributions.filter(type=turn_type).count())
@@ -110,7 +111,6 @@ class ThemeAdmin(ModelAdmin):
 
 @admin.register(Script)
 class ScriptAdmin(ModelAdmin):
-    exclude = ('state',)
     inlines = [AuthorInline]
     autocomplete_fields = ['group']
     list_sections = [

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 
-from agent.models import AgentModel, Agent, GoogleApiKey, Prompt, TokenUsage, Voice, AgentProfile
+from agent.models import AgentModel, Agent, GoogleApiKey, Prompt, TokenUsage, Voice, AgentProfile, Message
 from agent.utils import get_genai_client
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -113,8 +113,12 @@ class TokenUsageAdmin(ModelAdmin):
         # Users only see themselves
         return qs.filter(user=request.user)
 
+@admin.register(Message)
+class MessageAdmin(ModelAdmin):
+    list_display = ('id', 'content_object', 'agent', 'target_field', 'created_at')
+    readonly_fields = ('created_at',)
+
     def has_change_permission(self, request, obj=None):
         if not obj:
             return True
         return obj.user == request.user or request.user.is_superuser
-

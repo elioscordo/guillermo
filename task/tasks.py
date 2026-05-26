@@ -24,7 +24,7 @@ def process_task(task_id):
         except Exception as e:
             task.log(str(e))
             task.set_status(Task.TASK_STATUS_ERROR)
-        if task.next \
-            and task.next.is_processable() \
-                and not task.next.has_pending_previous():
-            process_task.delay(task.next.id)
+        for next_task in task.next_tasks.all():
+            if next_task.is_processable() \
+                and not next_task.has_pending_previous():
+                process_task.delay(next_task.id)

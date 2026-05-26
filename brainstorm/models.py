@@ -8,7 +8,7 @@ from brainstorm.mixins import EmailSenderMixin, UserCreatorMixin
 from task.models import TaskHolder
 from agent.models import Agent
 from agent.models import GetContentsMixin
-from scene.models import Scene, Story
+from scene.models import Scene, Story, Style
         
 def dashboard_callback(request, context):
     scripts = []
@@ -17,66 +17,31 @@ def dashboard_callback(request, context):
     context.update({'scripts': scripts})
     return context
 
-class Theme(models.Model):
-    name = models.CharField(max_length=100, default='New Game')
-    prompt = models.TextField(null=True, blank=True)
-    
-    def __str__(self):
-        return "{}".format(self.name)
-
-class Nudge(models.Model, EmailSenderMixin):
-    email_template = 'email/nudge.html'
-
-    sender = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='sent_nudges', on_delete=models.CASCADE, null=True, blank=True)
-    receiver = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='received_nudges', on_delete=models.CASCADE, null=True, blank=True)
-    script = models.ForeignKey('Script', related_name='nudges', on_delete=models.CASCADE, null=True, blank=True)
-    message = models.TextField(null=True, blank=True, help_text="Optional message to include in the nudge email.")
-    created_at = models.DateTimeField(auto_now_add=True)
-    read = models.BooleanField(default=False)
-
-    def __str__(self):
-        return "{}".format(self.sender.username)
-
-    def mark_as_read(self):
-        self.read = True
-        self.save() 
-   
-    def save(self, *args, **kwargs):
-        if self.sender == self.receiver:
-            raise ValueError("Sender and receiver cannot be the same user.")
-        
-        if not self.id:
-            author = Author.objects.filter(script=self.script, user=self.receiver).first()
-            cta_url = ""
-            if author:
-                cta_url = settings.SITE_URL + f'/admin/brainstorm/contribution/add?script={self.script.id}&author={author.id}&type={self.script.contribution_type()}'
-        super().save(*args, **kwargs)
-        self.send_email(
-            subject=f"Nudge on the script: {self.script.get_name()}. {self.sender.username} nudged you!",
-            context={
-                'item': self,
-                'cta': cta_url
-            },
-            recipient_list=[self.receiver.email]
-        )
 
 class Script(models.Model):
     name = models.CharField(max_length=100, null=True, blank=True,help_text="When time comes give it a name to remember it by!")
     theme = models.ForeignKey('Theme', on_delete=models.CASCADE, null=True, blank=True)
     group = models.ForeignKey('scene.StoryGroup', help_text="Auto create authors from this group, it happens only when the script is saved for the first time",  on_delete=models.CASCADE, null=True, blank=True)
     story = models.ForeignKey('scene.Story', null=True, blank=True, related_name='scripts', on_delete=models.SET_NULL)
+    style = models.ForeignKey(Style, related_name='scripts', null=True, blank=True, on_delete=models.SET_NULL)
     
-    STATE_SCENE = 'scene'
-    STATE_PLOT = 'plot'   
-    STATE_FINISHED = 'finished'
-    
-    STATES = [
-        (STATE_SCENE, 'Scene'),
-        (STATE_PLOT, 'Plots'),
-        (STATE_FINISHED, 'Finished')
-    ]
-    state = models.CharField(max_length=100, choices=STATES, default=STATE_SCENE)
+    RENDER_TYPE_FILM = 'film'
+    RENDER_TYPE_GRAPHIC_NOVEL = 'graphic_novel'
+    RENDER_TYPE_ANIMATIC = 'animatic'
 
+    RENDER_TYPE_CHOICES = [
+        (RENDER_TYPE_FILM, 'Film'),
+        (RENDER_TYPE_GRAPHIC_NOVEL, 'Graphic Novel'),
+        (RENDER_TYPE_ANIMATIC, 'Animatic'),
+    ]
+
+    render_type = models.CharField(
+        max_length=50,
+        choices=RENDER_TYPE_CHOICES,
+        default=getattr(settings, 'DEFAULT_RENDER_TYPE', RENDER_TYPE_ANIMATIC),
+        help_text="The default render format for stories generated from this script."
+    )
+    
     class Meta:
         verbose_name = 'Script'
         verbose_name_plural = 'Scripts'
@@ -94,15 +59,18 @@ class Script(models.Model):
                     Author.objects.create(script=self, user=member)
 
     def save(self, *args, **kwargs):
+        if not self.style:
+            default_style = Style.objects.filter(global_default=True).first()
+            if default_style:
+                self.style = default_style
+                
         do_import = not self.id and self.group is not None
         super().save(*args, **kwargs)
         if do_import:
             self.import_group_members()
 
     def contribution_type(self):
-        if self.state in [self.STATE_SCENE, self.STATE_PLOT]:
-            return self.state
-        return self.STATE_SCENE
+        return 'scene'
 
     def get_agent(self):
         agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_TEXT).first()
@@ -111,44 +79,28 @@ class Script(models.Model):
     def get_story(self):
         if self.story is None:
             name = self.get_name()
-            self.story = Story.objects.create(name=name)
+            self.story = Story.objects.create(
+                name=name,
+                render_type=self.render_type,
+                style=self.style
+            )
             self.save()
         return self.story
-
-class Author(models.Model, UserCreatorMixin):
-    script = models.ForeignKey('Script', related_name='authors', on_delete=models.CASCADE, null=True, blank=True)
-    order = models.IntegerField(default=0)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='authors', on_delete=models.CASCADE, null=True, blank=True)
-    email = models.EmailField(null=True, blank=True)
-
-    def save(self, *args, **kwargs):
-        if not self.email and not self.user:
-            raise ValueError("Either email or user must be provided.")
-        if self.email and self.user is None:
-            user = self.create_user(self.script, self.email)
-            self.user = user
-        super().save(*args, **kwargs)
-           
-
-    def __str__(self):
-        return "{}".format(self.user.username if self.user else self.email)
-
-    def username(self):
-        return self.user.username if self.user else self.email
 
 class Contribution(models.Model, TaskHolder, GetContentsMixin):
     TYPE_HELP = 'help'
     CONTRIBUTION_TYPES = [
-        (Script.STATE_SCENE, 'Scene'),
-        (Script.STATE_PLOT, 'Plot'),
+        ('scene', 'Scene'),
+        ('plot', 'Plot'),
         (TYPE_HELP, 'Help')
     ]
 
-    type = models.CharField(max_length=100, choices=CONTRIBUTION_TYPES, default=Script.STATE_SCENE)
+    type = models.CharField(max_length=100, choices=CONTRIBUTION_TYPES, default='scene')
     prompt = models.TextField(null=True, default="#Location\n#Cast\n#Props\n#Actions\n", blank=True)
     prompt_refine = models.TextField(null=True, blank=True)
-    script = models.ForeignKey('Script', related_name='contributions', on_delete=models.CASCADE, null=True, blank=True)
     author = models.ForeignKey('Author', related_name='contributions', on_delete=models.CASCADE, null=True, blank=True)
+ 
+    script = models.ForeignKey('Script', related_name='contributions', on_delete=models.CASCADE, null=True, blank=True)
     agent = models.ForeignKey('agent.Agent', on_delete=models.CASCADE, null=True, blank=True)
     pass_turn = models.BooleanField(default=False, help_text="If true, the turn will be passed to the next player")
     scene = models.ForeignKey('scene.Scene', null=True, blank=True, on_delete=models.SET_NULL)

@@ -110,12 +110,31 @@ document.addEventListener('keydown', function(e) {
                     const dropdowns = row.querySelector('.inline-block[id^="task-"]');
                     dropdowns.setAttribute('data-status', '1');
                     monitoredObjectIds.add(objectId);
-                    
                     startPolling();
-                   
-                   
                 }
             });
         }
+    }
+});
+
+// Handle Prompt Preview Presets
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('prompt-preset-select')) {
+        const select = e.target;
+        const preset = select.value;
+        const url = select.getAttribute('data-url');
+        const container = select.closest('.prompt-preview-container');
+        const contentArea = container.querySelector('.prompt-preview-content');
+
+        contentArea.textContent = "Loading preview...";
+
+        fetch(`${url}?preset=${preset}`)
+            .then(response => response.json())
+            .then(data => {
+                contentArea.textContent = data.content || "No content generated for this preset.";
+            })
+            .catch(err => {
+                contentArea.textContent = "Error loading prompt preview.";
+            });
     }
 });

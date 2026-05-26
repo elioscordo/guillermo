@@ -2,20 +2,26 @@
 from django.contrib import admin
 from httpcore import request
 from unfold.admin import ModelAdmin
+from django.urls import path
+
 from django.conf import settings
 from task.models import Task
-from django.urls import path
-from .models import Character, Scene, Action, Background, StoryGroup, Style, Prop, ComicAction, VideoItem, VideoAction, SceneVideo, Story, StoryProfile, VoiceAction
+from unfold.admin import StackedInline
+from .models import Character, Scene, Action, Background, StoryGroup, Style, Prop, ComicAction, RenderItem, VideoAction, Render, Story, StoryProfile, VoiceAction, Author, Nudge, ContactRequest
+from .admin_utils import AjaxTaskModelAdmin
 from django.utils.html import format_html
-from .mixins import ACTION_FIELDSETS, ELEMENT_FIELDSETS, ImgShowMixin, SceneFilterMixin, StaffReadOnlyMixin, StoryFilterMixin, ViewYourOwnMixin
-from unfold.sections import TableSection, render_to_string
+from .sections import AuthorSection, SceneSection
+from .mixins import ACTION_FIELDSETS, ELEMENT_FIELDSETS, ImgShowMixin, SceneFilterMixin, StaffReadOnlyMixin, StoryFilterMixin, ViewYourOwnMixin, PromptPreviewMixin
+from unfold.sections import TableSection, TemplateSection, render_to_string
 from rangefilter.filters import NumericRangeFilter
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 DEFAULT_IMAGE_AGENT_NAME = "DIGA"
 from django.apps import apps
 from .serializers import get_generic_serializer
-
+from django.utils.safestring import mark_safe
+import markdown
+from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 class AjaxSectionAdminMixin:
@@ -57,53 +63,46 @@ class AjaxSectionAdminMixin:
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
 
-class AjaxTableSection(TableSection):
-    list_editable = []
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Dynamically create methods for fields in list_editable if they don't exist
-        for field_name in self.list_editable:
-            if not hasattr(self, field_name):
-                setattr(self, field_name, self._create_ajax_callback(field_name))
+class PromptPreviewSection(TemplateSection):
+    """Section that renders a dropdown to preview model prompts."""
+    template_name = "sections/prompt_preview.html"
 
-    def _create_ajax_callback(self, field_name):
-        def render_field(obj):
-            val = getattr(obj, field_name) or ""
-            model_label = f"{obj._meta.app_label}.{obj._meta.model_name}"
-            return format_html(
-                '<div class="ajax-section-wrapper relative">'
-                '<input type="text" value="{}" '
-                'class="section-ajax-input w-full bg-transparent border-b border-gray-300 focus:border-primary-500 outline-none transition-colors py-1" '
-                'data-id="{}" data-model="{}" data-field="{}" />'
-                '<span class="ajax-status-indicator absolute right-0 top-1 text-[10px] hidden"></span>'
-                '</div>',
-                val, obj.pk, model_label, field_name
-            )
-        render_field.short_description = field_name.replace("_", " ").capitalize()
-        return render_field
-
+    def get_context_data(self, request, instance):
+        presets = []
+        # Automatically discover constants starting with PRESET_ on the model
+        for attr in dir(instance):
+            if attr.startswith("PRESET_"):
+                val = getattr(instance, attr)
+                # Don't add if it's a method/callable
+                if not callable(val):
+                    label = attr.replace("PRESET_", "").replace("_", " ").title()
+                    presets.append({"value": val, "label": label})
+        
+        return {
+            "presets": sorted(presets, key=lambda x: x['label']),
+            "instance": instance,
+            "request": request,
+        }
 
 
 @admin.action(description="Add to comic video")
 def comic_to_video(modeladmin, request, queryset):
     for obj in queryset:
-        scene_video = SceneVideo.get_from_scene(obj.scene)
-        VideoItem.objects.create(
-            name=obj.name,
+        render = Render.get_from_scene(obj.scene)
+        RenderItem.objects.create(
             image= obj.image_comic if obj.image_comic else obj.image,
-            scene_video=scene_video,
+            render=render,
             order=obj.order,
         )
 
 @admin.action(description="Add to scene video")
 def video_to_scene_video(modeladmin, request, queryset):
     for obj in queryset:
-        scene_video = SceneVideo.get_from_scene(obj.scene)
-        VideoItem.objects.create(
-            name=obj.name,
+        render = Render.get_from_scene(obj.scene)
+        RenderItem.objects.create(
             video= obj.video,
-            scene_video=scene_video,
+            render=render,
             order=obj.order,
         )
 
@@ -137,14 +136,14 @@ def clone(modeladmin, request, queryset):
 def default_generate_image(modeladmin, request, queryset):
     for obj in queryset:
         if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_IMAGE, owner=request.user) is None:
-            obj.generate_image()
+            obj.generate_image(user=request.user)
         modeladmin.message_user(request, "Image generated for item ID {}.".format(obj.id))
 
 @admin.action(description="Refine image")
 def default_refine_image(modeladmin, request, queryset):
     for obj in queryset:
         if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_REFINE_IMAGE, owner=request.user) is None:
-            obj.refine_image() 
+            obj.refine_image(user=request.user) 
         modeladmin.message_user(request, "Image generated for item ID {}.".format(obj.id))
 
 @admin.action(description="Refined as image")
@@ -172,100 +171,82 @@ def accept_refined_last(modeladmin, request, queryset):
 def generate_video(modeladmin, request, queryset):
     for obj in queryset:
         if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VIDEO, owner=request.user) is None:
-            obj.generate_video(obj.PRESET_VIDEO)
+            obj.generate_video(obj.PRESET_VIDEO, user=request.user)
         modeladmin.message_user(request, "video generated for item ID {}.".format(obj.id))
 
 @admin.action(description="Comic from image" )
 def generate_comic(modeladmin, request, queryset):
     for obj in queryset:
         if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_COMIC, owner=request.user) is None:
-            obj.generate_comic()
+            obj.generate_comic(user=request.user)
         modeladmin.message_user(request, "comic generated for item ID {}.".format(obj.id))
 
 @admin.action(description="Video from first to last")
 def generate_video_first_last(modeladmin, request, queryset):
     for obj in queryset:
         if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VIDEO_FIRST_LAST, owner=request.user) is None:
-            obj.generate_video(obj.PRESET_VIDEO_FIRST_LAST, obj)
+            obj.generate_video(obj.PRESET_VIDEO_FIRST_LAST, user=request.user)
         modeladmin.message_user(request, "video generated for item ID {}.".format(obj.id))
 
-@admin.action(description="Video from first to last")
+@admin.action(description="Generate Voice")
 def generate_voice(modeladmin, request, queryset):
     for obj in queryset:
         if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user) is None:
-            obj.generate_voice(obj.PRESET_VOICE, obj)
+            obj.generate_voice(obj.PRESET_VOICE, user=request.user)
         modeladmin.message_user(request, "voice generated for item ID {}.".format(obj.id))
 
+@admin.action(description="Generate Missing Elements Images")
+def generate_scene_elements(modeladmin, request, queryset):
+    for obj in queryset:
+        if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_SCENE_ELEMENTS, owner=request.user) is None:
+            # Manual trigger if queue is bypassed
+            pass
+        modeladmin.message_user(request, "Generation task for elements started for scene: {}.".format(obj.name))
 
-class AjaxTaskModelAdmin(ModelAdmin):
-    class Media:
-        js = ('js/admin_ajax.js',) # We will create this file
-        
-    def get_urls(self):
-        urls = super().get_urls()
-        custom_urls = [
-            path(
-                'ajax-update/<int:object_id>/',
-                self.admin_site.admin_view(self.ajax_update_view),
-                name='action_ajax_update',
-            ),
-            path(
-                'ajax-last-tasks/<int:object_id>/',
-                self.admin_site.admin_view(self.get_last_tasks),
-                name='action_ajax_last_tasks',
-            ),
-        ]
-        return custom_urls + urls
+@admin.action(description="Generate All Actions Images")
+def generate_scene_actions(modeladmin, request, queryset):
+    for obj in queryset:
+        if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_SCENE_ACTIONS, owner=request.user) is None:
+            # Manual trigger if queue is bypassed
+            pass
+        modeladmin.message_user(request, "Generation task for actions started for scene: {}.".format(obj.name))
 
-    def get_last_tasks(self, request, object_id):
-        # 1. Get the object
-        obj = get_object_or_404(self.model, pk=object_id)
-        last_task = obj.tasks.first()
-        status = last_task.status if last_task else None
-        serializer_class = get_generic_serializer(self.model)
-        response_data = {
-            'html': obj.last_tasks(),
-            'status': status,#
-            'object': serializer_class(obj).data
-        }
-        return JsonResponse(response_data)
-    
-    def ajax_update_view(self, request, object_id):
-        # Implementation of the view logic from step 1
-        # Use 'self' instead of passing model_admin
-        obj = get_object_or_404(self.model, pk=object_id)
-        if request.POST.get('prompt') is not None:
-            obj.prompt = request.POST.get('prompt')
-            obj.save()
-            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_IMAGE, owner=request.user) is None:
-                obj.generate_image()
-        elif request.POST.get('prompt_refine') is not None:
-            obj.prompt_refine = request.POST.get('prompt_refine')
-            obj.save()
-            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_REFINE_IMAGE, owner=request.user) is None:
-                obj.refine_image()
-        elif request.POST.get('prompt_comic') is not None:
-            obj.prompt_comic = request.POST.get('prompt_comic')
-            obj.save()
-            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_COMIC, owner=request.user) is None:
-                obj.generate_comic()
-        elif request.POST.get('prompt_video') is not None:
-            obj.prompt_video = request.POST.get('prompt_video')
-            obj.save()
-            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VIDEO, owner=request.user) is None:
-                obj.generate_video()
-        elif request.POST.get('prompt_voice') is not None:
-            obj.prompt_voice = request.POST.get('prompt_voice')
-            obj.save()
-            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user) is None:
-                obj.generate_voice(obj.PRESET_VOICE, request.user)
-        return JsonResponse({'status': 'success'})
-    
+
+@admin.action(description="Add me as author")
+def add_me_as_author(modeladmin, request, queryset):
+    for obj in queryset:
+        if obj.add_author(request.user):
+            self.message_user(request, f"You have been added as an author to story {obj.name}")
+
+
+
+class AuthorInline(StackedInline):
+    model = Author 
+    show_count = True  # This will run `count()`
+    collapsible = True
+    autocomplete_fields = ['user']
+
 @admin.register(Story)
 class StoryAdmin(ModelAdmin):
-    list_display = ('name',)
-    list_display_links = ('name',)
+    inlines = [AuthorInline]
+    autocomplete_fields = ['group']
     search_fields = ['name']
+    list_sections = [
+        SceneSection,
+        AuthorSection,
+    ]
+    list_display = ['__str__', 'scene_links']
+    actions = [clone, add_me_as_author]
+    
+    def scene_links(self, obj):
+        return format_html("<a href='/admin/scene/Scene/?story__id__exact={0}'>Edit ({1})</a>", obj.id, obj.scenes.count())
+    scene_links.short_description = "Scenes"
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if not change and request.user.is_authenticated:
+            if obj.add_author(request.user):
+                self.message_user(request, f"You have been added as an author to story {obj.name}")
 
 @admin.register(StoryGroup)
 class StoryGroupAdmin(ModelAdmin):
@@ -291,7 +272,7 @@ class StyleAdmin(ModelAdmin):
     search_fields = ['name']
 
 @admin.register(Character)
-class CharacterAdmin(StoryFilterMixin, AjaxTaskModelAdmin, ImgShowMixin,):
+class CharacterAdmin(PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin, ImgShowMixin):
     list_display = ('name', 'pic', 'prompt', 'prompt_refine', 'last_tasks')
     list_editable = ('prompt', 'prompt_refine')
     list_display_links = ('name',)
@@ -299,6 +280,7 @@ class CharacterAdmin(StoryFilterMixin, AjaxTaskModelAdmin, ImgShowMixin,):
     actions = [clone, default_generate_image, default_refine_image]
     search_fields = ['name']
     fieldsets = ELEMENT_FIELDSETS
+    list_sections = [PromptPreviewSection]
 
 @admin.register(Background)
 class BackgroundAdmin(StoryFilterMixin, AjaxTaskModelAdmin, ImgShowMixin):
@@ -325,11 +307,80 @@ class PropAdmin(StoryFilterMixin, AjaxTaskModelAdmin, ImgShowMixin):
 @admin.register(Scene)
 class SceneAdmin(StoryFilterMixin, ModelAdmin, ImgShowMixin):
     search_fields = ['name']
-    list_display = ('name', 'story')
+    list_display = ['name',  'prompt', 'prompt_refine', 'story', 'author', 'last_tasks']
+    list_editable = ['prompt', 'prompt_refine']
     list_display_links = ('name',)
-    autocomplete_fields = ['story',]
-    actions = [clone]
+    autocomplete_fields = ['story', 'author']
+    actions = [clone, generate_scene_elements, generate_scene_actions]
+    list_filter = ['story',]
+    fieldsets = (
+        ("Write",{
+            "classes": ["tab"],
+            "fields": [ "prompt"],
+        }),
+        ("Refine",{
+            "classes": ["tab"],
+            "fields": ["prompt_refine", 'action'],
+        }),
+        ("Settings", {
+            "classes": ["tab"],
+            "fields": ["name", "author", "story"],
+        })
+    )
 
+    @admin.display(description="Prompt")
+    def my_prompt(self, obj):
+        return mark_safe(f"<div class='markdown'>{markdown.markdown(obj.prompt)}</div>")
+    
+    @admin.display(description="Story")
+    def my_story(self, obj):
+        return mark_safe(f"<a href='/admin/scene/story/?id__exact={obj.story.id}'>{obj.story}</a>")
+
+    @admin.action(description="Extract Scene")
+    def extract_scene(self, request, queryset):
+        for obj in queryset:
+            obj.generate_scene(user=request.user)
+            self.message_user(request, f"Extracting scene from contribution {obj.id} in story {obj.story.id}.")
+
+    def save_model(self, request, obj, form, change):
+        if not obj.author and obj.story:
+            author = Author.objects.filter(user=request.user, story=obj.story).first()
+            if author:
+                obj.author = author
+        super().save_model(request, obj, form, change)
+
+    def ajax_update_view(self, request, object_id):
+        obj = get_object_or_404(self.model, pk=object_id)
+        if request.POST.get('prompt_refine') is not None:
+            obj.prompt_refine = request.POST.get('prompt_refine')
+            obj.save()
+            agent = obj.story.get_agent()
+            if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_TEXT, thr=agent, owner=request.user) is None:
+                obj.generate_text(request.user, agent)
+        if request.POST.get('prompt') is not None:
+            obj.prompt = request.POST.get('prompt')
+            obj.save()
+        return JsonResponse({'status': 'success'})
+
+
+@admin.register(Author)
+class AuthorAdmin(ModelAdmin):
+    list_display = ['user', 'email']
+    search_fields = ['user__username', 'email']
+
+@admin.register(Nudge)
+class NudgeAdmin(ModelAdmin):
+    list_display = ["id", 'sender', 'receiver', 'story', 'message']
+    fieldsets = (
+        ("Write",{
+            "classes": ["tab"],
+            "fields": ["message", ],
+        }),
+        ("Settings", {
+            "classes": ["tab"],
+            "fields": ["receiver", "sender", "story"],
+        })
+    )
 
 @admin.register(Action)
 class ActionAdmin(SceneFilterMixin, AjaxTaskModelAdmin, ImgShowMixin):
@@ -382,21 +433,20 @@ class VoiceActionAdmin(SceneFilterMixin, AjaxTaskModelAdmin, ImgShowMixin):
     actions = [generate_voice]
     fieldsets = ACTION_FIELDSETS
 
-@admin.register(VideoItem)
-class VideoItemAdmin(ModelAdmin, ImgShowMixin):
-    list_display = ('name', 'video_player', 'pic', 'config', 'order')
+@admin.register(RenderItem)
+class RenderItemAdmin(ModelAdmin, ImgShowMixin):
+    list_display = ('id', 'video_player', 'pic', 'config', 'order', 'render')
     list_editable = ('order', 'config')
-    list_display_links = ('name',)
 
-@admin.register(SceneVideo)
-class SceneVideoAdmin(ModelAdmin, ImgShowMixin):
+@admin.register(Render)
+class RenderAdmin(ModelAdmin, ImgShowMixin):
     @admin.action(description="Refresh Scene Video" )
     def generate_video(modeladmin, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_SCENE_VIDEO) is None:
-                obj.generate_video(obj.PRESET_VIDEO)
+                obj.generate_video(obj.PRESET_VIDEO, user=request.user)
             modeladmin.message_user(request, "video generated for item ID {}.".format(obj.id))
 
-    list_display = ('name', 'scene', 'video_player', 'video_download', 'last_tasks')
+    list_display = ('name', 'scene', 'render_type', 'video_player', 'video_download', 'last_tasks')
     list_display_links = ('name',)
     actions = [generate_video]

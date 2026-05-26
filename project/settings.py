@@ -58,7 +58,6 @@ INSTALLED_APPS = [
     'scene.apps.SceneConfig',
     'agent.apps.AgentConfig',
     'task',
-    'brainstorm'
 ]
 
 MIDDLEWARE = [
@@ -116,7 +115,7 @@ UNFOLD = {
         lambda request: static("css/unfold_filer_custom.css"),
         lambda request: static("css/custom.css"),
     ],
-    "DASHBOARD_CALLBACK": "brainstorm.models.dashboard_callback",
+    "DASHBOARD_CALLBACK": "scene.models.dashboard_callback",
     "ACCOUNT": {}, # Empty this to prevent duplication at the bottom
     
     "COLORS": {
@@ -137,14 +136,14 @@ UNFOLD = {
                 "title": "Co-Writing Scripts",
                 "items": [
                     {
-                        "title": "Themes",
-                        "icon": "palette",
-                        "link": reverse_lazy("admin:brainstorm_theme_changelist"),
+                        "title": "Stories",
+                        "icon": "auto_stories",
+                        "link": reverse_lazy("admin:scene_story_changelist"),
                     },
                     {
-                        "title": "Scripts",
-                        "icon": "edit_note",
-                        "link": reverse_lazy("admin:brainstorm_script_changelist"),
+                        "title": "Scenes",
+                        "icon": "movie",
+                        "link": reverse_lazy("admin:scene_scene_changelist"),
                     },
                     {
                         "title": "Creative Groups",
@@ -152,17 +151,13 @@ UNFOLD = {
                         "link": reverse_lazy("admin:scene_storygroup_changelist"),
                     }
 
-                ],
+                ]
             },
             {
-                "title": "Storytelling",
+                "title": "Elements",
                 "separator": True,
                 "items": [
-                    {
-                        "title": "Stories",
-                        "icon": "auto_stories",
-                        "link": reverse_lazy("admin:scene_story_changelist"),
-                    },
+                    
                     {
                         "title": "Elements",
                         "icon": "category",
@@ -178,11 +173,12 @@ UNFOLD = {
                         "icon": "location_on",
                         "link": reverse_lazy("admin:scene_background_changelist"),
                     },
-                    {
-                        "title": "Scenes",
-                        "icon": "movie",
-                        "link": reverse_lazy("admin:scene_scene_changelist"),
-                    },
+                ]
+            },
+            {
+                "title": "Actions",
+                "separator": True,
+                "items": [
 
                     {
                         "title": "Actions",
@@ -206,7 +202,7 @@ UNFOLD = {
                     },
                 ],
             },
-             {
+            {
                 "title": "Personal Area",
                 "separator": True,
                 "items": [
@@ -228,18 +224,18 @@ UNFOLD = {
                 ],
             },
             {
-                "title": "Distribution",
+                "title": "Rendering",
                 "separator": True,
                 "items": [
                     {
-                        "title": "Videos",
+                        "title": "Renders",
                         "icon": "video_library",
-                        "link": reverse_lazy("admin:scene_scenevideo_changelist"),
+                        "link": reverse_lazy("admin:scene_render_changelist"),
                     },
                     {
-                        "title": "Video Shots",
+                        "title": "Render Items",
                         "icon": "grid_view",
-                        "link": reverse_lazy("admin:scene_videoitem_changelist"),
+                        "link": reverse_lazy("admin:scene_renderitem_changelist"),
                     },
                 ],
             },
@@ -339,6 +335,8 @@ TASK_TYPE_GENERATE_SCENE_VIDEO = 'generate_scene_video'
 TASK_TYPE_GENERATE_VOICE = 'generate_voice'
 TASK_TYPE_GENERATE_TEXT = 'generate_text'
 TASK_TYPE_GENERATE_SCENE = 'generate_scene'
+TASK_TYPE_GENERATE_SCENE_ELEMENTS = 'generate_scene_elements'
+TASK_TYPE_GENERATE_SCENE_ACTIONS = 'generate_scene_actions'
 
 
 
@@ -352,7 +350,9 @@ TASK_DELEGATES = {
     TASK_TYPE_GENERATE_SCENE_VIDEO: 'scene.tasks.TaskGenerateSceneVideo',
     TASK_TYPE_GENERATE_VOICE: 'scene.tasks.TaskGenerateVoice',
     TASK_TYPE_GENERATE_TEXT: 'scene.tasks.TaskGenerateText',
-    TASK_TYPE_GENERATE_SCENE: 'scene.tasks.TaskGenerateScene'
+    TASK_TYPE_GENERATE_SCENE: 'scene.tasks.TaskGenerateScene',
+    TASK_TYPE_GENERATE_SCENE_ELEMENTS: 'scene.tasks.TaskGenerateSceneElements',
+    TASK_TYPE_GENERATE_SCENE_ACTIONS: 'scene.tasks.TaskGenerateSceneActions',
 }
 
 TASK_TYPE_CHOICES = (
@@ -364,7 +364,9 @@ TASK_TYPE_CHOICES = (
     (TASK_TYPE_GENERATE_SCENE_VIDEO, "Generate Scene Video"),
     (TASK_TYPE_GENERATE_VOICE, "Generate Voice"),
     (TASK_TYPE_GENERATE_TEXT, "Generate Text"),
-    (TASK_TYPE_GENERATE_SCENE, "Generate Scene")
+    (TASK_TYPE_GENERATE_SCENE, "Generate Scene"),
+    (TASK_TYPE_GENERATE_SCENE_ELEMENTS, "Generate Scene Elements"),
+    (TASK_TYPE_GENERATE_SCENE_ACTIONS, "Generate Scene Actions"),
 )
 
 

@@ -4,6 +4,7 @@ import os
 import time
 import instructor
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.utils.module_loading import import_string
 
 from django.contrib.contenttypes.models import ContentType
@@ -11,6 +12,8 @@ from django.db import models
 from agent.utils import wave_file
 from PIL import Image
 from io import BytesIO
+from filer.fields.image import FilerImageField
+from filer.fields.file import FilerFileField
 from filer.models.imagemodels import Image as FilerImage
 from django.utils.text import slugify
 from easy_thumbnails.files import get_thumbnailer
@@ -32,6 +35,13 @@ class GetContentsMixin:
     PRESET_SCENE = "generate_scene"
     
 
+    @property
+    def messages(self):
+        return Message.objects.filter(
+            content_type=ContentType.objects.get_for_model(self.__class__),
+            object_id=self.pk
+        ).order_by('created_at')
+
     def get_contents(self, generate_self=True, preset=None):
          # remove generate self and add preset regenerate_image
         parts = [self.context_text(generate_self=generate_self, preset=preset)]
@@ -52,13 +62,13 @@ class GetContentsMixin:
     
     def generate_image(self, user=None):
         agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_IMAGE).first()
-        self.image = agent.generate(self, user=user)
+        self.image = agent.generate(self, user=user, target_field="image")
         self.save()
         return self.image
     
     def refine_image(self, save=True, user=None):
         image_agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_IMAGE).first()
-        out = image_agent.generate(self, preset=self.PRESET_REFINE, user=user)
+        out = image_agent.generate(self, preset=self.PRESET_REFINE, user=user, target_field="image")
         if save and out:
             self.image = out
             self.save()
@@ -66,26 +76,26 @@ class GetContentsMixin:
     
     def generate_video(self, preset, user=None):
         agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_VIDEO).first()
-        self.video = agent.generate(self, preset=preset, user=user)
+        self.video = agent.generate(self, preset=preset, user=user, target_field="video")
         self.save()
         return self.video
 
     def generate_voice(self, preset, user=None):
         agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_VOICE).first()
-        self.voice = agent.generate(self, preset=preset, user=user)
+        self.voice = agent.generate(self, preset=preset, user=user, target_field="voice")
         self.save()
         return self.voice
     
     def generate_scene(self, preset=PRESET_SCENE, user=None):
         agent = Agent.objects.filter(schema=settings.SCHEMA_MULTI_SCENE).first()
-        scene = agent.generate(self, preset=preset, user=user)
+        scene = agent.generate(self, preset=preset, user=user, target_field="scene")
         self.scene = scene
         self.save()
         return self.scene
 
     def refine_image(self, save=True, user=None):
         image_agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_IMAGE).first()
-        out = image_agent.generate(self, preset=self.PRESET_REFINE_PROMPT, user=user)
+        out = image_agent.generate(self, preset=self.PRESET_REFINE_PROMPT, user=user, target_field="image")
         if save and out:
             self.image = out
             self.save()
@@ -94,7 +104,7 @@ class GetContentsMixin:
     def refine_prompt(self, save=True, user=None, agent=None):
         if agent is None:
             text_agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_TEXT).first()
-        out = text_agent.generate(self, preset=self.PRESET_REFINE, user=user)
+        out = text_agent.generate(self, preset=self.PRESET_REFINE, user=user, target_field="prompt")
         if save and out:
             self.image = out
             self.save()
@@ -333,53 +343,66 @@ class Agent(models.Model):
             instructions += Prompt.instructions(preset, obj)
         return instructions
     
-    def generate(self, obj, preset=None, user=None):
+    def generate(self, obj, preset=None, user=None, target_field=None):
         from google.genai import types
         # Placeholder for agent generation logic
         contents = obj.get_contents(generate_self=True, preset=preset)
         config = None
+        out = None
         # video has  a different config and response handling so handle it separately
         if self.output_type == self.OUTPUT_TYPE_VIDEO:
-            return self.generate_video(preset, obj, user=user)
+            out = self.generate_video(preset, obj, user=user)
         if self.output_type == self.OUTPUT_TYPE_VOICE:
-            return self.generate_voice(preset, obj, user=user)
-        if self.output_type == self.OUTPUT_TYPE_STRUCTURED:
-            schema_class = self.get_schema_class()
-            config = types.GenerateContentConfig(
-                system_instruction=self.get_instructions(user=user, preset=preset, obj=obj),
-                response_mime_type="application/json" if schema_class else None,
-                response_schema=schema_class,
-                temperature=0.1,
-            )
-        elif self.output_type == self.OUTPUT_TYPE_IMAGE:
-            config = types.GenerateContentConfig(
-                image_config=types.ImageConfig(
-                    aspect_ratio="9:16",
-                )
-            )
-        elif self.output_type in self.OUTPUT_TYPE_TEXT:
-            config = types.GenerateContentConfig(
-                system_instruction= self.get_instructions(user=user, preset=preset, obj=obj)
-            )
-        
-        out = None
-        with self.get_genai_client(user) as client:
-            response = client.models.generate_content(
-                model=self.agent_model.name,
-                contents=contents,
-                config=config
-            )
-            out = None
-            self.save_usage(user, response)
-            if self.output_type == self.OUTPUT_TYPE_TEXT:
-                out =  self.generate_text(response, obj)
-            elif self.output_type == self.OUTPUT_TYPE_IMAGE:
-                out = self.save_image(response, obj)
-            elif self.output_type == self.OUTPUT_TYPE_STRUCTURED:
+            out = self.generate_voice(preset, obj, user=user)
+        else:
+            if self.output_type == self.OUTPUT_TYPE_STRUCTURED:
                 schema_class = self.get_schema_class()
-                if schema_class:
-                    data = schema_class.model_validate_json(response.text)
-                    out = data.sync_model(obj) if hasattr(data, "sync_model") else data
+                config = types.GenerateContentConfig(
+                    system_instruction=self.get_instructions(user=user, preset=preset, obj=obj),
+                    response_mime_type="application/json" if schema_class else None,
+                    response_schema=schema_class,
+                    temperature=0.1,
+                )
+            elif self.output_type == self.OUTPUT_TYPE_IMAGE:
+                config = types.GenerateContentConfig(
+                    image_config=types.ImageConfig(
+                        aspect_ratio="9:16",
+                    )
+                )
+            elif self.output_type in self.OUTPUT_TYPE_TEXT:
+                config = types.GenerateContentConfig(
+                    system_instruction= self.get_instructions(user=user, preset=preset, obj=obj)
+                )
+        
+            with self.get_genai_client(user) as client:
+                response = client.models.generate_content(
+                    model=self.agent_model.name,
+                    contents=contents,
+                    config=config
+                )
+                out = None
+                self.save_usage(user, response)
+                if self.output_type == self.OUTPUT_TYPE_TEXT:
+                    out =  self.generate_text(response, obj)
+                elif self.output_type == self.OUTPUT_TYPE_IMAGE:
+                    out = self.save_image(response, obj)
+                elif self.output_type == self.OUTPUT_TYPE_STRUCTURED:
+                    schema_class = self.get_schema_class()
+                    if schema_class:
+                        data = schema_class.model_validate_json(response.text)
+                        out = data.sync_model(obj) if hasattr(data, "sync_model") else data
+
+        Message.objects.create(
+            content_object=obj,
+            agent=self,
+            user=user, # Add the user here
+            input_text=str(contents),
+            output_text=out if self.output_type == self.OUTPUT_TYPE_TEXT else "",
+            output_image=out if self.output_type == self.OUTPUT_TYPE_IMAGE else None,
+            output_file=out if self.output_type in [self.OUTPUT_TYPE_VIDEO, self.OUTPUT_TYPE_VOICE] else None,
+            target_field=target_field or ""
+        )
+
         return out
 
 
@@ -413,13 +436,19 @@ class AgentProfile(models.Model):
     def __str__(self):
         return "{}".format(self.user.username)
 
-class ChatMessage(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, related_name='chat_messages', on_delete=models.CASCADE)
-    agent = models.ForeignKey(Agent, null=True, blank=True, related_name='chat_messages', on_delete=models.CASCADE)
-    message = models.TextField(null=True, blank=True)
-    timestamp = models.DateTimeField(auto_now_add=True)
+class Message(models.Model):
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+    
+    agent = models.ForeignKey(Agent, on_delete=models.SET_NULL, null=True, blank=True, related_name='chat_history')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='agent_messages')
+    input_text = models.TextField(blank=True)
+    output_text = models.TextField(blank=True)
+    output_image = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='message_images')
+    output_file = FilerFileField(null=True, blank=True, on_delete=models.SET_NULL, related_name='message_files')
+    target_field = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-timestamp']
-        verbose_name = 'Chat Message'
-        verbose_name_plural = 'Chat Messages'
+        ordering = ['-created_at']

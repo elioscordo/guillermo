@@ -91,11 +91,11 @@ class Task(models.Model):
     payload = models.JSONField(blank=True, null=True)
     task_type = models.SlugField(choices=settings.TASK_TYPE_CHOICES)
 
-    next = models.ForeignKey(
+    next_tasks = models.ManyToManyField(
         'self',
-        on_delete=models.CASCADE,
         blank=True,
-        null=True
+        symmetrical=False,
+        related_name='previous_tasks'
     )
     owner = models.ForeignKey(
         "auth.User",
@@ -127,9 +127,11 @@ class Task(models.Model):
         return self.status in self.TASK_STATUS_PROCESSABLE
 
     def has_pending_previous(self):
+        """
+        Checks if any task that must run before this one is not yet successful.
+        """
         not_success = ~Q(status=self.TASK_STATUS_SUCCESS)
-        out = self.task_set.filter(not_success).count() > 0
-        return out
+        return self.previous_tasks.filter(not_success).exists()
 
     def process(self):
         from .tasks import process_task
@@ -177,8 +179,13 @@ class Task(models.Model):
            obj=obj,
            thr=thr,
            owner=owner,
-           next=next
         )
+        if next:
+            if hasattr(next, '__iter__') and not isinstance(next, (str, bytes)):
+                task.next_tasks.set(next)
+            else:
+                task.next_tasks.add(next)
+
         if process:
             task.process()
         return task
