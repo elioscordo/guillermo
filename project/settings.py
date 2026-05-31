@@ -19,8 +19,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(dotenv_path=os.path.join(BASE_DIR, '.env'))
 GOOGLE_GENAI_VERTEX_API_KEY= os.getenv("GOOGLE_GENAI_VERTEX_API_KEY")
 
-DEBUG=True
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 MEDIA_ROOT = os.path.join( BASE_DIR , 'media' )
 MEDIA_URL = '/media/'
@@ -133,7 +131,7 @@ UNFOLD = {
         "show_user": True,                 # Ensure user profile is visible at the bottom
         "navigation": [
             {
-                "title": "Co-Writing Scripts",
+                "title": "Co-Writing",
                 "items": [
                     {
                         "title": "Stories",
@@ -141,16 +139,15 @@ UNFOLD = {
                         "link": reverse_lazy("admin:scene_story_changelist"),
                     },
                     {
-                        "title": "Scenes",
+                        "title": "Scene Refine & Extract",
                         "icon": "movie",
                         "link": reverse_lazy("admin:scene_scene_changelist"),
                     },
                     {
-                        "title": "Creative Groups",
-                        "icon": "groups",
-                        "link": reverse_lazy("admin:scene_storygroup_changelist"),
-                    }
-
+                        "title": "Scene Organizer",
+                        "icon": "movie",
+                        "link": reverse_lazy("admin:scene_sceneorganizer_changelist"),
+                    },
                 ]
             },
             {
@@ -173,6 +170,11 @@ UNFOLD = {
                         "icon": "location_on",
                         "link": reverse_lazy("admin:scene_background_changelist"),
                     },
+                    {
+                        "title": "Voices",
+                        "icon": "record_voice_over",
+                        "link": reverse_lazy("admin:scene_voice_changelist"),
+                    },
                 ]
             },
             {
@@ -181,7 +183,7 @@ UNFOLD = {
                 "items": [
 
                     {
-                        "title": "Actions",
+                        "title": "Image Actions",
                         "icon": "play_arrow",
                         "link": reverse_lazy("admin:scene_action_changelist"),
                     },
@@ -200,12 +202,22 @@ UNFOLD = {
                         "icon": "mic",
                         "link": reverse_lazy("admin:scene_voiceaction_changelist"),
                     },
+                    {
+                        "title": "Action Organizer",
+                        "icon": "play_arrow",
+                        "link": reverse_lazy("admin:scene_actionorganizer_changelist"),
+                    },
                 ],
             },
             {
                 "title": "Personal Area",
                 "separator": True,
                 "items": [
+                    {
+                        "title": "Groups",
+                        "icon": "groups",
+                        "link": reverse_lazy("admin:scene_storygroup_changelist"),
+                    },
                     {
                         "title": "Story Filters",
                         "icon": "settings",
@@ -337,6 +349,7 @@ TASK_TYPE_GENERATE_TEXT = 'generate_text'
 TASK_TYPE_GENERATE_SCENE = 'generate_scene'
 TASK_TYPE_GENERATE_SCENE_ELEMENTS = 'generate_scene_elements'
 TASK_TYPE_GENERATE_SCENE_ACTIONS = 'generate_scene_actions'
+TASK_TYPE_EXTRACT_SCENE = 'extract_scene'
 
 
 
@@ -353,6 +366,7 @@ TASK_DELEGATES = {
     TASK_TYPE_GENERATE_SCENE: 'scene.tasks.TaskGenerateScene',
     TASK_TYPE_GENERATE_SCENE_ELEMENTS: 'scene.tasks.TaskGenerateSceneElements',
     TASK_TYPE_GENERATE_SCENE_ACTIONS: 'scene.tasks.TaskGenerateSceneActions',
+    TASK_TYPE_EXTRACT_SCENE: 'scene.tasks.TaskExtractScene',
 }
 
 TASK_TYPE_CHOICES = (
@@ -367,6 +381,7 @@ TASK_TYPE_CHOICES = (
     (TASK_TYPE_GENERATE_SCENE, "Generate Scene"),
     (TASK_TYPE_GENERATE_SCENE_ELEMENTS, "Generate Scene Elements"),
     (TASK_TYPE_GENERATE_SCENE_ACTIONS, "Generate Scene Actions"),
+    (TASK_TYPE_EXTRACT_SCENE, "Extract Scene")
 )
 
 
@@ -386,10 +401,15 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # Agent Structured Output Schema Settings
 SCHEMA_MULTI_SCENE = "multi_scene"
+SCHEMA_SCENE = "scene"
 AGENT_SCHEMA_CHOICES = [
     (SCHEMA_MULTI_SCENE, "Multi Scene Storyboard"),
+    (SCHEMA_SCENE, "Single Scene Storyboard"),
 ]
+
 AGENT_SCHEMAS = {
     SCHEMA_MULTI_SCENE: "scene.schemas.MultiSceneSchema",
+    SCHEMA_SCENE : "scene.schemas.SceneSchema",    
 }
+
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER

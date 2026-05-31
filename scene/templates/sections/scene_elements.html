@@ -1,0 +1,52 @@
+{% load i18n %}
+
+<div class="flex flex-col bg-white border border-base-200 rounded-default shadow-xs dark:border-base-800 dark:bg-base-900 overflow-hidden mb-6">
+    <div class="px-4 py-3 border-b border-base-200 dark:border-base-800 flex justify-between items-center">
+        <div class="flex flex-col">
+            <h2 class="font-semibold text-font-important-light text-sm dark:text-font-important-dark">
+                {% trans "Scene Elements" %}
+            </h2>
+            <div class="flex gap-3 mt-1 text-[11px] text-font-secondary-light dark:text-font-secondary-dark">
+                {% for item in summary %}
+                    <a href="{{ item.url }}" class="hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center">
+                        <span class="font-bold mr-1 text-primary-600 dark:text-primary-400">{{ item.count }}</span> {{ item.label }}
+                    </a>
+                    {% if not forloop.last %}
+                        <span class="opacity-30">•</span>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        <button 
+            type="button"
+            onclick="refreshSceneElements({{ instance.id }})"
+            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+        >
+            <span class="material-symbols-outlined text-[16px] mr-1">refresh</span>
+            {% trans "Refresh" %}
+        </button>
+    </div>
+
+    <div id="scene-elements-container" class="p-4 transition-opacity duration-200">
+        {% include "sections/scene_elements_items.html" %}
+    </div>
+</div>
+
+<script>
+function refreshSceneElements(objectId) {
+    const container = document.getElementById('scene-elements-container');
+    container.classList.add('opacity-40', 'pointer-events-none');
+    
+    fetch(`/admin/scene/scene/refresh-elements/${objectId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.html) {
+                container.innerHTML = data.html;
+            }
+        })
+        .catch(error => console.error('Error refreshing scene elements:', error))
+        .finally(() => {
+            container.classList.remove('opacity-40', 'pointer-events-none');
+        });
+}
+</script>

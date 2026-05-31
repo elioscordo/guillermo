@@ -8,7 +8,7 @@ from .models import ContactRequest
 class LandingView(CreateView):
     model = ContactRequest
     template_name = "landing.html"
-    fields = ['name', 'email']
+    fields = ['name', 'email', "contribuition", "prompt", "workshop", "group_number"]
     
     def form_valid(self, form):
         messages.success(self.request, "Thank you for your interest! We'll be in touch shortly.")

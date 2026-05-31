@@ -1,11 +1,13 @@
 from django.db import models
 from django.conf import settings
-from agent.models import Agent, Prompt, Voice
+from agent.models import Agent, Prompt
 from filer.fields.image import FilerImageField, FilerFileField
 from agent.models import GetContentsMixin
-from scene.mixins import EmailSenderMixin, UserCreatorMixin
+from scene.mixins import EmailSenderMixin, UserCreatorMixin, ModelDisplayMixin
+from task.mixins import  AfterSaveActionMixin
 from task.models import TaskHolder, Task
 
+from django.template.loader import render_to_string
 from django.utils.safestring import mark_safe
 from PIL import Image
 
@@ -24,7 +26,7 @@ class Theme(models.Model):
         return "{}".format(self.name)
 
 
-class Style(models.Model, GetContentsMixin):
+class Style(models.Model, GetContentsMixin, ModelDisplayMixin):
     prompt = models.TextField(null=True, blank=True)
     name = models.CharField(max_length=100, default="")
     global_default = models.BooleanField(default=False)
@@ -59,13 +61,21 @@ class Author(models.Model, UserCreatorMixin):
 
     def username(self):
         return self.user.username if self.user else self.email
+    
+    def scene_count(self):
+        return self.scenes.count()
 
-class Story(models.Model, GetContentsMixin, TaskHolder):
+class Story(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
     name = models.CharField(max_length=200)
     order = models.PositiveIntegerField(default=0, db_index=True)
     style = models.ForeignKey(Style, related_name='stories', null=True, blank=True, on_delete=models.CASCADE)
     theme = models.ForeignKey('Theme', on_delete=models.CASCADE, null=True, blank=True)
     group = models.ForeignKey('scene.StoryGroup', help_text="Auto create authors from this group, it happens only when the script is saved for the first time",  on_delete=models.CASCADE, null=True, blank=True, related_name='stories')
+
+    prompt = models.TextField(null=True, blank=True, default="#Plot\n")
+    prompt_refine = models.TextField(null=True, blank=True)
+    action = models.SlugField(choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
+    mentor = models.ForeignKey("agent.Agent", related_name='mentors_stories', on_delete=models.CASCADE, null=True, blank=True)
 
     RENDER_TYPE_FILM = 'film'
     RENDER_TYPE_GRAPHIC_NOVEL = 'graphic_novel'
@@ -86,6 +96,12 @@ class Story(models.Model, GetContentsMixin, TaskHolder):
     
     def __str__(self):
         return "{}".format(self.name)
+
+    def get_mentor(self):
+        out = self.mentor
+        if not out:
+            out = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_TEXT).first()
+        return out
 
     def import_group_members(self):
         if self.group is not None:
@@ -111,7 +127,103 @@ class Story(models.Model, GetContentsMixin, TaskHolder):
         if do_import:
             self.import_group_members()
 
+    def intro(self):
+        intro_action = Action.objects.filter(is_intro='story', scene__story=self).first()
+        if intro_action:
+            return intro_action.intro()
+        return None
 
+class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, ModelDisplayMixin):
+    name = models.CharField(max_length=200, null=True, blank=True)
+    prompt = models.TextField(null=True, blank=True, default="#Location\n#Cast\n#Props\n#Actions\n")
+    prompt_refine = models.TextField(null=True, blank=True)
+    action = models.SlugField(choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
+
+    order = models.PositiveIntegerField(default=0, db_index=True)
+    story = models.ForeignKey('Story', related_name='scenes', null=True, blank=True, on_delete=models.CASCADE)
+    author = models.ForeignKey('Author', related_name='scenes', on_delete=models.CASCADE, null=True, blank=True)
+    
+    def __str__(self):
+        return "{}".format(self.name if self.name else f"Scene{self.id} of {self.story}")
+    
+    def get_contents(self, generate_self=True):
+        contents = []
+        if self.story and self.story.style:
+            contents.extend(self.story.style.get_contents(generate_self=False))
+            contents.extend(Prompt.prompt_for_model(self))
+        return contents
+
+    def get_contents(self, generate_self=True, preset=None):
+        parts = []
+        if not generate_self:
+            parts.extend(self.story.style.get_contents(generate_self=False))
+        else:
+            if preset == self.PRESET_REFINE_PROMPT:
+                parts = [self.prompt_refine]
+                parts.append("following prompt to be improved")
+            parts.append(self.prompt)
+            if self.story:
+                elements_parts = []
+                backgrounds = self.story.backgrounds.all()
+                if backgrounds.exists():
+                    elements_parts.append("Existing Locations (Backgrounds):")
+                    for b in backgrounds:
+                        elements_parts.append(f"- Name: {b.name}\n  Prompt: {b.prompt}")
+                characters = self.story.characters.all()
+                if characters.exists():
+                    elements_parts.append("Existing Characters (Actors - Cast):")
+                    for c in characters:
+                        elements_parts.append(f"- Name: {c.name}\n  Prompt: {c.prompt}")
+                props = self.story.props.all()
+                if props.exists():
+                    elements_parts.append("Existing Props:")
+                    for p in props:
+                        elements_parts.append(f"- Name: {p.name}\n  Prompt: {p.prompt}")
+                if elements_parts:
+                    parts.append("### STORY CONTEXT ###\nReuse these existing entities if they appear:\n" + "\n".join(elements_parts))
+        return parts
+
+    def get_elements(self):
+        """
+        Returns a dictionary containing distinct Backgrounds, Props, and Characters
+        referenced by all actions within this scene, ordered by name.
+        """
+        actions = self.actions.all()
+        
+        locations = Background.objects.filter(actions__in=actions).distinct().order_by('name')
+        props = Prop.objects.filter(actions__in=actions).distinct().order_by('name')
+        
+        # Characters can be the main actor or part of the cast in any action of the scene
+        actors = Character.objects.filter(actions__in=actions)
+        cast = Character.objects.filter(actions_cast__in=actions)
+        characters = (actors | cast).distinct().order_by('name')
+        
+        return {
+            'locations': locations,
+            'characters': characters,
+            'props': props,
+        }
+
+    def items(self):
+        """
+        Renders a summary dropdown of scene elements using a template.
+        """
+        context = self.get_elements()
+        context['actions'] = self.actions.all()
+
+        # Pre-calculate counts and IDs for the template
+        context.update({
+            "count": sum(qs.count() for qs in context.values()) + context['actions'].count(),
+            "prop_ids": ",".join([str(p.id) for p in context['props']]),
+            "char_ids": ",".join([str(c.id) for c in context['characters']]),
+            "loc_ids": ",".join([str(l.id) for l in context['locations']]),
+            "action_ids": ",".join([str(a.id) for a in context['actions']]),
+            "instance": self,
+        })
+        return render_to_string("scene/items_dropdown.html", context)
+
+    class Meta:
+        ordering = ['order']
 
 
 class Nudge(models.Model, EmailSenderMixin):
@@ -151,7 +263,7 @@ class Nudge(models.Model, EmailSenderMixin):
         )
 
 
-class Prop(models.Model, GetContentsMixin, TaskHolder):
+class Prop(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
     name = models.CharField(max_length=100, default="")
     image = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='props')
     prompt= models.TextField(null=True, blank=True)
@@ -166,18 +278,6 @@ class Prop(models.Model, GetContentsMixin, TaskHolder):
         verbose_name = 'Element'
         verbose_name_plural = 'Elements'
 
-    def save(self, *args, **kwargs):
-        print("Saving background, checking for action task: {}".format(self.action))
-        action = getattr(self, 'action', None)
-        if action is not None:
-            self.action = None
-        super().save(*args, **kwargs)
-        if action is not None: 
-            Task.createTaskIfQueueEnabled(
-                    subject=self,
-                    task_type=action
-                )
-   
     def __str__(self):
         return "{}".format(self.name)
 
@@ -195,7 +295,43 @@ class Prop(models.Model, GetContentsMixin, TaskHolder):
             parts.extend(Prompt.prompt_for_model(self))
         return parts
 
-class Character(models.Model, GetContentsMixin, TaskHolder):
+class Voice(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, ModelDisplayMixin):
+    SAMPLE_TEXT_DEFAULT = "Hello, this is a sample voice. 1, 2, 3. Change me and add a sample prompt for better results. Add audio effects for more interesting voices!"
+    PROMPT_SAMPLE_DEFAULT = "Speak:"
+    PROMPT_DEFAULT = "Style: [describe the style of speaking you want, e.g. excited, sad, professional, etc.]\nPace: [describe the pace of speaking you want, e.g. fast, slow, etc.]\nAccent: [describe the accent you want, e.g. British, American, etc.]\n\n"
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=100)
+    prompt = models.TextField(null=True, blank=True , default=PROMPT_DEFAULT)
+    audio_voice = FilerFileField(null=True, blank=True, on_delete=models.SET_NULL, related_name='samples')
+    sample_text = models.TextField(null=True, blank=True , default=SAMPLE_TEXT_DEFAULT)
+    
+    TASK_TYPE_CHOICES = [
+        (settings.TASK_TYPE_GENERATE_VOICE, "Generate Voice")
+    ]
+    action = models.SlugField(choices=TASK_TYPE_CHOICES, null=True, blank=True)
+
+    
+    def __str__(self):
+        return "{}".format(self.name)   
+    
+    def get_prompt_header(self):
+        return f"# AUDIO PROFILE: {self.name}/n/n"
+
+    def get_sample_text(self):
+        return self.sample_text if self.sample_text else self.SAMPLE_TEXT_DEFAULT
+    
+    def get_contents(self, generate_self=True, preset=None):
+        prompt = ""
+        if preset == self.PRESET_VOICE: 
+            prompt = f"out {self.get_prompt_header()} ### DIRECTOR'S NOTES\n\n {self.prompt} \n\n #### TRANSCRIPT \n\n"
+            if generate_self:
+                prompt += self.get_sample_text()
+        return {
+            'prompt': prompt,
+            'voice': self.code
+        }
+    
+class Character(models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
     name = models.CharField(max_length=100, default="")
     image = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='characters')
     prompt= models.TextField(null=True, blank=True)
@@ -204,17 +340,6 @@ class Character(models.Model, GetContentsMixin, TaskHolder):
     voice = models.ForeignKey(Voice, related_name='characters', on_delete=models.SET_NULL, null=True, blank=True) 
     TASK_TYPE_CHOICES = settings.TASK_TYPE_CHOICES
     action = models.SlugField(choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
-
-    def save(self, *args, **kwargs):
-        action = getattr(self, 'action', None)
-        if action is not None:
-            self.action = None
-        super().save(*args, **kwargs)
-        if action is not None: 
-            Task.createTaskIfQueueEnabled(
-                    subject=self,
-                    task_type=action
-                )
    
     def __str__(self):
         return "{}".format(self.name)
@@ -238,7 +363,7 @@ class Character(models.Model, GetContentsMixin, TaskHolder):
         verbose_name_plural = 'Characters'
 
 
-class Background(models.Model, GetContentsMixin, TaskHolder):
+class Background(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
     name = models.CharField(max_length=100, default="")
     prompt= models.TextField(null=True, blank=True)
     image = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='backgrounds')
@@ -252,18 +377,6 @@ class Background(models.Model, GetContentsMixin, TaskHolder):
 
     def __str__(self):
         return "{}".format(self.name)
-
-    def save(self, *args, **kwargs):
-        print("Saving background, checking for action task: {}".format(self.action))
-        action = getattr(self, 'action', None)
-        if action is not None:
-            self.action = None
-        super().save(*args, **kwargs)
-        if action is not None: 
-            Task.createTaskIfQueueEnabled(
-                    subject=self,
-                    task_type=action
-                )
 
     def context_text(self, generate_self=True, preset=None):
         if preset == self.PRESET_REFINE:
@@ -282,60 +395,6 @@ class Background(models.Model, GetContentsMixin, TaskHolder):
     class Meta:
         verbose_name = 'Location'
         verbose_name_plural = 'Locations'
-
-
-class Scene(models.Model, TaskHolder, GetContentsMixin):
-    name = models.CharField(max_length=200, null=True, blank=True)
-    prompt = models.TextField(null=True, blank=True, default="#Location\n#Cast\n#Props\n#Actions\n")
-    prompt_refine = models.TextField(null=True, blank=True)
-    order = models.PositiveIntegerField(default=0, db_index=True)
-    story = models.ForeignKey('Story', related_name='scenes', null=True, blank=True, on_delete=models.CASCADE)
-    author = models.ForeignKey('Author', related_name='scenes', on_delete=models.CASCADE, null=True, blank=True)
-    action = models.SlugField(choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
-
-    def __str__(self):
-        return "{}".format(self.name if self.name else f"Scene{self.id} of {self.story}")
-    
-    def get_contents(self, generate_self=True):
-        contents = []
-        if self.story and self.story.style:
-            contents.extend(self.story.style.get_contents(generate_self=False))
-            contents.extend(Prompt.prompt_for_model(self))
-        return contents
-
-    def get_contents(self, generate_self=True, preset=None):
-        parts = []
-        if not generate_self:
-            parts.extend(self.story.style.get_contents(generate_self=False))
-        if preset == self.PRESET_REFINE_PROMPT and generate_self:
-            parts = [self.prompt_refine]
-            parts.append("following prompt to be improved")
-            parts.append(self.prompt)
-            if self.story:
-                elements_parts = []
-                backgrounds = self.story.backgrounds.all()
-                if backgrounds.exists():
-                    elements_parts.append("Existing Locations (Backgrounds):")
-                    for b in backgrounds:
-                        elements_parts.append(f"- Name: {b.name}\n  Prompt: {b.prompt}")
-                characters = self.story.characters.all()
-                if characters.exists():
-                    elements_parts.append("Existing Characters (Actors - Cast):")
-                    for c in characters:
-                        elements_parts.append(f"- Name: {c.name}\n  Prompt: {c.prompt}")
-                props = self.story.props.all()
-                if props.exists():
-                    elements_parts.append("Existing Props:")
-                    for p in props:
-                        elements_parts.append(f"- Name: {p.name}\n  Prompt: {p.prompt}")
-                if elements_parts:
-                    parts.append("### STORY CONTEXT ###\nReuse these existing entities if they appear:\n" + "\n".join(elements_parts))
-        return parts
-
-    class Meta:
-        ordering = ['order']
-
-
 
 
 class StoryGroup(models.Model):
@@ -365,9 +424,14 @@ class StoryProfile(models.Model):
             story = self.group.story
         return story
 
-class Action(models.Model, GetContentsMixin, TaskHolder):
+class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
+    IS_INTRO_CHOICES = [
+        ('scene', 'Scene Intro'),
+        ('story', 'Story Intro')
+    ]
     name = models.CharField(max_length=200, default="Action")
     scene = models.ForeignKey(Scene, related_name='actions', on_delete=models.CASCADE)
+    is_intro = models.SlugField(choices=IS_INTRO_CHOICES, null=True, blank=True)
     prompt = models.TextField(null=True, blank=True)
     order = models.PositiveIntegerField(default=0, db_index=True)
     image = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='panel')
@@ -423,6 +487,14 @@ class Action(models.Model, GetContentsMixin, TaskHolder):
         out = image_agent.generate(self, preset=self.PRESET_COMIC, user=user)
         return out
     
+    def intro(self):
+        out = None
+        if self.image_comic:
+            out = self.image_comic
+        elif self.image:
+            out = self.image   
+        return out
+
     def get_contents(self, generate_self=True, preset=None):
         from google.genai import types
         if preset == self.PRESET_VIDEO:
@@ -437,10 +509,11 @@ class Action(models.Model, GetContentsMixin, TaskHolder):
         elif preset == self.PRESET_VOICE:
             contents = {}
             out = self.prompt_voice
+            voice = self.actor.voice if self.actor and self.actor.voice else self.scene.voice if self.scene and self.scene.voice else None
             if self.text is not None:
                 out = f"{out} text to speak: {self.text}"
-            contents['prompt'] = out
-            contents['voice'] = self.actor.voice if self.actor and self.actor.voice else self.scene.voice if self.scene and self.scene.voice else None
+            contents = voice.get_contents(generate_self=False, preset=Voice.PRESET_VOICE)
+            contents["prompts"] += out
         else:
             # preset refine is handled in the mixin
             contents = super().get_contents(generate_self=generate_self, preset=preset)
@@ -471,18 +544,15 @@ class Action(models.Model, GetContentsMixin, TaskHolder):
         if not generate_self:
             return self.name
         return self.prompt
-    
-    def save(self, *args, **kwargs):
-        print("Saving background, checking for action task: {}".format(self.action))
-        action = getattr(self, 'action', None)
-        if action is not None:
-            self.action = None
-        super().save(*args, **kwargs)
-        if action is not None: 
-            Task.createTaskIfQueueEnabled(
-                    subject=self,
-                    task_type=action
-                )
+
+class SceneOrganizer(Scene):
+    class Meta:
+        proxy = True
+
+class ActionOrganizer(Action):
+    class Meta:
+        proxy = True
+
 
 class VideoAction(Action):
     class Meta:
@@ -496,7 +566,7 @@ class VoiceAction(Action):
     class Meta:
         proxy = True
 
-class Render(models.Model, TaskHolder):
+class Render(models.Model, TaskHolder, ModelDisplayMixin):
     RENDER_TYPE_FILM = 'film'
     RENDER_TYPE_GRAPHIC_NOVEL = 'graphic_novel'
     RENDER_TYPE_ANIMATIC = 'animatic'
@@ -567,7 +637,7 @@ class Render(models.Model, TaskHolder):
     def get_from_scene(cls, scene):
         return cls.objects.get_or_create(scene=scene, story=scene.story, defaults={'name': f"Render for {scene.name}"})[0]
         
-class RenderItem(models.Model, TaskHolder):
+class RenderItem(models.Model, TaskHolder, ModelDisplayMixin):
     DEFAULT_IMAGE_DURATION = 8
     image = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='video_item')
     video = FilerFileField(null=True, blank=True, on_delete=models.SET_NULL, related_name='video_item_video')
@@ -595,10 +665,30 @@ class RenderItem(models.Model, TaskHolder):
             out = self.config['duration']
         return out
 
+class WorkShop(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    date = models.DateTimeField()
+    location = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name
+
 class ContactRequest(models.Model):
+    CONTRIBUTION_CHOICES = [
+        ("pay", "I am ok to pay 20/30 dollars/euros for the workshop"),
+        ("api_key", "I am ok to bring my google api key to the project"),
+        ("collaborate", "I want to collaborate in another way"),
+        ("trial", "I just want to try it out and use the local open source version"),
+    ]
+
     name = models.CharField(max_length=255)
     email = models.EmailField()
+    contribuition = models.TextField(choices=CONTRIBUTION_CHOICES, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
+    prompt = models.TextField("A glimpse of your imagination", null=True, blank=True, help_text="Just imagine and write with as many typos as you want. Guillermo will curate your scene", default="#Location\n#Cast\n#Props\n#Actions\n")
+    workshop = models.ForeignKey(WorkShop, related_name='contact_requests', on_delete=models.CASCADE, null=True, blank=True)
+    group_number = models.IntegerField(null=True, blank=True, help_text="How many friends and family member you would bring to the workshop?")
+    
     def __str__(self):
         return f"{self.name} ({self.email})"

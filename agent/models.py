@@ -6,7 +6,7 @@ import instructor
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.utils.module_loading import import_string
-
+from task.mixins import  AfterSaveActionMixin
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from agent.utils import wave_file
@@ -18,7 +18,8 @@ from filer.models.imagemodels import Image as FilerImage
 from django.utils.text import slugify
 from easy_thumbnails.files import get_thumbnailer
 
-from task.models import Task
+from project.settings import TASK_TYPE_GENERATE_SCENE, TASK_TYPE_GENERATE_SCENE_ACTIONS, TASK_TYPE_GENERATE_TEXT, TASK_TYPE_GENERATE_VOICE
+from task.models import Task, TaskHolder
 from PIL import Image
 
 
@@ -59,7 +60,16 @@ class GetContentsMixin:
             except Exception as e:
                 print(f"Error occurred while generating thumbnail: {e}")
         return None
-    
+
+    def generate_text(self, agent=None, user=None):
+        if agent is None:
+            agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_TEXT).first()
+        out = agent.generate(self, preset=self.PRESET_REFINE_PROMPT, user=user, target_field="prompt")
+        if out is not None:
+            self.prompt = out
+            self.save()
+        return out
+
     def generate_image(self, user=None):
         agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_IMAGE).first()
         self.image = agent.generate(self, user=user, target_field="image")
@@ -80,18 +90,17 @@ class GetContentsMixin:
         self.save()
         return self.video
 
-    def generate_voice(self, preset, user=None):
+    def generate_voice(self, preset, user=None, target_field="audio_voice"):
         agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_VOICE).first()
-        self.voice = agent.generate(self, preset=preset, user=user, target_field="voice")
+        out = agent.generate(self, preset=preset, user=user, target_field=target_field)
+        setattr(self, target_field, out)
         self.save()
-        return self.voice
+        return getattr(self, target_field)
     
     def generate_scene(self, preset=PRESET_SCENE, user=None):
-        agent = Agent.objects.filter(schema=settings.SCHEMA_MULTI_SCENE).first()
-        scene = agent.generate(self, preset=preset, user=user, target_field="scene")
-        self.scene = scene
-        self.save()
-        return self.scene
+        agent = Agent.objects.filter(schema=settings.SCHEMA_SCENE).first()
+        out = agent.generate(self, preset=preset, user=user, target_field="scene")
+        return out
 
     def refine_image(self, save=True, user=None):
         image_agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_IMAGE).first()
@@ -115,12 +124,6 @@ class AgentModel(models.Model):
     def __str__(self):
         return "{}".format(self.name)
 
-class Voice(models.Model):
-    name = models.CharField(max_length=100)
-    code = models.CharField(max_length=100)
-
-    def __str__(self):
-        return "{}".format(self.name)
 
 class Prompt(models.Model):
     CHOICES = (
@@ -138,20 +141,20 @@ class Prompt(models.Model):
     name= models.CharField(max_length=100, default="name")
     prompt = models.TextField(null=True, blank=True)
     category = models.CharField(max_length=100, default="general", choices=CHOICES)
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
+    content_types = models.ManyToManyField(ContentType, blank=True)
 
     @classmethod
     def instructions(cls, preset, obj):
         from_preset =  [item.prompt for item in cls.objects.filter(category=preset) ]
         content_type = ContentType.objects.get_for_model(obj.__class__)
-        from_content = [item.prompt for item in cls.objects.filter(content_type=content_type)]
+        from_content = [item.prompt for item in cls.objects.filter(content_types=content_type)]
         out = from_preset + from_content
         return out
 
     @classmethod
     def prompt_for_model(cls, obj):
         content_type = ContentType.objects.get_for_model(obj.__class__)
-        from_content = [item.prompt for item in cls.objects.filter(content_type=content_type)]
+        from_content = [item.prompt for item in cls.objects.filter(content_types=content_type)]
         return from_content
 
     def __str__(self):
@@ -218,18 +221,10 @@ class Agent(models.Model):
             tokens= usage_dict.get("total_token_count", 0),
         )
 
-    def get_instructor(self, user=None):
-        out = instructor.from_genai(
-            self.get_genai_client(user),
-            mode=instructor.Mode.GENAI_STRUCTURED_OUTPUTS,
-            use_async=True,
-        )
-        return out
-
     def __str__(self):
         return "{}".format(self.name)
     
-    def generate_text(self, response, prompt_obj):
+    def extract_text(self, response, prompt_obj):
         try:
             return response.text
         except ValueError:
@@ -383,7 +378,7 @@ class Agent(models.Model):
                 out = None
                 self.save_usage(user, response)
                 if self.output_type == self.OUTPUT_TYPE_TEXT:
-                    out =  self.generate_text(response, obj)
+                    out =  self.extract_text(response, obj)
                 elif self.output_type == self.OUTPUT_TYPE_IMAGE:
                     out = self.save_image(response, obj)
                 elif self.output_type == self.OUTPUT_TYPE_STRUCTURED:

@@ -1,7 +1,8 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
+from django.contrib.contenttypes.models import ContentType
 
-from agent.models import AgentModel, Agent, GoogleApiKey, Prompt, TokenUsage, Voice, AgentProfile, Message
+from agent.models import AgentModel, Agent, GoogleApiKey, Prompt, TokenUsage, AgentProfile, Message
 from agent.utils import get_genai_client
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -29,6 +30,12 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
 class GroupAdmin(BaseGroupAdmin, ModelAdmin):
     pass
 
+
+@admin.register(ContentType)
+class ContentTypeAdmin(ModelAdmin):
+    search_fields = ("model", "app_label")
+
+
 @admin.action(description="List available genai models")
 def list_models(modeladmin, request, queryset):
     client = get_genai_client()
@@ -46,20 +53,16 @@ class AgentModelAdmin(ModelAdmin):
 
 @admin.register(Prompt)
 class PromptAdmin(ModelAdmin):
-    list_display = ('id', 'name', 'prompt', 'category', 'content_type')
-    list_filter = ('category', 'content_type')
+    list_display = ('id', 'name', 'prompt', 'category')
+    list_filter = ('category', 'content_types')
     list_editable = ('name', 'prompt', 'category')
     list_display_links = ('id',)
+    autocomplete_fields = ('content_types',)
 
 
 @admin.register(Agent)
 class AgentAdmin(ModelAdmin):
     list_display = ('name', 'output_type', 'schema')
-    list_display_links = ('name',)
-
-@admin.register(Voice)
-class VoiceAdmin(ModelAdmin):
-    list_display = ('name', )
     list_display_links = ('name',)
 
 @admin.register(GoogleApiKey)

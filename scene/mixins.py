@@ -1,3 +1,4 @@
+from django.contrib import admin
 from django.utils.html import format_html
 
 from django.urls import path
@@ -11,6 +12,7 @@ from django.conf import settings
 import secrets
 import string
 from django.http import JsonResponse
+from django.apps import apps
 from django.shortcuts import get_object_or_404
 
 ELEMENT_FIELDSETS = (
@@ -43,47 +45,60 @@ ACTION_FIELDSETS = (
         }),
     )
 
-class ImgShowMixin:
+class ModelDisplayMixin:
     MAX_IMAGE_HEIGHT = 400
 
-    def video_download(self, obj):
-        if obj.video:
-            return format_html('<a href="{}" download >Download</a>', obj.video.url)
+    def video_download(self):
+        video = getattr(self, 'video', None)
+        if video:
+            return format_html('<a href="{}" download >Download</a>', video.url)
         return "No Video"
+    video_download.short_description = "Video Download"
 
-    def pic(self, obj):
-        if obj.image:
-            return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', obj.image.url, obj.image.url, self.MAX_IMAGE_HEIGHT)
+    def pic(self):
+        image = getattr(self, 'image', None)
+        if image:
+            return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', image.url, image.url, self.MAX_IMAGE_HEIGHT)
         return "No Image"
+    pic.short_description = "Image"
 
-    def pic_comic(self, obj):
-        if obj.image_comic:
-            return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', obj.image_comic.url, obj.image_comic.url, self.MAX_IMAGE_HEIGHT)
+    def pic_comic(self):
+        image_comic = getattr(self, 'image_comic', None)
+        if image_comic:
+            return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', image_comic.url, image_comic.url, self.MAX_IMAGE_HEIGHT)
         return "No Image"
+    pic_comic.short_description = "Comic Image"
     
-    def pic_refine(self, obj):
-        if obj.image_refine:
-            return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', obj.image_refine.url, obj.image_refine.url, self.MAX_IMAGE_HEIGHT)
+    def pic_refine(self):
+        image_refine = getattr(self, 'image_refine', None)
+        if image_refine:
+            return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', image_refine.url, image_refine.url, self.MAX_IMAGE_HEIGHT)
         return "No Image"
+    pic_refine.short_description = "Refined Image"
     
-    def pic_first(self, obj):
-        if obj.image_first:
-            return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', obj.image_first.url, obj.image_first.url, self.MAX_IMAGE_HEIGHT)
+    def pic_first(self):
+        image_first = getattr(self, 'image_first', None)
+        if image_first:
+            return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', image_first.url, image_first.url, self.MAX_IMAGE_HEIGHT)
         return "No Image"
+    pic_first.short_description = "First Frame"
     
-    def pic_last(self, obj):
-        if obj.image_last:
-            return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', obj.image_last.url, obj.image_last.url, self.MAX_IMAGE_HEIGHT)
+    def pic_last(self):
+        image_last = getattr(self, 'image_last', None)
+        if image_last:
+            return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', image_last.url, image_last.url, self.MAX_IMAGE_HEIGHT)
         return "No Image"
+    pic_last.short_description = "Last Frame"
 
-    def action_pic(self, obj):
-        if obj.action.image:
-            return format_html('<img src="{}" style="max-height: {}px;" />', obj.action.image.url, self.MAX_IMAGE_HEIGHT)
+    def action_pic(self):
+        action = getattr(self, 'action', None)
+        if action and hasattr(action, 'image') and action.image:
+             return format_html('<img src="{}" style="max-height: {}px;" />', action.image.url, self.MAX_IMAGE_HEIGHT)
         return "No Image"
+    action_pic.short_description = "Action Image"
     
-    def contents(self, obj):
-
-        if obj.get_contents():
+    def contents_html(self):
+        if hasattr(self, 'get_contents') and self.get_contents():
             return format_html('''                               
         <a class="btn btn-primary" data-toggle="collapse" href="#collapse{}" role="button" aria-expanded="false" aria-controls="collapseExample">
             Get Prompt
@@ -94,11 +109,12 @@ class ImgShowMixin:
             </div>
         </div>
         {}
-        ''', obj.id, obj.id, obj.get_contents(), obj.features() if hasattr(obj, 'features') else "")
+        ''', self.id, self.id, self.get_contents(), self.features() if hasattr(self, 'features') else "")
         return "No contents"
+    contents_html.short_description = "Contents"
     
-    def contents_refine(self, obj):
-        if obj.get_contents(generate_self=True, preset=obj.PRESET_REFINE):
+    def contents_refine_html(self):
+        if hasattr(self, 'get_contents') and hasattr(self, 'PRESET_REFINE') and self.get_contents(generate_self=True, preset=self.PRESET_REFINE):
             return format_html('''
         <a class="btn btn-primary" data-toggle="collapse" href="#collapse{}" role="button" aria-expanded="false" aria-controls="collapseExample">
             Get Prompt
@@ -108,33 +124,38 @@ class ImgShowMixin:
                 {}
             </div>
         </div>
-        ''', obj.id, obj.id, obj.get_contents(generate_self=True, preset=obj.PRESET_REFINE))
+        ''', self.id, self.id, self.get_contents(generate_self=True, preset=self.PRESET_REFINE))
         return "No contents"
+    contents_refine_html.short_description = "Refined Contents"
 
-    def video_player(self, obj):
-        if obj.video:
+    def video_player(self):
+        video = getattr(self, 'video', None)
+        if video:
             return format_html('''
         <video height="500" controls>
             <source src="{}" type="video/mp4">
         </video>
-        ''', obj.video.url)
+        ''', video.url)
         return "No contents"
+    video_player.short_description = "Video Player"
     
-    def voice_player(self, obj):
-        if obj.audio_voice:
+    def voice_player(self):
+        audio_voice = getattr(self, 'audio_voice', None)
+        if audio_voice:
             return format_html('''
         <audio controls>
             <source src="{}" type="audio/mpeg">
         </audio>
-        ''', obj.audio_voice.url)
+        ''', audio_voice.url)
         return "No contents"
+    voice_player.short_description = "Voice Player"
 
 class SceneFilterMixin:
     # anything that has a scene foreign key can use this mixin to filter by the user's current scene
 
     def save_model(self, request, obj, form, change):
-        if obj.scene is None and request.user.story_profile.scene:
-            obj.scene = request.user.story_user.scene
+        if hasattr(self, 'scene') and obj.scene is None and request.user.story_profile.scene:
+            obj.scene = request.user.story_profile.scene
         save_obj = super().save_model(request, obj, form, change)
         return save_obj
 
@@ -244,3 +265,145 @@ class PromptPreviewMixin:
 
         return JsonResponse({"content": text})
 
+class AdminActionsMixin:
+    @admin.action(description="Add to comic video")
+    def comic_to_video(self, request, queryset):
+        Render = apps.get_model('scene', 'Render')
+        RenderItem = apps.get_model('scene', 'RenderItem')
+        for obj in queryset:
+            render = Render.get_from_scene(obj.scene)
+            RenderItem.objects.create(
+                image= obj.image_comic if obj.image_comic else obj.image,
+                render=render,
+                order=obj.order,
+            )
+
+    @admin.action(description="Add to scene video")
+    def video_to_scene_video(self, request, queryset):
+        Render = apps.get_model('scene', 'Render')
+        RenderItem = apps.get_model('scene', 'RenderItem')
+        for obj in queryset:
+            render = Render.get_from_scene(obj.scene)
+            RenderItem.objects.create(
+                video= obj.video,
+                render=render,
+                order=obj.order,
+            )
+
+    @admin.action(description="Clone selected items")
+    def clone(self, request, queryset):
+        for obj in queryset:
+            props = None
+            cast = None
+            if hasattr(obj, 'props'):
+                props = list(obj.props.all())
+            if hasattr(obj, 'cast'):
+                cast = list(obj.cast.all())
+            obj.pk = None
+            if hasattr(obj, 'name') and obj.name:
+                obj.name = f"{obj.name} (Clone)"
+            if hasattr(obj, 'order'):
+                obj.order = obj.order + 1
+            obj.save()
+            if props is not None:
+                obj.props.set(props)
+            if cast is not None:
+                obj.cast.set(cast)
+        self.message_user(request, "Selected items have been cloned.")
+
+    @admin.action(description="Generate image")
+    def default_generate_image(self, request, queryset):
+        for obj in queryset:
+            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_IMAGE, owner=request.user) is None:
+                obj.generate_image(user=request.user)
+            self.message_user(request, "Image generated for item ID {}.".format(obj.id))
+
+    @admin.action(description="Refine image")
+    def default_refine_image(self, request, queryset):
+        for obj in queryset:
+            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_REFINE_IMAGE, owner=request.user) is None:
+                obj.refine_image(user=request.user) 
+            self.message_user(request, "Image generated for item ID {}.".format(obj.id))
+
+    @admin.action(description="Refined as image")
+    def accept_refined_image(self, request, queryset):
+        for obj in queryset:
+            obj.image=obj.image_refine
+            obj.save()
+            self.message_user(request, "image accepted for item ID {}.".format(obj.id))
+
+    @admin.action(description="Refined as first frame")
+    def accept_refined_first(self, request, queryset):
+        for obj in queryset:
+            obj.image_first=obj.image_refine
+            obj.save()
+            self.message_user(request, "image accepted for item ID {}.".format(obj.id))
+
+    @admin.action(description="Refined as last frame")
+    def accept_refined_last(self, request, queryset):
+        for obj in queryset:
+            obj.image_last=obj.image_refine
+            obj.save()
+            self.message_user(request, "image accepted for item ID {}.".format(obj.id))
+
+    @admin.action(description="Video from image" )
+    def generate_video(self, request, queryset):
+        for obj in queryset:
+            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VIDEO, owner=request.user) is None:
+                obj.generate_video(obj.PRESET_VIDEO, user=request.user)
+            self.message_user(request, "video generated for item ID {}.".format(obj.id))
+
+    @admin.action(description="Comic from image" )
+    def generate_comic(self, request, queryset):
+        for obj in queryset:
+            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_COMIC, owner=request.user) is None:
+                obj.generate_comic(user=request.user)
+            self.message_user(request, "comic generated for item ID {}.".format(obj.id))
+
+    @admin.action(description="Video from first to last")
+    def generate_video_first_last(self, request, queryset):
+        for obj in queryset:
+            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VIDEO_FIRST_LAST, owner=request.user) is None:
+                obj.generate_video(obj.PRESET_VIDEO_FIRST_LAST, user=request.user)
+            self.message_user(request, "video generated for item ID {}.".format(obj.id))
+
+    @admin.action(description="Generate Voice")
+    def generate_voice(self, request, queryset):
+        for obj in queryset:
+            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user) is None:
+                obj.generate_voice(obj.PRESET_VOICE, user=request.user)
+            self.message_user(request, "voice generated for item ID {}.".format(obj.id))
+
+    @admin.action(description="Generate Missing Elements Images")
+    def generate_scene_elements(self, request, queryset):
+        for obj in queryset:
+            if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_SCENE_ELEMENTS, owner=request.user) is None:
+                pass
+            self.message_user(request, "Generation task for elements started for scene: {}.".format(obj.name))
+
+    @admin.action(description="Generate All Actions Images")
+    def generate_scene_actions(self, request, queryset):
+        for obj in queryset:
+            if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_SCENE_ACTIONS, owner=request.user) is None:
+                pass
+            self.message_user(request, "Generation task for actions started for scene: {}.".format(obj.name))
+
+    @admin.action(description="Add me as author")
+    def add_me_as_author(self, request, queryset):
+        for obj in queryset:
+            if obj.add_author(request.user):
+                self.message_user(request, f"You have been added as an author to story {obj.name}")
+
+    @admin.action(description="Extract Scene")
+    def extract_scene(self, request, queryset):
+        for obj in queryset:
+            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_EXTRACT_SCENE, owner=request.user) is None:
+                obj.generate_scene(user=request.user)
+            self.message_user(request, f"Extracting scene from contribution {obj.id} in story {obj.story.id}.")
+
+    @admin.action(description="Refresh Scene Video" )
+    def refresh_scene_video(self, request, queryset):
+        for obj in queryset:
+            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_SCENE_VIDEO, owner=request.user) is None:
+                obj.generate_video(obj.PRESET_VIDEO, user=request.user)
+            self.message_user(request, "video generated for item ID {}.".format(obj.id))

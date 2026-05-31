@@ -142,6 +142,14 @@ class Task(models.Model):
         if self.task_type in self.QUEUE_DICT:
             return Task.QUEUE_DICT[self.task_type]
         return queue
+    
+    def last_logs(self):
+        out = '--'
+        logs = self.tasklog_set.all()
+        if logs.count() > 0:
+            out = logs.last().text
+        return out
+
 
     @staticmethod
     def createTaskIfQueueEnabled(subject,

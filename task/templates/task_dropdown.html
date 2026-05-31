@@ -1,21 +1,26 @@
+{% load i18n %}
 
-{%if tasks%}
-<el-dropdown id="task-{{instance.id}}" class="inline-block" data-status="{{tasks.0.status}}" data-instance-id="{{instance.id}}">
-  <button class="cursor-pointer inline-flex w-full justify-center gap-x-1.5 rounded-md bg-{{tasks.0.color}}-300 text-white px-3 py-2 text-sm font-semibold  inset-ring-1 inset-ring-{{tasks.0.color}}">
-    {{tasks.0.status_label}}
-  </button>
+{% if tasks %}
+    <el-dropdown id="task-{{ instance.id }}" class="inline-block" data-status="{{ tasks.0.status }}" data-instance-id="{{ instance.id }}">
+        <button class="cursor-pointer inline-flex items-center gap-1.5 rounded-md bg-{{ tasks.0.color|default:'primary' }}-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-all">
+            <span class="material-symbols-outlined text-[16px]">task_alt</span>
+            {{ tasks.0.status_label }}
+        </button>
 
-  <el-menu anchor="bottom end" popover class="w-56 origin-top-right rounded-md bg-gray-800 outline-1 -outline-offset-1 outline-white/10 transition transition-discrete [--anchor-gap:--spacing(2)] data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in">
-    <div class="py-1">
-       {%for task in tasks %}
-          <a  href="/admin/task/task/?id__exact={{ task.id }}" class="block px-4 py-2 text-sm text-gray-300 focus:bg-{{ task.color }}-300 focus:text-white focus:outline-hidden">{{ task.type_label }} ({{task.status_label}}) </a>
-       {% endfor %}
+        <el-menu anchor="bottom start" popover class="w-64 origin-top-left rounded-lg bg-white dark:bg-base-900 shadow-xl border border-base-200 dark:border-base-800 p-1.5 transition transition-discrete data-closed:scale-95 data-closed:opacity-0">
+            <div class="flex flex-col gap-0.5">
+                {% for task in tasks %}
+                    <a href="/admin/task/task/?id__exact={{ task.id }}" class="flex flex-col px-3 py-2 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 border-l-2 border-{{ task.color|default:'primary' }}-500">
+                        <span class="font-bold text-font-important-light dark:text-font-important-dark mb-0.5">{{ task.type_label }}</span>
+                        <span class="opacity-70 italic truncate">({{ task.last_logs|default:"" }})</span>
+                    </a>
+                {% endfor %}
+            </div>
+        </el-menu>
+    </el-dropdown>
+{% else %}
+    <div id="task-{{ instance.id }}" class="inline-block inline-flex items-center gap-1 rounded-md border border-base-200 dark:border-base-800 px-1.5 py-0.5 text-[9px] font-bold text-font-tertiary-light dark:text-font-tertiary-dark opacity-50 cursor-default bg-transparent" data-status="-1" data-instance-id="{{ instance.id }}">
+        <span class="material-symbols-outlined text-[14px]">history</span>
+        {% trans "No tasks" %}
     </div>
-  </el-menu>
-</el-dropdown>
-{%else%}
-<el-dropdown id="task-{{instance.id}}" class="inline-block" data-status="-1" data-instance-id="{{instance.id}}">
-  <button class="cursor-pointer inline-flex w-full justify-center gap-x-1.5 rounded-md bg-primary-400 text-white px-3 py-2 text-sm font-semibold  inset-ring-1 inset-ring-primary-400">
-    No tasks
-  </button>
-  {% endif %}
+{% endif %}

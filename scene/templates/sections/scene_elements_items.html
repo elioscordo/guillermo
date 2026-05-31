@@ -1,0 +1,52 @@
+{% load i18n %}
+
+<div class="flex flex-row overflow-x-auto pb-2 gap-4 no-scrollbar scroll-smooth">
+    {% for slide in slides %}
+        <div class="flex-none w-64 bg-base-50 dark:bg-white/[.02] border border-base-200 dark:border-base-800 rounded-lg overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+            <div class="relative aspect-video w-full bg-base-200 dark:bg-base-700 flex items-center justify-center overflow-hidden">
+                {% if slide.url %}
+                    <img src="{{ slide.url }}" alt="{{ slide.name }}" class="object-cover w-full h-full transition-transform duration-300 hover:scale-105">
+                {% else %}
+                    <div class="flex flex-col items-center justify-center text-font-tertiary-light dark:text-font-tertiary-dark">
+                        <span class="material-symbols-outlined text-4xl opacity-30">image</span>
+                        <span class="text-[10px] mt-1 font-medium tracking-wider uppercase">{% trans "No image" %}</span>
+                    </div>
+                {% endif %}
+                <div class="absolute top-2 left-2">
+                    <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-primary-600/90 text-white backdrop-blur-sm shadow-sm">
+                        {{ slide.type }}
+                    </span>
+                </div>
+            </div>
+            
+            <div class="p-3 flex flex-col grow">
+                <h3 class="font-semibold text-sm text-font-important-light dark:text-font-important-dark truncate mb-1" title="{{ slide.name }}">
+                    {{ slide.name }}
+                </h3>
+                
+                <div class="text-[11px] leading-relaxed text-font-secondary-light dark:text-font-secondary-dark line-clamp-3 h-[48px] mb-3 italic" title="{{ slide.prompt }}">
+                    {{ slide.prompt|default:"" }}
+                </div>
+                
+                <div class="mt-auto pt-2 border-t border-base-200 dark:border-base-800 flex justify-end">
+                    <a href="{{ slide.edit_url }}" class="text-[11px] font-semibold text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 flex items-center">
+                        <span class="material-symbols-outlined text-[14px] mr-1">edit</span>
+                        {% trans "Edit" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="w-full py-12 flex flex-col items-center justify-center text-font-secondary-light dark:text-font-secondary-dark italic bg-base-50/50 dark:bg-white/[.01] rounded-lg border-2 border-dashed border-base-200 dark:border-base-800">
+            <span class="material-symbols-outlined text-3xl mb-2 opacity-20">category</span>
+            <p class="text-sm">{% trans "No elements have been associated with this scene's actions yet." %}</p>
+        </div>
+    {% endfor %}
+</div>
+
+<style>
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+</style>

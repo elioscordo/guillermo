@@ -46,8 +46,13 @@ const pollStatus = () => {
                 .then(response => response.json())
                 .then(data => {
                     // 1. Update the HTML of the dropdown container
-                    el.innerHTML = data.html;
-                    el.setAttribute('data-status', String(data.status));
+                    el.outerHTML = data.html;
+                    console.log(`Updated dropdown HTML for object ID ${objectId}. New data: ${data}`);
+                    // Re-fetch the element as the reference 'el' is now detached from the DOM
+                    const updatedEl = document.getElementById(`task-${objectId}`);
+                    if (updatedEl) {
+                        updatedEl.setAttribute('data-status', String(data.status));
+                    }
 
                     // Remove from monitoring if terminal status reached (specifically 4 as requested)
                     // We also check for any status that isn't pending (0 or 1) to avoid infinite polling on errors
@@ -62,6 +67,16 @@ const pollStatus = () => {
                             const input = row.querySelector(`[name$="-${key}"]`);
                             if (input && input.value !== String(data.object[key])) {
                                 input.value = data.object[key];
+                            }
+                        });
+                    }
+
+                    if (data.refresh) {
+                        Object.keys(data.refresh).forEach(key => {
+                            const fieldEl = row.querySelector(`.field-${key}`);
+                            console.log(`Refreshing field '${key}' with new content.`);
+                            if (fieldEl) {
+                                fieldEl.innerHTML = data.refresh[key];
                             }
                         });
                     }

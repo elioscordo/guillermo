@@ -1,0 +1,36 @@
+{% load i18n %}
+
+{% if count > 0 %}
+    <el-dropdown class="inline-block">
+        <button class="cursor-pointer inline-flex items-center gap-1.5 rounded-md bg-primary-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 transition-colors">
+            <span class="material-symbols-outlined text-[16px]">category</span>
+            {{ count }} {% trans "elements" %}
+        </button>
+
+        <el-menu anchor="bottom start" popover class="w-44 origin-top-left rounded-lg bg-white dark:bg-base-900 shadow-xl border border-base-200 dark:border-base-800 p-1.5 transition transition-discrete data-closed:scale-95 data-closed:opacity-0">
+            <div class="flex flex-col gap-0.5">
+              <a href="/admin/scene/action/?id__in={{ action_ids }}" target="_blank" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
+                    <span>{% trans "Actions" %}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions.count }}</span>
+                </a>
+              <a href="/admin/scene/prop/?id__in={{ prop_ids }}" target="_blank" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
+                    <span>{% trans "Props" %}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ props.count }}</span>
+                </a>
+                <a href="/admin/scene/character/?id__in={{ char_ids }}" target="_blank" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
+                    <span>{% trans "Characters" %}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ characters.count }}</span>
+                </a>
+                <a href="/admin/scene/background/?id__in={{ loc_ids }}" target="_blank" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
+                    <span>{% trans "Locations" %}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ locations.count }}</span>
+                </a>
+            </div>
+        </el-menu>
+    </el-dropdown>
+{% else %}
+    <div class="inline-flex items-center gap-1 rounded-md border border-base-200 dark:border-base-800 px-1.5 py-0.5 text-[9px] font-bold text-font-tertiary-light dark:text-font-tertiary-dark opacity-50 cursor-default bg-transparent">
+        <span class="material-symbols-outlined text-[14px]">category</span>
+        {% trans "No items" %}
+    </div>
+{% endif %}

@@ -49,6 +49,7 @@ class TaskGenerateVoice:
 class TaskGenerateVideoFirstLast:
     def __init__(self, task):
         self.task = task
+        
     def process(self):
         item = self.task.subject
         item.generate_video(GetContentsMixin.PRESET_VIDEO_FIRST_LAST, user=self.task.owner)
@@ -61,15 +62,27 @@ class TaskGenerateComic:
         item.image_comic = item.generate_comic(user=self.task.owner)
         item.save()
 
+class TaskExtractScene:
+    def __init__(self, task):
+        self.task = task
+    def process(self):
+        item = self.task.subject
+        log = item.generate_scene(user=self.task.owner)
+        self.log()
 class TaskGenerateText:
     def __init__(self, task):
         self.task = task
     def process(self):
         item = self.task.subject
         agent = self.task.thr
-        item.generate_text(user=self.task.owner, agent=agent)
-        item.save()
-
+        if hasattr(item, 'generate_text'):
+            item.generate_text(agent=agent, user=self.task.owner)
+        elif self.task.payload and 'target_field' in self.task.payload:
+            out = agent.generate(self, preset=GetContentsMixin.PRESET_TEXT, user=self.task.owner, target_field=self.task.payload['target_field'])
+            setattr(self, self.task.payload['target_field'], out)
+            self.save()
+        else:
+            raise ValueError("TaskGenerateText requires 'target_field' in task payload or custom generate text method on the model.")
 
 class VideoRender:
     def __init__(self, task):

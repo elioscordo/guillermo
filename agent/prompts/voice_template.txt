@@ -1,0 +1,10 @@
+# AUDIO PROFILE: <name>
+### DIRECTOR'S NOTES
+Style:
+<notes here>
+Pace: 
+<pace here>
+Accent: 
+<accent here>
+
+#### TRANSCRIPT

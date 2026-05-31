@@ -15,13 +15,6 @@ class TaskAdmin(ModelAdmin):
         'reprocess'
     ]
 
-    def last_logs(self, obj):
-        out = '--'
-        logs = obj.tasklog_set.all()
-        if logs.count() > 0:
-            out = logs.last().text
-        return out
-
     def reprocess(self, request, queryset):
         for item in queryset:
             msg = f"The task {item.id} has been queued for reprocessing"
