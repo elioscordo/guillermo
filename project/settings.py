@@ -56,6 +56,9 @@ INSTALLED_APPS = [
     'scene.apps.SceneConfig',
     'agent.apps.AgentConfig',
     'task',
+    'import_export',
+    'unfold.contrib.import_export'
+    
 ]
 
 MIDDLEWARE = [

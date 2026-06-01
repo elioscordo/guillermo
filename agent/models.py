@@ -25,6 +25,7 @@ from PIL import Image
 
 
 class GetContentsMixin:
+    PRESET_GENERIC = "generic"
     PRESET_REFINE = "refine"
     PRESET_VIDEO = "video_image"
     PRESET_VIDEO_FIRST_LAST = "video_first_last"
@@ -121,6 +122,13 @@ class GetContentsMixin:
 
 class AgentModel(models.Model):
     name = models.CharField(max_length=100, default="name")
+    def __str__(self):
+        return "{}".format(self.name)
+
+class GoogleVoice(models.Model):
+    name = models.CharField(max_length=100, default="name")
+    description = models.CharField(max_length=100)
+
     def __str__(self):
         return "{}".format(self.name)
 

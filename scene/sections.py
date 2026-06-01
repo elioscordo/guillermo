@@ -162,6 +162,7 @@ class SceneElementsSection(TemplateSection):
                 {"label": "Locations", "count": elements['locations'].count(), "url": f"/admin/scene/background/?story__id__exact={instance.story_id}"},
                 {"label": "Characters", "count": elements['characters'].count(), "url": f"/admin/scene/character/?story__id__exact={instance.story_id}"},
                 {"label": "Props", "count": elements['props'].count(), "url": f"/admin/scene/prop/?story__id__exact={instance.story_id}"},
+                {"label": "Voices", "count": elements['voices'].count(), "url": f"/admin/scene/voice/?story__id__exact={instance.story_id}"},
                 {"label": "Actions", "count": instance.actions.count(), "url": f"/admin/scene/action/?scene__id__exact={instance.id}"},
             ]
         }

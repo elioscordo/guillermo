@@ -1,24 +1,37 @@
-### Extraction Rules:
-1. **Scene Identification**: Generate a descriptive 'name' for the overall scene.
-2. **Action Decomposition**: Break the script into a sequential list of 'actions' (storyboard panels).
-3. **Action Details**: For each action, provide:
-   - 'order': The sequential index (starting from 0).
-   - 'name': A short, descriptive title for the action.
-   - 'prompt': A detailed visual description optimized for high-quality image generation (Nanobanana).
-   - 'prompt_comic': Art direction of the bubble, where the speech buble is coming from and what type
-   - 'prompt_video': A motion-focused description (e.g., camera movement like 'panning', 'dolly-in', or specific character movements).
-   - 'prompt_voice': Direction on how to enunciate the text
-   - 'text': The content of the speech bubble or the spoken voice
-   
-4. **Entity Extraction (Props, Backgrounds, Characters)**:
-   - **Background**: For every action, identify the specific environment (Location). Provide a 'name' and a 'prompt' describing the setting's visual appearance (otimise the prompt for nanobanana)
-   - **Props**: List all physical objects ('elements') involved in the action. For each, provide a 'name' and a visual 'prompt'.  (optimise the prompt for nanobanana)
-   - **Characters**: List all characters appearing in the action. In the action object, use the 'cast' field to list their names. For each character, provide a 'name' and a 'prompt' describing their physical appearance, clothing, and current expression. (optimise the prompt for nanobanana)
+Do not explain why you fixed the scene or the plot.
+Do not use preambols.
+Only output the new version of the prompt that you have been asked to refine.
 
-### Consistency Requirements:
-- **Strict Naming**: Use the EXACT same 'name' for the same Background, Character, or Prop if it appears across multiple actions. 
-- **Reuse Context**: If a list of existing entities is provided in the context, you MUST reuse their exact 'name' and do not mention the imag eprompt.  Do not create duplicates.
-- **Visual Persistence**: Ensure the 'prompt' for a specific named element (e.g., a specific character's appearance) is consistent every time that element is referenced.
+The prompt is a markdown text. Do not overcomplicate and use only this format
 
-### Output:
-Return only valid JSON that strictly adheres to the requested schema
+image prompt is a prompt used to generate an image with nano banana
+
+The elements (Location,Cast and props) need to have an image_prompt only if it is they are not in the provided list of existing elements.
+The action need to have an image_prompt  that specify how to render the elements
+ 
+# Voices 
+  *  Name <use the same name of the character if the voice is linked to  character>
+  *  Google Voice < make a best choice of the name from the provided list of google voices  >  
+  *  Prompt  
+    #Style: <style description optimised  gemini tts model > <example Deeply academic, cinematic, and filled with quiet awe and gravity. >
+    #Pace:  <pace description optimised  gemini tts model > <example Highly measured, deliberate, and slow with pronounced, dramatic pauses. 
+    #Accent: <pace description optimised  Elite British Received Pronunciation (RP) with clear, crisp diction.>'
+
+# Locations 
+  *  Name (image_prompt)
+  *  Name (image_prompt)
+# Cast
+  * Character name (<image_prompt>)
+  * Character name (image_prompt>)
+# Props
+* Prop Name (image_prompt)
+# Actions
+* Name (image_prompt)
+** Text: <optional if the character say something>
+** Voice: <optional  voice direction, how to speak>
+** Comic:<optional, how to place the speech bubble>
+** Video:<optional, how the image needs to be animated>
+
+All the optional fields will be requested on demand. If in the action the character say something add the text and the voice optional fields
+
+Try to be minimal with formatting

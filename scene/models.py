@@ -2,8 +2,10 @@ from django.db import models
 from django.conf import settings
 from agent.models import Agent, Prompt
 from filer.fields.image import FilerImageField, FilerFileField
-from agent.models import GetContentsMixin
-from scene.mixins import EmailSenderMixin, UserCreatorMixin, ModelDisplayMixin
+from agent.models import GetContentsMixin, GoogleVoice
+from scene.mixins import (
+    EmailSenderMixin, UserCreatorMixin, ModelDisplayMixin, RenderTypeMixin
+)
 from task.mixins import  AfterSaveActionMixin
 from task.models import TaskHolder, Task
 
@@ -65,7 +67,7 @@ class Author(models.Model, UserCreatorMixin):
     def scene_count(self):
         return self.scenes.count()
 
-class Story(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
+class Story(AfterSaveActionMixin, RenderTypeMixin, models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
     name = models.CharField(max_length=200)
     order = models.PositiveIntegerField(default=0, db_index=True)
     style = models.ForeignKey(Style, related_name='stories', null=True, blank=True, on_delete=models.CASCADE)
@@ -78,7 +80,7 @@ class Story(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, Mo
     mentor = models.ForeignKey("agent.Agent", related_name='mentors_stories', on_delete=models.CASCADE, null=True, blank=True)
 
     RENDER_TYPE_FILM = 'film'
-    RENDER_TYPE_GRAPHIC_NOVEL = 'graphic_novel'
+    RENDER_TYPE_GRAPHIC_NOVEL = 'comic'
     RENDER_TYPE_ANIMATIC = 'animatic'
 
     RENDER_TYPE_CHOICES = [
@@ -146,13 +148,6 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
     def __str__(self):
         return "{}".format(self.name if self.name else f"Scene{self.id} of {self.story}")
     
-    def get_contents(self, generate_self=True):
-        contents = []
-        if self.story and self.story.style:
-            contents.extend(self.story.style.get_contents(generate_self=False))
-            contents.extend(Prompt.prompt_for_model(self))
-        return contents
-
     def get_contents(self, generate_self=True, preset=None):
         parts = []
         if not generate_self:
@@ -179,17 +174,28 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
                     elements_parts.append("Existing Props:")
                     for p in props:
                         elements_parts.append(f"- Name: {p.name}\n  Prompt: {p.prompt}")
+                voices = self.story.voices.all()
+                if voices.exists():
+                    elements_parts.append("Existing Voices:")
+                    for p in voices:
+                        elements_parts.append(f"- Name: {p.name}\n  Prompt: {p.prompt}")
+                google_voices = GoogleVoice.objects.all()
+                if google_voices.exists():
+                    elements_parts.append("Reference Google Voices To chose base voice from:")
+                    for p in google_voices:
+                        elements_parts.append(f"- Name: {p.name}\n  Prompt: {p.description}")
+                
                 if elements_parts:
                     parts.append("### STORY CONTEXT ###\nReuse these existing entities if they appear:\n" + "\n".join(elements_parts))
         return parts
 
     def get_elements(self):
         """
-        Returns a dictionary containing distinct Backgrounds, Props, and Characters
+        Returns a dictionary containing distinct Backgrounds, Props, Characters, and Voices
         referenced by all actions within this scene, ordered by name.
         """
         actions = self.actions.all()
-        
+
         locations = Background.objects.filter(actions__in=actions).distinct().order_by('name')
         props = Prop.objects.filter(actions__in=actions).distinct().order_by('name')
         
@@ -197,11 +203,14 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
         actors = Character.objects.filter(actions__in=actions)
         cast = Character.objects.filter(actions_cast__in=actions)
         characters = (actors | cast).distinct().order_by('name')
-        
+
+        voices = Voice.objects.filter(actions_voice__in=actions).distinct().order_by('name')
+
         return {
             'locations': locations,
             'characters': characters,
             'props': props,
+            'voices': voices,
         }
 
     def items(self):
@@ -217,6 +226,7 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
             "prop_ids": ",".join([str(p.id) for p in context['props']]),
             "char_ids": ",".join([str(c.id) for c in context['characters']]),
             "loc_ids": ",".join([str(l.id) for l in context['locations']]),
+            "voice_ids": ",".join([str(v.id) for v in context['voices']]),
             "action_ids": ",".join([str(a.id) for a in context['actions']]),
             "instance": self,
         })
@@ -299,12 +309,15 @@ class Voice(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
     SAMPLE_TEXT_DEFAULT = "Hello, this is a sample voice. 1, 2, 3. Change me and add a sample prompt for better results. Add audio effects for more interesting voices!"
     PROMPT_SAMPLE_DEFAULT = "Speak:"
     PROMPT_DEFAULT = "Style: [describe the style of speaking you want, e.g. excited, sad, professional, etc.]\nPace: [describe the pace of speaking you want, e.g. fast, slow, etc.]\nAccent: [describe the accent you want, e.g. British, American, etc.]\n\n"
+    
     name = models.CharField(max_length=100)
-    code = models.CharField(max_length=100)
+    google_voice = models.ForeignKey('agent.GoogleVoice', related_name='voices', on_delete=models.SET_NULL, null=True, blank=True)
     prompt = models.TextField(null=True, blank=True , default=PROMPT_DEFAULT)
     audio_voice = FilerFileField(null=True, blank=True, on_delete=models.SET_NULL, related_name='samples')
     sample_text = models.TextField(null=True, blank=True , default=SAMPLE_TEXT_DEFAULT)
-    
+    story = models.ForeignKey('scene.Story', related_name='voices', on_delete=models.CASCADE, null=True, blank=True)
+    global_default = models.BooleanField(default=False)
+
     TASK_TYPE_CHOICES = [
         (settings.TASK_TYPE_GENERATE_VOICE, "Generate Voice")
     ]
@@ -328,7 +341,7 @@ class Voice(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
                 prompt += self.get_sample_text()
         return {
             'prompt': prompt,
-            'voice': self.code
+            'voice': self.google_voice.name
         }
     
 class Character(models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
@@ -453,7 +466,7 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
 
     prompt_comic = models.TextField(null=True, blank=True)
     image_comic = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='actions_comic')
-
+    voice = models.ForeignKey(Voice, related_name='actions_voice', on_delete=models.SET_NULL, null=True, blank=True)
     audio_voice = FilerFileField(null=True, blank=True, on_delete=models.SET_NULL, related_name='actions_audio')
     prompt_voice = models.TextField(null=True, blank=True)
     text = models.TextField(null=True, blank=True)
@@ -566,9 +579,9 @@ class VoiceAction(Action):
     class Meta:
         proxy = True
 
-class Render(models.Model, TaskHolder, ModelDisplayMixin):
+class Render(RenderTypeMixin, models.Model, TaskHolder, ModelDisplayMixin):
     RENDER_TYPE_FILM = 'film'
-    RENDER_TYPE_GRAPHIC_NOVEL = 'graphic_novel'
+    RENDER_TYPE_GRAPHIC_NOVEL = 'comic'
     RENDER_TYPE_ANIMATIC = 'animatic'
 
     RENDER_TYPE_CHOICES = [

@@ -68,7 +68,8 @@ class TaskExtractScene:
     def process(self):
         item = self.task.subject
         log = item.generate_scene(user=self.task.owner)
-        self.log()
+        self.task.log(log)
+
 class TaskGenerateText:
     def __init__(self, task):
         self.task = task

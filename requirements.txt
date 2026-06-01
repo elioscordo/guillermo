@@ -1,10 +1,8 @@
 Django
-django-jazzmin
 django-filer
 instructor[vertexai, google-genai]==1.13.0
 google-genai[aiohttp]
 python-dotenv==1.1.0
-django-jazzmin
 celery
 nautilus_trader[ib,docker]
 django-jazzmin-admin-rangefilter
@@ -18,3 +16,4 @@ psycopg2-binary
 djantic2
 djangorestframework
 redis
+django-import-export

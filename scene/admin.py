@@ -109,7 +109,7 @@ class StoryAdmin(AdminActionsMixin, AdminLinker, ModelAdmin):
         SceneSection,
         AuthorSection,
     ]
-    list_display = ['__str__', 'image_intro','link_scenes', 'link_characters', 'link_backgrounds', 'link_props']
+    list_display = ['__str__', 'image_intro','link_scenes', 'link_characters', 'link_backgrounds', 'link_props', 'render_type']
     actions = ['clone', 'add_me_as_author']
     fieldsets = (
         ("Write",{
@@ -314,18 +314,23 @@ class ComicActionAdmin(AdminActionsMixin, SceneFilterMixin, AjaxTaskModelAdmin):
 
 
 @admin.register(Voice)
-class VoiceAdmin(AdminActionsMixin, ModelAdmin):
-    list_display = ('name','prompt', 'code', 'sample_text', 'voice_player', 'last_tasks')
+class VoiceAdmin(AdminActionsMixin,AdminLinker, AjaxTaskModelAdmin):
+    list_display = ('name','prompt', 'google_voice', 'sample_text', 'voice_player', 'last_tasks')
     list_display_links = ('name',)
     actions = ['generate_voice']
+    list_filter = (
+        'story',
+        'global_default'
+    )
+
 
 @admin.register(VoiceAction)
 class VoiceActionAdmin(AdminActionsMixin, SceneFilterMixin, AjaxTaskModelAdmin):
-    list_display = ('name', 'pic', 'prompt_voice','prompt_comic',  'voice_player', 'last_tasks')
-    list_editable = ['prompt_voice', 'prompt_comic']
+    list_display = ('name', 'pic', 'prompt_voice','text',  'voice', 'last_tasks')
+    list_editable = ['prompt_voice', 'voice', 'text']
     list_filter = ["scene"]
     list_filter = (
-        'scene',
+        'scene', 
     )
     list_display_links = ('name',)
     search_fields = ['name']

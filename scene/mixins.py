@@ -407,3 +407,22 @@ class AdminActionsMixin:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_SCENE_VIDEO, owner=request.user) is None:
                 obj.generate_video(obj.PRESET_VIDEO, user=request.user)
             self.message_user(request, "video generated for item ID {}.".format(obj.id))
+
+class RenderTypeMixin:
+    RENDER_TYPE_FILM = 'film'
+    RENDER_TYPE_GRAPHIC_NOVEL = 'comic'
+    RENDER_TYPE_ANIMATIC = 'animatic'
+
+    RENDER_TYPE_CHOICES = [
+        (RENDER_TYPE_FILM, 'Film'),
+        (RENDER_TYPE_GRAPHIC_NOVEL, 'Graphic Novel'),
+        (RENDER_TYPE_ANIMATIC, 'Animatic'),
+    ]
+    def __getattr__(self, name):
+        if name == "is_comic":
+            return getattr(self, "render_type", None) == getattr(self, "RENDER_TYPE_GRAPHIC_NOVEL", "comic")
+        if name == "is_film":
+            return getattr(self, "render_type", None) == getattr(self, "RENDER_TYPE_FILM", "film")
+        if name == "is_animatic":
+            return getattr(self, "render_type", None) == getattr(self, "RENDER_TYPE_ANIMATIC", "animatic")
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")

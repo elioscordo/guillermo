@@ -1,0 +1,122 @@
+[
+  {
+    "name": "Charon",
+    "description": "**Gender:** Male\n**Register:** Baritone / Mid-Low\n\nAn even-keeled, measured, and highly objective baseline. It delivers text with an informative, steady cadence that remains entirely free of accidental dramatic swings, making it perfect for technical documentation and news reading."
+  },
+  {
+    "name": "Rasalgethi",
+    "description": "**Gender:** Male\n**Register:** Deep Baritone / Low\n\nDeeply grounded, articulate, and authoritative without sounding harsh. It carries a natural weight and presence that excels at corporate narration, educational lectures, and serious documentary work."
+  },
+  {
+    "name": "Iapetus",
+    "description": "**Gender:** Male\n**Register:** Tenor / Mid-High\n\nExceptionally crisp and clear with sharp, immaculate diction. It features a highly balanced tonal profile that ensures perfect legibility, even when played through low-volume mobile speakers or in noisy environments."
+  },
+  {
+    "name": "Erinome",
+    "description": "**Gender:** Female\n**Register:** Soprano / High\n\nSmooth, bright, and highly transparent. It provides an accessible, clear listening experience that reduces cognitive load, making it a stellar choice for e-learning platforms, software tutorials, and digital onboarding."
+  },
+  {
+    "name": "Schedar",
+    "description": "**Gender:** Male\n**Register:** Tenor / Mid\n\nNoticeably stable in both pitch and rhythm. It maintains an even, predictable baseline that handles technical or highly structured data beautifully, holding its composure until explicitly altered by dynamic audio tags."
+  },
+  {
+    "name": "Alnilam",
+    "description": "**Gender:** Male\n**Register:** Baritone / Mid\n\nA firm, solid, and resolute voice. It delivers dense prose with a steady, unwavering posture, making it ideal for legal readings, financial reports, or direct data summaries."
+  },
+  {
+    "name": "Algieba",
+    "description": "**Gender:** Male\n**Register:** Tenor / Mid-Low\n\nSilky and continuous, with exceptionally fluid transitions between syllables. This smooth, flowing cadence reduces vocal gaps, making it highly effective for fiction audiobooks and immersive narrative arcs."
+  },
+  {
+    "name": "Despina",
+    "description": "**Gender:** Female\n**Register:** Mezzo-Soprano / Mid\n\nSoft-edged, velvety, and gentle. It has an inherently low-impact acoustic footprint that minimizes listener fatigue, making it highly suited for continuous, multi-hour listening sessions."
+  },
+  {
+    "name": "Sulafat",
+    "description": "**Gender:** Female\n**Register:** Mezzo-Soprano / Mid-Low\n\nRich, inviting, and deeply empathetic. It carries a natural acoustic warmth that feels reassuring, making it an excellent fit for collaborative workspaces, customer support, and health applications."
+  },
+  {
+    "name": "Achernar",
+    "description": "**Gender:** Female\n**Register:** Soprano / Mid-High\n\nQuiet and intimate with a soft, lower-impact volume profile. It delivers text with a gentle, personal intonation that works beautifully for meditation, relaxation apps, or private audio journals."
+  },
+  {
+    "name": "Vindemiatrix",
+    "description": "**Gender:** Female\n**Register:** Mezzo-Soprano / High-Mid\n\nSoft-spoken, calm, and deliberate. It tracks text with a gentle, unhurried cadence that is highly effective for localized home notifications or calming virtual assistant personas."
+  },
+  {
+    "name": "Zephyr",
+    "description": "**Gender:** Female\n**Register:** Soprano / High\n\nRadiant, clean, and forward-projecting. This bright profile sounds naturally alert, highly engaging, and enthusiastic, making it great for promotional content or morning briefings."
+  },
+  {
+    "name": "Autonoe",
+    "description": "**Gender:** Female\n**Register:** Soprano / High\n\nCrisp, sharp, and highly energetic. It retains its pristine clarity and bright resonance even when text pacing is heavily accelerated, making it perfect for rapid-fire audio updates."
+  },
+  {
+    "name": "Puck",
+    "description": "**Gender:** Male\n**Register:** Tenor / Mid-High\n\nHighly dynamic, animated, and playful. It features expressive, natural shifts in inflection that lean away from traditional robotic readers, making it ideal for gaming, entertainment, and interactive experiences."
+  },
+  {
+    "name": "Laomedeia",
+    "description": "**Gender:** Female\n**Register:** Mezzo-Soprano / Mid\n\nCheerful, vibrant, and positive. It maintains a naturally upbeat, sunny disposition that injects energy into everyday apps without crossing over into cartoonish or artificial hyper-activity."
+  },
+  {
+    "name": "Fenrir",
+    "description": "**Gender:** Male\n**Register:** Tenor / Mid\n\nHighly excitable and animated at its core. It carries an inherent spark of enthusiasm, making it extraordinarily reactive and seamless when paired with high-energy emotional audio tags."
+  },
+  {
+    "name": "Sadachbia",
+    "description": "**Gender:** Male\n**Register:** Tenor / High-Mid\n\nA lively, bouncing voice that features a highly animated cadence. It naturally captures and holds a listener's attention, making it perfect for pulling users into dynamic, short-form content."
+  },
+  {
+    "name": "Kore",
+    "description": "**Gender:** Female\n**Register:** Mezzo-Soprano / Mid\n\nStrong, direct, and completely self-assured. This firm profile serves as an incredibly reliable, no-nonsense baseline that is widely used for standard virtual assistant tasks and direct system commands."
+  },
+  {
+    "name": "Orus",
+    "description": "**Gender:** Male\n**Register:** Baritone / Mid\n\nClean, unembellished, and highly grounded. It delivers straightforward text with a solid vocal foundation that easily cuts through ambient background noise."
+  },
+  {
+    "name": "Zubenelgenubi",
+    "description": "**Gender:** Male\n**Register:** Tenor / Mid-Low\n\nRelaxed, casual, and unhurried. It mimics real-world conversation by avoiding the rigid, metronomic cadence of legacy TTS engines, resulting in a highly authentic, peer-to-peer feel."
+  },
+  {
+    "name": "Gacrux",
+    "description": "**Gender:** Female\n**Register:** Contralto / Low\n\nA mature voice featuring a richer, deeper texture. The subtle vocal weight carries an implied sense of lived experience and natural wisdom, making it perfect for historical narration or professional advice."
+  },
+  {
+    "name": "Algenib",
+    "description": "**Gender:** Male\n**Register:** Bass-Baritone / Low\n\nGritty and low-register, with a unique, subtle vocal fry and rich physical texture. It stands out in the lineup as a prime candidate for dramatic character roles, audiobooks, or cinematic audio tracks."
+  },
+  {
+    "name": "Leda",
+    "description": "**Gender:** Female\n**Register:** Soprano / High-Mid\n\nLight, youthful, and modern in its acoustic resonance. It feels highly relatable and casual, making it excellent for social applications, youth-targeted tools, or informal peer-to-peer interfaces."
+  },
+  {
+    "name": "Aoede",
+    "description": "**Gender:** Female\n**Register:** Mezzo-Soprano / Mid\n\nAn exceptionally airy, breezy voice with soft, realistic breath tracking. It delivers content with a relaxed, lighthearted style that works well for casual lifestyle podcasts or daily summaries."
+  },
+  {
+    "name": "Callirrhoe",
+    "description": "**Gender:** Female\n**Register:** Mezzo-Soprano / Mid\n\nHighly approachable, smooth, and naturally friendly. It strikes an elegant balance between professional clarity and casual warmth, making it highly versatile for corporate and personal projects alike."
+  },
+  {
+    "name": "Umbriel",
+    "description": "**Gender:** Male\n**Register:** Tenor / Mid\n\nChill, steady, and low-friction. It maintains a relaxed, easy-going cadence that acts as a soothing background reader for articles, personal essays, or casual daily newsletters."
+  },
+  {
+    "name": "Achird",
+    "description": "**Gender:** Male\n**Register:** Baritone / Mid-High\n\nOpen, warm, and inherently helpful. It radiates a friendly, customer-centric tone that builds immediate rapport, making it an ideal choice for consumer-facing hotlines and concierge systems."
+  },
+  {
+    "name": "Pulcherrima",
+    "description": "**Gender:** Female\n**Register:** Soprano / High\n\nHighly present and direct. It features a forward-projecting delivery style that emphasizes crisp punctuation tracking, pulling the listener's focus forward with every sentence."
+  },
+  {
+    "name": "Sadaltager",
+    "description": "**Gender:** Male\n**Register:** Baritone / Mid\n\nStructured to imply competence, intelligence, and natural expertise. It sounds like an expert casually explaining a favorite subject, making it perfect for educational documentaries and deep-dive audio pieces."
+  },
+  {
+    "name": "Enceladus",
+    "description": "**Gender:** Male\n**Register:** Tenor / Mid\n\nNaturally breathy and textured. It carries a soft, whisper-adjacent tone baseline that makes it ideal for nuanced characters, intimate storytelling, or low-intensity descriptive audio."
+  }
+]

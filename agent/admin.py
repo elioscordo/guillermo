@@ -2,7 +2,8 @@ from django.contrib import admin
 from unfold.admin import ModelAdmin
 from django.contrib.contenttypes.models import ContentType
 
-from agent.models import AgentModel, Agent, GoogleApiKey, Prompt, TokenUsage, AgentProfile, Message
+from agent.mixins import AdminActionsMixin
+from agent.models import AgentModel, Agent, GoogleApiKey, GoogleVoice, Prompt, TokenUsage, AgentProfile, Message
 from agent.utils import get_genai_client
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -13,10 +14,14 @@ from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationFo
 from unfold.admin import ModelAdmin
 
 from django.contrib import admin
+from unfold.admin import ModelAdmin
+from import_export import resources
+from import_export.admin import ImportExportModelAdmin
+from unfold.contrib.import_export.forms import ExportForm, ImportForm, SelectableFieldsExportForm
+
 
 admin.site.unregister(User)
 admin.site.unregister(Group)
-
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin, ModelAdmin):
@@ -58,12 +63,30 @@ class PromptAdmin(ModelAdmin):
     list_editable = ('name', 'prompt', 'category')
     list_display_links = ('id',)
     autocomplete_fields = ('content_types',)
+    search_fields = ("name",)
 
 
 @admin.register(Agent)
-class AgentAdmin(ModelAdmin):
+class AgentAdmin(ModelAdmin,):
     list_display = ('name', 'output_type', 'schema')
     list_display_links = ('name',)
+
+class GoogleVoiceResource(resources.ModelResource):
+    class Meta:
+        model = GoogleVoice
+        fields = ('id', 'name', 'description')
+        export_order = ('id', 'name', 'description')
+
+@admin.register(GoogleVoice)
+class GoogleVoiceAdmin(AdminActionsMixin, ModelAdmin, ImportExportModelAdmin):
+    list_display = ('id', 'name', 'description')
+    list_display_links = ('name', 'description')
+    actions = ['clone']
+    import_form_class = ImportForm
+    export_form_class = ExportForm
+    resource_classes = [GoogleVoiceResource]
+    search_fields = ("name",)
+
 
 @admin.register(GoogleApiKey)
 class GoogleApiKeyAdmin(ModelAdmin):

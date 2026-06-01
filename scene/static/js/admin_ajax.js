@@ -46,9 +46,10 @@ const pollStatus = () => {
                 .then(response => response.json())
                 .then(data => {
                     // 1. Update the HTML of the dropdown container
+                    
                     el.outerHTML = data.html;
-                    console.log(`Updated dropdown HTML for object ID ${objectId}. New data: ${data}`);
-                    // Re-fetch the element as the reference 'el' is now detached from the DOM
+                    console.log(`received update for object ID ${objectId}`, data );
+                    // Re-fetch the element as the reference 'el' is now detached from the DOM`
                     const updatedEl = document.getElementById(`task-${objectId}`);
                     if (updatedEl) {
                         updatedEl.setAttribute('data-status', String(data.status));
@@ -153,3 +154,28 @@ document.addEventListener('change', function(e) {
             });
     }
 });
+
+// Initialize monitoring for any tasks already in progress on page load
+const initTaskMonitoring = () => {
+    document.querySelectorAll('[id^="task-"]').forEach(el => {
+        const status = el.getAttribute('data-status');
+        if (["0", "1"].includes(status)) {
+            const objectId = el.id.replace('task-', '');
+            monitoredObjectIds.add(objectId);
+            
+            const row = el.closest('tr');
+            if (row) {
+                updateRowState(row, status);
+            }
+        }
+    });
+    if (monitoredObjectIds.size > 0) {
+        startPolling();
+    }
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTaskMonitoring);
+} else {
+    initTaskMonitoring();
+}
