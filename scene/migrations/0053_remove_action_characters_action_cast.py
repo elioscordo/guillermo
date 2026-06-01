@@ -14,9 +14,4 @@ class Migration(migrations.Migration):
             model_name='action',
             name='characters',
         ),
-        migrations.AddField(
-            model_name='action',
-            name='cast',
-            field=models.ManyToManyField(blank=True, related_name='actions_cast', to='scene.character'),
-        ),
     ]
