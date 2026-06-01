@@ -66,4 +66,4 @@ clean:
 refresh:
 	sudo systemctl restart celery.service 
 	sudo systemctl restart nginx.service 
-	sudo systemctl restart guinicor
+	sudo systemctl restart guinicorn

@@ -8,6 +8,16 @@
             {{ title }}
         </h2>
     </div>
+    {% if description %}
+        <div class="px-4 py-3 bg-base-50/50 dark:bg-white/[.01]">
+            <p class="text-sm text-font-secondary-light dark:text-font-secondary-dark">
+                {{ description }}
+            </p>
+        </div>
+    {% else %}
+        <p class="py-3">
+        </p>
+    {% endif %}
 
     <div class="px-4 grow" {% if height %}style="max-height: {{ height }}px;" data-simplebar{% endif %}>
         <table class="px-4 w-full text-left lg:table">
