@@ -57,8 +57,7 @@ INSTALLED_APPS = [
     'agent.apps.AgentConfig',
     'task',
     'import_export',
-    'unfold.contrib.import_export'
-    
+    'unfold.contrib.import_export'    
 ]
 
 MIDDLEWARE = [
@@ -70,6 +69,29 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+
+
+# Brevo SMTP Server configuration
+EMAIL_HOST = os.environ.get('EMAIL_HOST', '')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+EMAIL_USE_TLS = True
+
+
+# Authentication credentials
+# The login username is always the email address linked to your Brevo account
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+# Your long Brevo SMTP key (looks like xsmtpsib-...)
+EMAIL_HOST_PASSWORD = os.environ.get('SMTP_KEY', '')
+
+# Default sender settings
+# CRITICAL: This email address MUST be verified in your Brevo Sender dashboard
+DEFAULT_FROM_EMAIL = 'Your Name <noreply@yourdomain.com>'
+SERVER_EMAIL = 'admin@yourdomain.com'
+
+
+
+
 
 ROOT_URLCONF = 'project.urls'
 

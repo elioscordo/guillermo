@@ -335,7 +335,7 @@ class Voice(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
     
     def get_contents(self, generate_self=True, preset=None):
         prompt = ""
-        if preset == self.PRESET_VOICE: 
+        if preset == self.PRESET_VOICE:
             prompt = f"out {self.get_prompt_header()} ### DIRECTOR'S NOTES\n\n {self.prompt} \n\n #### TRANSCRIPT \n\n"
             if generate_self:
                 prompt += self.get_sample_text()
