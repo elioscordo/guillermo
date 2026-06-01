@@ -1,3 +1,4 @@
+{% load i18n %}
 <!DOCTYPE html>
 <html>
 <head>
@@ -32,15 +33,15 @@
 <body>
     <div class="wrapper">
         <div class="header">
-            <h1>Story {{item.story.name}}. It is your turn!</h1>
+            <h1>{% blocktrans with name=item.story.name %}Story {{ name }}. It is your turn!{% endblocktrans %}</h1>
         </div>
         <div class="body">
-            <div class="greeting">Hello {{item.receiver.username}}.</div>
-            <p class="text">{{item.sender.username}} sent you a nudge!</p>
+            <div class="greeting">{% blocktrans with username=item.receiver.username %}Hello {{ username }}.{% endblocktrans %}</div>
+            <p class="text">{% blocktrans with username=item.sender.username %}{{ username }} sent you a nudge!{% endblocktrans %}</p>
             <p class="text">{{item.message}}</p>
             
-            <p class="text"> Name: {{ item.story.name }}</p>
-            <p class="text"> Prompt: {{ item.story.prompt|linebreaks  }}</p>
+            <p class="text"> {% trans "Name:" %} {{ item.story.name }}</p>
+            <p class="text"> {% trans "Prompt:" %} {{ item.story.prompt|linebreaks }}</p>
             
 
             {% if item.story.scenes.all %}
@@ -54,10 +55,10 @@
             </div>
             {% endif %}
 
-            <a href="{{ cta }}" class="btn">Add your scene now!</a>
+            <a href="{{ cta }}" class="btn">{% trans "Add your scene now!" %}</a>
         </div>
         <div class="footer">
-            Sent via <strong>Guillermo</strong>
+            {% trans "Sent via" %} <strong>Guillermo</strong>
         </div>
     </div>
 </body>

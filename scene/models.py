@@ -259,14 +259,17 @@ class Nudge(models.Model, EmailSenderMixin):
         if self.sender == self.receiver:
             raise ValueError("Sender and receiver cannot be the same user.")
         
+        cta_url = ""
         if not self.id:
             author = Author.objects.filter(story=self.story, user=self.receiver).first()
-            cta_url = ""
             if author:
                 cta_url = settings.SITE_URL + f'/admin/scene/scene/add?story={self.story.id}&author={author.id}&type={self.story.contribution_type()}'
         super().save(*args, **kwargs)
         self.send_email(
-            subject=f"Nudge on the story: {self.story.name}. {self.sender.username} nudged you!",
+            subject=_("Nudge on the story: %(story_name)s. %(sender_name)s nudged you!") % {
+                'story_name': self.story.name,
+                'sender_name': self.sender.username
+            },
             context={
                 'item': self,
                 'cta': cta_url
@@ -422,8 +425,8 @@ class StoryProfile(models.Model):
     story = models.ForeignKey(Story, verbose_name=_("story"), related_name='story_profiles', on_delete=models.SET_NULL, null=True, blank=True)
     scene = models.ForeignKey(Scene, verbose_name=_("scene"), related_name='story_profiles', on_delete=models.SET_NULL, null=True, blank=True)
     group = models.ForeignKey(StoryGroup, verbose_name=_("group"), related_name='story_profiles', on_delete=models.SET_NULL, null=True, blank=True)
-    enable_filters = models.BooleanField(_("enable filters"), default=True)
-
+    enable_filters = models.BooleanField(_("enable filters"), default=False)
+    
     def __str__(self):
         return "{}".format(self.user.username)
 

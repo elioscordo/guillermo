@@ -62,3 +62,8 @@ clean:
 	find . -type f -name "*.pyc" -delete
 	find . -type d -name "__pycache__" -delete
 	rm -rf staticfiles
+
+refresh:
+	sudo systemctl restart celery.service 
+	sudo systemctl restart nginx.service 
+	sudo systemctl restart guinicor
