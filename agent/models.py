@@ -9,6 +9,7 @@ from django.utils.module_loading import import_string
 from task.mixins import  AfterSaveActionMixin
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 from agent.utils import wave_file
 from PIL import Image
 from io import BytesIO
@@ -121,12 +122,12 @@ class GetContentsMixin:
         return out
 
 class AgentModel(models.Model):
-    name = models.CharField(max_length=100, default="name")
+    name = models.CharField(_("name"), max_length=100, default="name")
     def __str__(self):
         return "{}".format(self.name)
 
 class GoogleVoice(models.Model):
-    name = models.CharField(max_length=100, default="name")
+    name = models.CharField(_("name"), max_length=100, default="name")
     description = models.CharField(max_length=100)
 
     def __str__(self):
@@ -135,18 +136,18 @@ class GoogleVoice(models.Model):
 
 class Prompt(models.Model):
     CHOICES = (
-        ("general", "General"),
-        (GetContentsMixin.PRESET_REFINE, "Refine"),
-        (GetContentsMixin.PRESET_VIDEO, "Video"),
-        (GetContentsMixin.PRESET_VIDEO_FIRST_LAST, "Video First Last"),
-        (GetContentsMixin.PRESET_COMIC, "Comic"),
-        (GetContentsMixin.PRESET_WRITER, "Writer"),
-        (GetContentsMixin.PRESET_CHARACTER, "Character"),
-        (GetContentsMixin.PRESET_REFINE_PROMPT, "Refine Prompt"),
-        (GetContentsMixin.PRESET_SCENE, "Sync Scene"),
+        ("general", _("General")),
+        (GetContentsMixin.PRESET_REFINE, _("Refine")),
+        (GetContentsMixin.PRESET_VIDEO, _("Video")),
+        (GetContentsMixin.PRESET_VIDEO_FIRST_LAST, _("Video First Last")),
+        (GetContentsMixin.PRESET_COMIC, _("Comic")),
+        (GetContentsMixin.PRESET_WRITER, _("Writer")),
+        (GetContentsMixin.PRESET_CHARACTER, _("Character")),
+        (GetContentsMixin.PRESET_REFINE_PROMPT, _("Refine Prompt")),
+        (GetContentsMixin.PRESET_SCENE, _("Sync Scene")),
         
     )
-    name= models.CharField(max_length=100, default="name")
+    name= models.CharField(_("name"), max_length=100, default="name")
     prompt = models.TextField(null=True, blank=True)
     category = models.CharField(max_length=100, default="general", choices=CHOICES)
     content_types = models.ManyToManyField(ContentType, blank=True)
@@ -177,27 +178,28 @@ class Agent(models.Model):
     OUTPUT_TYPE_VIDEO = "video"
 
     
-    name = models.CharField(max_length=100, default="name")
-    instructions = models.ManyToManyField("Prompt", related_name='agents', blank=True)
-    agent_model = models.ForeignKey(AgentModel, related_name='agents', on_delete=models.CASCADE)
+    name = models.CharField(_("name"), max_length=100, default="name")
+    instructions = models.ManyToManyField("Prompt", verbose_name=_("instructions"), related_name='agents', blank=True)
+    agent_model = models.ForeignKey(AgentModel, verbose_name=_("agent model"), related_name='agents', on_delete=models.CASCADE)
     output_type = models.CharField(
+        _("output type"),
         max_length=100,
         default=OUTPUT_TYPE_TEXT,
         choices=getattr(settings, "AGENT_OUTPUT_TYPE_CHOICES", [
-            (OUTPUT_TYPE_IMAGE, "Image"),
-            (OUTPUT_TYPE_TEXT, "Text"),
-            (OUTPUT_TYPE_STRUCTURED, "Structured"),
-            (OUTPUT_TYPE_VIDEO, "Video"),
-            (OUTPUT_TYPE_VOICE, "Voice"),
+            (OUTPUT_TYPE_IMAGE, _("Image")),
+            (OUTPUT_TYPE_TEXT, _("Text")),
+            (OUTPUT_TYPE_STRUCTURED, _("Structured")),
+            (OUTPUT_TYPE_VIDEO, _("Video")),
+            (OUTPUT_TYPE_VOICE, _("Voice")),
         ])
     )
     schema = models.CharField(
+        _("schema"),
         max_length=100,
         blank=True,
         null=True,
         choices=settings.AGENT_SCHEMA_CHOICES
     )
-
     def get_schema_class(self):
         schema_path = settings.AGENT_SCHEMAS.get(self.schema)
         return import_string(schema_path) if schema_path else None
@@ -412,29 +414,29 @@ class Agent(models.Model):
 class TokenUsage(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
-    agent = models.ForeignKey(Agent, related_name='token_usages', on_delete=models.SET_NULL, null=True, blank=True)
-    task = models.ForeignKey(Task, related_name='token_usages', on_delete=models.SET_NULL, null=True, blank=True)
-    tokens = models.PositiveIntegerField(default=0)
+    agent = models.ForeignKey(Agent, verbose_name=_("agent"), related_name='token_usages', on_delete=models.SET_NULL, null=True, blank=True)
+    task = models.ForeignKey(Task, verbose_name=_("task"), related_name='token_usages', on_delete=models.SET_NULL, null=True, blank=True)
+    tokens = models.PositiveIntegerField(_("tokens"), default=0)
     json_report = models.JSONField(null=True, blank=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='token_usages', on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_("user"), related_name='token_usages', on_delete=models.SET_NULL, null=True, blank=True)
 
 class GoogleApiKey(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='api_keys', on_delete=models.CASCADE)
-    name = models.CharField(unique=True, max_length=255, null=True, blank=True)
-    api_key = models.TextField(null=True, blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_("user"), related_name='api_keys', on_delete=models.CASCADE)
+    name = models.CharField(_("name"), unique=True, max_length=255, null=True, blank=True)
+    api_key = models.TextField(_("api key"), null=True, blank=True)
          
     def __str__(self):
         return "{}-{}".format(self.name, self.user.username)
 
 class AgentProfile(models.Model):
 
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='agent_profile', on_delete=models.CASCADE)
-    credits = models.PositiveIntegerField(default=0)
-    google_api_key = models.ForeignKey(GoogleApiKey, related_name='agent_profiles', on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, verbose_name=_("user"), related_name='agent_profile', on_delete=models.CASCADE)
+    credits = models.PositiveIntegerField(_("credits"), default=0)
+    google_api_key = models.ForeignKey(GoogleApiKey, verbose_name=_("google api key"), related_name='agent_profiles', on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
-        verbose_name = 'AI User Profile'
-        verbose_name_plural = 'AI User Profiles'
+        verbose_name = _('AI User Profile')
+        verbose_name_plural = _('AI User Profiles')
 
     def __str__(self):
         return "{}".format(self.user.username)
@@ -444,13 +446,13 @@ class Message(models.Model):
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
     
-    agent = models.ForeignKey(Agent, on_delete=models.SET_NULL, null=True, blank=True, related_name='chat_history')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='agent_messages')
-    input_text = models.TextField(blank=True)
-    output_text = models.TextField(blank=True)
-    output_image = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='message_images')
-    output_file = FilerFileField(null=True, blank=True, on_delete=models.SET_NULL, related_name='message_files')
-    target_field = models.CharField(max_length=100, blank=True)
+    agent = models.ForeignKey(Agent, verbose_name=_("agent"), on_delete=models.SET_NULL, null=True, blank=True, related_name='chat_history')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_("user"), on_delete=models.SET_NULL, null=True, blank=True, related_name='agent_messages')
+    input_text = models.TextField(_("input text"), blank=True)
+    output_text = models.TextField(_("output text"), blank=True)
+    output_image = FilerImageField(verbose_name=_("output image"), null=True, blank=True, on_delete=models.SET_NULL, related_name='message_images')
+    output_file = FilerFileField(verbose_name=_("output file"), null=True, blank=True, on_delete=models.SET_NULL, related_name='message_files')
+    target_field = models.CharField(_("target field"), max_length=100, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

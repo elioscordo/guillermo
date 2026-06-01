@@ -10,6 +10,7 @@ from task.models import Task
 from unfold.admin import StackedInline
 from .models import ActionOrganizer, Character, Scene, Action, Background, SceneOrganizer, StoryGroup, Style, Prop, ComicAction, RenderItem, VideoAction, Render, Story, StoryProfile, Voice, VoiceAction, Author, Nudge, ContactRequest, WorkShop
 from .admin_utils import AjaxTaskModelAdmin, AdminLinker
+from django.utils.translation import gettext_lazy as _
 from django.utils.html import format_html
 from .sections import AuthorSection, SceneSection, SceneElementsSection
 from .mixins import ACTION_FIELDSETS, ELEMENT_FIELDSETS, SceneFilterMixin, StaffReadOnlyMixin, StoryFilterMixin, ViewYourOwnMixin, PromptPreviewMixin, AdminActionsMixin

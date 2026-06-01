@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
+from django.utils.translation import gettext_lazy as _
 from django.urls import path
 from django.conf import settings
 from task.models import Task
@@ -51,57 +52,57 @@ class ModelDisplayMixin:
     def video_download(self):
         video = getattr(self, 'video', None)
         if video:
-            return format_html('<a href="{}" download >Download</a>', video.url)
-        return "No Video"
-    video_download.short_description = "Video Download"
+            return format_html('<a href="{}" download >{}</a>', video.url, _("Download"))
+        return _("No Video")
+    video_download.short_description = _("Video Download")
 
     def pic(self):
         image = getattr(self, 'image', None)
         if image:
             return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', image.url, image.url, self.MAX_IMAGE_HEIGHT)
-        return "No Image"
-    pic.short_description = "Image"
+        return _("No Image")
+    pic.short_description = _("Image")
 
     def pic_comic(self):
         image_comic = getattr(self, 'image_comic', None)
         if image_comic:
             return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', image_comic.url, image_comic.url, self.MAX_IMAGE_HEIGHT)
-        return "No Image"
-    pic_comic.short_description = "Comic Image"
+        return _("No Image")
+    pic_comic.short_description = _("Comic Image")
     
     def pic_refine(self):
         image_refine = getattr(self, 'image_refine', None)
         if image_refine:
             return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', image_refine.url, image_refine.url, self.MAX_IMAGE_HEIGHT)
-        return "No Image"
-    pic_refine.short_description = "Refined Image"
+        return _("No Image")
+    pic_refine.short_description = _("Refined Image")
     
     def pic_first(self):
         image_first = getattr(self, 'image_first', None)
         if image_first:
             return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', image_first.url, image_first.url, self.MAX_IMAGE_HEIGHT)
-        return "No Image"
-    pic_first.short_description = "First Frame"
+        return _("No Image")
+    pic_first.short_description = _("First Frame")
     
     def pic_last(self):
         image_last = getattr(self, 'image_last', None)
         if image_last:
             return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', image_last.url, image_last.url, self.MAX_IMAGE_HEIGHT)
-        return "No Image"
-    pic_last.short_description = "Last Frame"
+        return _("No Image")
+    pic_last.short_description = _("Last Frame")
 
     def action_pic(self):
         action = getattr(self, 'action', None)
         if action and hasattr(action, 'image') and action.image:
              return format_html('<img src="{}" style="max-height: {}px;" />', action.image.url, self.MAX_IMAGE_HEIGHT)
-        return "No Image"
-    action_pic.short_description = "Action Image"
+        return _("No Image")
+    action_pic.short_description = _("Action Image")
     
     def contents_html(self):
         if hasattr(self, 'get_contents') and self.get_contents():
-            return format_html('''                               
+            return format_html('''
         <a class="btn btn-primary" data-toggle="collapse" href="#collapse{}" role="button" aria-expanded="false" aria-controls="collapseExample">
-            Get Prompt
+            {}
         </a>
         <div class="collapse" id="collapse{}">
             <div class="card card-body">
@@ -109,24 +110,24 @@ class ModelDisplayMixin:
             </div>
         </div>
         {}
-        ''', self.id, self.id, self.get_contents(), self.features() if hasattr(self, 'features') else "")
-        return "No contents"
-    contents_html.short_description = "Contents"
+        ''', self.id, _("Get Prompt"), self.id, self.get_contents(), self.features() if hasattr(self, 'features') else "")
+        return _("No contents")
+    contents_html.short_description = _("Contents")
     
     def contents_refine_html(self):
         if hasattr(self, 'get_contents') and hasattr(self, 'PRESET_REFINE') and self.get_contents(generate_self=True, preset=self.PRESET_REFINE):
             return format_html('''
         <a class="btn btn-primary" data-toggle="collapse" href="#collapse{}" role="button" aria-expanded="false" aria-controls="collapseExample">
-            Get Prompt
+            {}
         </a>
         <div class="collapse" id="collapse{}">
             <div class="card card-body">
                 {}
             </div>
         </div>
-        ''', self.id, self.id, self.get_contents(generate_self=True, preset=self.PRESET_REFINE))
-        return "No contents"
-    contents_refine_html.short_description = "Refined Contents"
+        ''', self.id, _("Get Prompt"), self.id, self.get_contents(generate_self=True, preset=self.PRESET_REFINE))
+        return _("No contents")
+    contents_refine_html.short_description = _("Refined Contents")
 
     def video_player(self):
         video = getattr(self, 'video', None)
@@ -136,8 +137,8 @@ class ModelDisplayMixin:
             <source src="{}" type="video/mp4">
         </video>
         ''', video.url)
-        return "No contents"
-    video_player.short_description = "Video Player"
+        return _("No contents")
+    video_player.short_description = _("Video Player")
     
     def voice_player(self):
         audio_voice = getattr(self, 'audio_voice', None)
@@ -147,8 +148,8 @@ class ModelDisplayMixin:
             <source src="{}" type="audio/mpeg">
         </audio>
         ''', audio_voice.url)
-        return "No contents"
-    voice_player.short_description = "Voice Player"
+        return _("No contents")
+    voice_player.short_description = _("Voice Player")
 
 class SceneFilterMixin:
     # anything that has a scene foreign key can use this mixin to filter by the user's current scene
@@ -234,7 +235,7 @@ class UserCreatorMixin:
         )
         plain_message = strip_tags(html_message)
         send_mail(
-            f'Invitation to co-author the script: {obj.get_name()}', plain_message, settings.DEFAULT_FROM_EMAIL, [email],
+            f'Invitation to co-author the script: {obj.name}', plain_message, settings.DEFAULT_FROM_EMAIL, [email],
             html_message=html_message # <--- HTML added here
         )
         return user

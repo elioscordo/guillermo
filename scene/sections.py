@@ -1,6 +1,7 @@
 from typing import Any
 from django.utils.safestring import mark_safe
 import markdown
+from django.utils.translation import gettext_lazy as _
 from django.utils.html import format_html, strip_tags
 
 from django.contrib.admin.utils import label_for_field, lookup_field
@@ -73,8 +74,8 @@ class TableSection(BaseSection):
 
 class AuthorSection(TableSection):
     model = Author
-    NO_USER_LABEL = "Use Create User Action"
-    verbose_name = "Authors"
+    NO_USER_LABEL = _("Use Create User Action")
+    verbose_name = _("Authors")
     
     fields = ['name', 'scenes', 'nudges']
     extra = 0
@@ -129,7 +130,7 @@ class SceneSection(TableSection):
     def prompt(self, obj):
         if obj.prompt:
             return mark_safe(f"<div class='markdown'>{markdown.markdown(obj.prompt)}</div>")
-        return "No Prompt"
+        return _("No Prompt")
         
     fields = ['prompt', 'name', 'author']
     extra = 0

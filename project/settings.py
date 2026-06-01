@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+from django.utils.translation import gettext_lazy as _
 from django.urls import reverse_lazy
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -63,6 +64,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -86,12 +88,12 @@ EMAIL_HOST_PASSWORD = os.environ.get('SMTP_KEY', '')
 
 # Default sender settings
 # CRITICAL: This email address MUST be verified in your Brevo Sender dashboard
-DEFAULT_FROM_EMAIL = 'Your Name <noreply@yourdomain.com>'
-SERVER_EMAIL = 'admin@yourdomain.com'
+DEFAULT_FROM_EMAIL = 'Your Name <noreply@guillermo.studio>'
+SERVER_EMAIL = 'admin@guillermo.studio'
 
 
 
-
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 ROOT_URLCONF = 'project.urls'
 
@@ -131,9 +133,9 @@ def storyprofile(request):
 from django.templatetags.static import static
 
 UNFOLD = {
-    "SITE_TITLE": "Guillermo",  # Appears in the title and in the top left corner
-    "SITE_HEADER": "Guillermo",
-    "SITE_SUBHEADER": "Tell me a story",
+    "SITE_TITLE": _("Guillermo"),  # Appears in the title and in the top left corner
+    "SITE_HEADER": _("Guillermo"),
+    "SITE_SUBHEADER": _("Tell me a story"),
     "STYLES": [
         lambda request: static("css/unfold_filer_custom.css"),
         lambda request: static("css/custom.css"),
@@ -156,121 +158,121 @@ UNFOLD = {
         "show_user": True,                 # Ensure user profile is visible at the bottom
         "navigation": [
             {
-                "title": "Co-Writing",
+                "title": _("Co-Writing"),
                 "items": [
                     {
-                        "title": "Stories",
+                        "title": _("Stories"),
                         "icon": "auto_stories",
                         "link": reverse_lazy("admin:scene_story_changelist"),
                     },
                     {
-                        "title": "Scene Refine & Extract",
+                        "title": _("Scene Refine & Extract"),
                         "icon": "movie",
                         "link": reverse_lazy("admin:scene_scene_changelist"),
                     },
                     {
-                        "title": "Scene Organizer",
+                        "title": _("Scene Organizer"),
                         "icon": "movie",
                         "link": reverse_lazy("admin:scene_sceneorganizer_changelist"),
                     },
                 ]
             },
             {
-                "title": "Elements",
+                "title": _("Elements"),
                 "separator": True,
                 "items": [
                     
                     {
-                        "title": "Elements",
+                        "title": _("Props"),
                         "icon": "category",
                         "link": reverse_lazy("admin:scene_prop_changelist"),
                     },
                     {
-                        "title": "Characters",
+                        "title": _("Characters"),
                         "icon": "person",
                         "link": reverse_lazy("admin:scene_character_changelist"),
                     },
                     {
-                        "title": "Locations",
+                        "title": _("Locations"),
                         "icon": "location_on",
                         "link": reverse_lazy("admin:scene_background_changelist"),
                     },
                     {
-                        "title": "Voices",
+                        "title": _("Voices"),
                         "icon": "record_voice_over",
                         "link": reverse_lazy("admin:scene_voice_changelist"),
                     },
                 ]
             },
             {
-                "title": "Actions",
+                "title": _("Actions"),
                 "separator": True,
                 "items": [
 
                     {
-                        "title": "Image Actions",
+                        "title": _("Image Actions"),
                         "icon": "play_arrow",
                         "link": reverse_lazy("admin:scene_action_changelist"),
                     },
                     {
-                        "title": "Comic Actions",
+                        "title": _("Comic Actions"),
                         "icon": "auto_awesome",
                         "link": reverse_lazy("admin:scene_comicaction_changelist"),
                     },
                     {
-                        "title": "Video Actions",
+                        "title": _("Video Actions"),
                         "icon": "videocam",
                         "link": reverse_lazy("admin:scene_videoaction_changelist"),
                     },
                     {
-                        "title": "Voice Actions",
+                        "title": _("Voice Actions"),
                         "icon": "mic",
                         "link": reverse_lazy("admin:scene_voiceaction_changelist"),
                     },
                     {
-                        "title": "Action Organizer",
+                        "title": _("Action Organizer"),
                         "icon": "play_arrow",
                         "link": reverse_lazy("admin:scene_actionorganizer_changelist"),
                     },
                 ],
             },
             {
-                "title": "Personal Area",
+                "title": _("Personal Area"),
                 "separator": True,
                 "items": [
                     {
-                        "title": "Groups",
+                        "title": _("Groups"),
                         "icon": "groups",
                         "link": reverse_lazy("admin:scene_storygroup_changelist"),
                     },
                     {
-                        "title": "Story Filters",
+                        "title": _("Story Filters"),
                         "icon": "settings",
                         "link": storyprofile,
                     },
                     {
-                        "title": "My Apis",
+                        "title": _("My Apis"),
                         "icon": "api",
                         "link": agentprofile,
                     },
                     {
-                        "title": "Token Usage",
+                        "title": _("Token Usage"),
                         "icon": "monitoring",
                         "link": token_usage_link,
                     }
                 ],
             },
             {
-                "title": "Rendering",
+                "title": _("Rendering"),
                 "separator": True,
                 "items": [
                     {
-                        "title": "Renders",
+                        "title": _("Renders"),
                         "icon": "video_library",
                         "link": reverse_lazy("admin:scene_render_changelist"),
                     },
                     {
-                        "title": "Render Items",
+                        "title": _("Render Items"),
                         "icon": "grid_view",
                         "link": reverse_lazy("admin:scene_renderitem_changelist"),
                     },
@@ -333,9 +335,16 @@ TIME_ZONE = 'UTC'
 
 USE_I18N = True
 
+LANGUAGES = [
+    ('en', _('English')),
+    ('es', _('Spanish')),
+]
+
 USE_TZ = True
 
-
+LOCALE_PATHS = [
+    BASE_DIR / 'locale',
+]
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
@@ -395,18 +404,18 @@ TASK_DELEGATES = {
 }
 
 TASK_TYPE_CHOICES = (
-    (TASK_TYPE_GENERATE_IMAGE, "Generate Image"),
-    (TASK_TYPE_REFINE_IMAGE, "Refine Image"),
-    (TASK_TYPE_GENERATE_VIDEO, "Generate Video"),
-    (TASK_TYPE_GENERATE_VIDEO_FIRST_LAST, "Video First Last"),
-    (TASK_TYPE_GENERATE_COMIC, "Generate Comic"),
-    (TASK_TYPE_GENERATE_SCENE_VIDEO, "Generate Scene Video"),
-    (TASK_TYPE_GENERATE_VOICE, "Generate Voice"),
-    (TASK_TYPE_GENERATE_TEXT, "Generate Text"),
-    (TASK_TYPE_GENERATE_SCENE, "Generate Scene"),
-    (TASK_TYPE_GENERATE_SCENE_ELEMENTS, "Generate Scene Elements"),
-    (TASK_TYPE_GENERATE_SCENE_ACTIONS, "Generate Scene Actions"),
-    (TASK_TYPE_EXTRACT_SCENE, "Extract Scene")
+    (TASK_TYPE_GENERATE_IMAGE, _("Generate Image")),
+    (TASK_TYPE_REFINE_IMAGE, _("Refine Image")),
+    (TASK_TYPE_GENERATE_VIDEO, _("Generate Video")),
+    (TASK_TYPE_GENERATE_VIDEO_FIRST_LAST, _("Video First Last")),
+    (TASK_TYPE_GENERATE_COMIC, _("Generate Comic")),
+    (TASK_TYPE_GENERATE_SCENE_VIDEO, _("Generate Scene Video")),
+    (TASK_TYPE_GENERATE_VOICE, _("Generate Voice")),
+    (TASK_TYPE_GENERATE_TEXT, _("Generate Text")),
+    (TASK_TYPE_GENERATE_SCENE, _("Generate Scene")),
+    (TASK_TYPE_GENERATE_SCENE_ELEMENTS, _("Generate Scene Elements")),
+    (TASK_TYPE_GENERATE_SCENE_ACTIONS, _("Generate Scene Actions")),
+    (TASK_TYPE_EXTRACT_SCENE, _("Extract Scene"))
 )
 
 
@@ -416,25 +425,15 @@ import os
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-
 # Agent Structured Output Schema Settings
 SCHEMA_MULTI_SCENE = "multi_scene"
 SCHEMA_SCENE = "scene"
 AGENT_SCHEMA_CHOICES = [
-    (SCHEMA_MULTI_SCENE, "Multi Scene Storyboard"),
-    (SCHEMA_SCENE, "Single Scene Storyboard"),
+    (SCHEMA_MULTI_SCENE, _("Multi Scene Storyboard")),
+    (SCHEMA_SCENE, _("Single Scene Storyboard")),
 ]
 
 AGENT_SCHEMAS = {
     SCHEMA_MULTI_SCENE: "scene.schemas.MultiSceneSchema",
     SCHEMA_SCENE : "scene.schemas.SceneSchema",    
 }
-
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER

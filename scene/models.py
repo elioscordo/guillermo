@@ -9,6 +9,7 @@ from scene.mixins import (
 from task.mixins import  AfterSaveActionMixin
 from task.models import TaskHolder, Task
 
+from django.utils.translation import gettext_lazy as _
 from django.template.loader import render_to_string
 from django.utils.safestring import mark_safe
 from PIL import Image
@@ -21,17 +22,17 @@ def dashboard_callback(request, context):
     return context
 
 class Theme(models.Model):
-    name = models.CharField(max_length=100, default='New Game')
-    prompt = models.TextField(null=True, blank=True)
+    name = models.CharField(_("name"), max_length=100, default='New Game')
+    prompt = models.TextField(_("prompt"), null=True, blank=True)
     
     def __str__(self):
         return "{}".format(self.name)
 
 
 class Style(models.Model, GetContentsMixin, ModelDisplayMixin):
-    prompt = models.TextField(null=True, blank=True)
-    name = models.CharField(max_length=100, default="")
-    global_default = models.BooleanField(default=False)
+    prompt = models.TextField(_("prompt"), null=True, blank=True)
+    name = models.CharField(_("name"), max_length=100, default="")
+    global_default = models.BooleanField(_("global default"), default=False)
     
     def __str__(self):
         return "{}".format(self.name)
@@ -44,10 +45,10 @@ class Style(models.Model, GetContentsMixin, ModelDisplayMixin):
 
 
 class Author(models.Model, UserCreatorMixin):
-    story = models.ForeignKey('scene.Story', related_name='authors', on_delete=models.CASCADE, null=True, blank=True)
-    order = models.IntegerField(default=0)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='authors', on_delete=models.CASCADE, null=True, blank=True)
-    email = models.EmailField(null=True, blank=True)
+    story = models.ForeignKey('scene.Story', verbose_name=_("story"), related_name='authors', on_delete=models.CASCADE, null=True, blank=True)
+    order = models.IntegerField(_("order"), default=0)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_("user"), related_name='authors', on_delete=models.CASCADE, null=True, blank=True)
+    email = models.EmailField(_("email"), null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.email and not self.user:
@@ -68,32 +69,33 @@ class Author(models.Model, UserCreatorMixin):
         return self.scenes.count()
 
 class Story(AfterSaveActionMixin, RenderTypeMixin, models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
-    name = models.CharField(max_length=200)
-    order = models.PositiveIntegerField(default=0, db_index=True)
-    style = models.ForeignKey(Style, related_name='stories', null=True, blank=True, on_delete=models.CASCADE)
-    theme = models.ForeignKey('Theme', on_delete=models.CASCADE, null=True, blank=True)
-    group = models.ForeignKey('scene.StoryGroup', help_text="Auto create authors from this group, it happens only when the script is saved for the first time",  on_delete=models.CASCADE, null=True, blank=True, related_name='stories')
+    name = models.CharField(_("name"), max_length=200)
+    order = models.PositiveIntegerField(_("order"), default=0, db_index=True)
+    style = models.ForeignKey(Style, verbose_name=_("style"), related_name='stories', null=True, blank=True, on_delete=models.CASCADE)
+    theme = models.ForeignKey('Theme', verbose_name=_("theme"), on_delete=models.CASCADE, null=True, blank=True)
+    group = models.ForeignKey('scene.StoryGroup', verbose_name=_("group"), help_text=_("Auto create authors from this group, it happens only when the script is saved for the first time"),  on_delete=models.CASCADE, null=True, blank=True, related_name='stories')
 
-    prompt = models.TextField(null=True, blank=True, default="#Plot\n")
-    prompt_refine = models.TextField(null=True, blank=True)
-    action = models.SlugField(choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
-    mentor = models.ForeignKey("agent.Agent", related_name='mentors_stories', on_delete=models.CASCADE, null=True, blank=True)
+    prompt = models.TextField(_("prompt"), null=True, blank=True, default="#Plot\n")
+    prompt_refine = models.TextField(_("prompt refine"), null=True, blank=True)
+    action = models.SlugField(_("action"), choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
+    mentor = models.ForeignKey("agent.Agent", verbose_name=_("mentor"), related_name='mentors_stories', on_delete=models.CASCADE, null=True, blank=True)
 
     RENDER_TYPE_FILM = 'film'
     RENDER_TYPE_GRAPHIC_NOVEL = 'comic'
     RENDER_TYPE_ANIMATIC = 'animatic'
 
     RENDER_TYPE_CHOICES = [
-        (RENDER_TYPE_FILM, 'Film'),
-        (RENDER_TYPE_GRAPHIC_NOVEL, 'Graphic Novel'),
-        (RENDER_TYPE_ANIMATIC, 'Animatic'),
+        (RENDER_TYPE_FILM, _('Film')),
+        (RENDER_TYPE_GRAPHIC_NOVEL, _('Graphic Novel')),
+        (RENDER_TYPE_ANIMATIC, _('Animatic')),
     ]
 
     render_type = models.CharField(
+        _("render type"),
         max_length=50,
         choices=RENDER_TYPE_CHOICES,
         default=getattr(settings, 'DEFAULT_RENDER_TYPE', RENDER_TYPE_ANIMATIC),
-        help_text="The default render format for this story."
+        help_text=_("The default render format for this story.")
     )
     
     def __str__(self):
@@ -136,14 +138,14 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, models.Model, GetContentsMixi
         return None
 
 class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, ModelDisplayMixin):
-    name = models.CharField(max_length=200, null=True, blank=True)
-    prompt = models.TextField(null=True, blank=True, default="#Location\n#Cast\n#Props\n#Actions\n")
-    prompt_refine = models.TextField(null=True, blank=True)
-    action = models.SlugField(choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
+    name = models.CharField(_("name"), max_length=200, null=True, blank=True)
+    prompt = models.TextField(_("prompt"), null=True, blank=True, default="#Location\n#Cast\n#Props\n#Actions\n")
+    prompt_refine = models.TextField(_("prompt refine"), null=True, blank=True)
+    action = models.SlugField(_("action"), choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
 
-    order = models.PositiveIntegerField(default=0, db_index=True)
-    story = models.ForeignKey('Story', related_name='scenes', null=True, blank=True, on_delete=models.CASCADE)
-    author = models.ForeignKey('Author', related_name='scenes', on_delete=models.CASCADE, null=True, blank=True)
+    order = models.PositiveIntegerField(_("order"), default=0, db_index=True)
+    story = models.ForeignKey('Story', verbose_name=_("story"), related_name='scenes', null=True, blank=True, on_delete=models.CASCADE)
+    author = models.ForeignKey('Author', verbose_name=_("author"), related_name='scenes', on_delete=models.CASCADE, null=True, blank=True)
     
     def __str__(self):
         return "{}".format(self.name if self.name else f"Scene{self.id} of {self.story}")
@@ -239,11 +241,11 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
 class Nudge(models.Model, EmailSenderMixin):
     email_template = 'email/nudge.html'
 
-    sender = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='sent_nudges', on_delete=models.CASCADE, null=True, blank=True)
-    receiver = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='received_nudges', on_delete=models.CASCADE, null=True, blank=True)
-    story = models.ForeignKey('scene.Story', related_name='nudges', on_delete=models.CASCADE, null=True, blank=True)
-    message = models.TextField(null=True, blank=True, help_text="Optional message to include in the nudge email.")
-    created_at = models.DateTimeField(auto_now_add=True)
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_("sender"), related_name='sent_nudges', on_delete=models.CASCADE, null=True, blank=True)
+    receiver = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_("receiver"), related_name='received_nudges', on_delete=models.CASCADE, null=True, blank=True)
+    story = models.ForeignKey('scene.Story', verbose_name=_("story"), related_name='nudges', on_delete=models.CASCADE, null=True, blank=True)
+    message = models.TextField(_("message"), null=True, blank=True, help_text=_("Optional message to include in the nudge email."))
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
     read = models.BooleanField(default=False)
 
     def __str__(self):
@@ -274,19 +276,15 @@ class Nudge(models.Model, EmailSenderMixin):
 
 
 class Prop(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
-    name = models.CharField(max_length=100, default="")
-    image = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='props')
-    prompt= models.TextField(null=True, blank=True)
-    prompt_refine = models.TextField(null=True, blank=True)
-    story = models.ForeignKey('Story', related_name='props', null=True, blank=True, on_delete=models.CASCADE)
+    name = models.CharField(_("name"), max_length=100, default="")
+    image = FilerImageField(verbose_name=_("image"), null=True, blank=True, on_delete=models.SET_NULL, related_name='props')
+    prompt= models.TextField(_("prompt"), null=True, blank=True)
+    prompt_refine = models.TextField(_("prompt refine"), null=True, blank=True)
+    story = models.ForeignKey('Story', verbose_name=_("story"), related_name='props', null=True, blank=True, on_delete=models.CASCADE)
 
     # trick to save and execute tasks
     TASK_TYPE_CHOICES = settings.TASK_TYPE_CHOICES
-    action = models.SlugField(choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
-
-    class Meta:
-        verbose_name = 'Element'
-        verbose_name_plural = 'Elements'
+    action = models.SlugField(_("action"), choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
 
     def __str__(self):
         return "{}".format(self.name)
@@ -310,18 +308,18 @@ class Voice(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
     PROMPT_SAMPLE_DEFAULT = "Speak:"
     PROMPT_DEFAULT = "Style: [describe the style of speaking you want, e.g. excited, sad, professional, etc.]\nPace: [describe the pace of speaking you want, e.g. fast, slow, etc.]\nAccent: [describe the accent you want, e.g. British, American, etc.]\n\n"
     
-    name = models.CharField(max_length=100)
-    google_voice = models.ForeignKey('agent.GoogleVoice', related_name='voices', on_delete=models.SET_NULL, null=True, blank=True)
-    prompt = models.TextField(null=True, blank=True , default=PROMPT_DEFAULT)
-    audio_voice = FilerFileField(null=True, blank=True, on_delete=models.SET_NULL, related_name='samples')
-    sample_text = models.TextField(null=True, blank=True , default=SAMPLE_TEXT_DEFAULT)
-    story = models.ForeignKey('scene.Story', related_name='voices', on_delete=models.CASCADE, null=True, blank=True)
-    global_default = models.BooleanField(default=False)
+    name = models.CharField(_("name"), max_length=100)
+    google_voice = models.ForeignKey('agent.GoogleVoice', verbose_name=_("google voice"), related_name='voices', on_delete=models.SET_NULL, null=True, blank=True)
+    prompt = models.TextField(_("prompt"), null=True, blank=True , default=PROMPT_DEFAULT)
+    audio_voice = FilerFileField(verbose_name=_("audio voice"), null=True, blank=True, on_delete=models.SET_NULL, related_name='samples')
+    sample_text = models.TextField(_("sample text"), null=True, blank=True , default=SAMPLE_TEXT_DEFAULT)
+    story = models.ForeignKey('scene.Story', verbose_name=_("story"), related_name='voices', on_delete=models.CASCADE, null=True, blank=True)
+    global_default = models.BooleanField(_("global default"), default=False)
 
     TASK_TYPE_CHOICES = [
-        (settings.TASK_TYPE_GENERATE_VOICE, "Generate Voice")
+        (settings.TASK_TYPE_GENERATE_VOICE, _("Generate Voice"))
     ]
-    action = models.SlugField(choices=TASK_TYPE_CHOICES, null=True, blank=True)
+    action = models.SlugField(_("action"), choices=TASK_TYPE_CHOICES, null=True, blank=True)
 
     
     def __str__(self):
@@ -345,14 +343,14 @@ class Voice(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
         }
     
 class Character(models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
-    name = models.CharField(max_length=100, default="")
-    image = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='characters')
-    prompt= models.TextField(null=True, blank=True)
-    prompt_refine = models.TextField(null=True, blank=True)
-    story = models.ForeignKey('Story', related_name='characters', null=True, blank=True, on_delete=models.CASCADE)
-    voice = models.ForeignKey(Voice, related_name='characters', on_delete=models.SET_NULL, null=True, blank=True) 
+    name = models.CharField(_("name"), max_length=100, default="")
+    image = FilerImageField(verbose_name=_("image"), null=True, blank=True, on_delete=models.SET_NULL, related_name='characters')
+    prompt= models.TextField(_("prompt"), null=True, blank=True)
+    prompt_refine = models.TextField(_("prompt refine"), null=True, blank=True)
+    story = models.ForeignKey('Story', verbose_name=_("story"), related_name='characters', null=True, blank=True, on_delete=models.CASCADE)
+    voice = models.ForeignKey(Voice, verbose_name=_("voice"), related_name='characters', on_delete=models.SET_NULL, null=True, blank=True) 
     TASK_TYPE_CHOICES = settings.TASK_TYPE_CHOICES
-    action = models.SlugField(choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
+    action = models.SlugField(_("action"), choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
    
     def __str__(self):
         return "{}".format(self.name)
@@ -372,20 +370,20 @@ class Character(models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
         return  parts # reverse to have the character prompt last so it is more important
 
     class Meta:
-        verbose_name = 'Character'
-        verbose_name_plural = 'Characters'
+        verbose_name = _('Character')
+        verbose_name_plural = _('Characters')
 
 
 class Background(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
-    name = models.CharField(max_length=100, default="")
-    prompt= models.TextField(null=True, blank=True)
-    image = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='backgrounds')
-    prompt_refine = models.TextField(null=True, blank=True)
-    image_refine = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='background_refine')
-    story = models.ForeignKey('Story', related_name='backgrounds', null=True, blank=True, on_delete=models.CASCADE)
+    name = models.CharField(_("name"), max_length=100, default="")
+    prompt= models.TextField(_("prompt"), null=True, blank=True)
+    image = FilerImageField(verbose_name=_("image"), null=True, blank=True, on_delete=models.SET_NULL, related_name='backgrounds')
+    prompt_refine = models.TextField(_("prompt refine"), null=True, blank=True)
+    image_refine = FilerImageField(verbose_name=_("image refine"), null=True, blank=True, on_delete=models.SET_NULL, related_name='background_refine')
+    story = models.ForeignKey('Story', verbose_name=_("story"), related_name='backgrounds', null=True, blank=True, on_delete=models.CASCADE)
 
     TASK_TYPE_CHOICES = settings.TASK_TYPE_CHOICES
-    action = models.SlugField(choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
+    action = models.SlugField(_("action"), choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
 
 
     def __str__(self):
@@ -406,25 +404,25 @@ class Background(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolde
         return parts
 
     class Meta:
-        verbose_name = 'Location'
-        verbose_name_plural = 'Locations'
+        verbose_name = _('Location')
+        verbose_name_plural = _('Locations')
 
 
 class StoryGroup(models.Model):
-    story = models.ForeignKey(Story, related_name='story_groups', on_delete=models.SET_NULL, null=True, blank=True)
-    name = models.CharField(max_length=200)
-    users = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='story_groups')
+    story = models.ForeignKey(Story, verbose_name=_("story"), related_name='story_groups', on_delete=models.SET_NULL, null=True, blank=True)
+    name = models.CharField(_("name"), max_length=200)
+    users = models.ManyToManyField(settings.AUTH_USER_MODEL, verbose_name=_("users"), related_name='story_groups')
     
     def __str__(self):
         return "{}".format(self.name)
 
 
 class StoryProfile(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='story_profile', on_delete=models.CASCADE)
-    story = models.ForeignKey(Story, related_name='story_profiles', on_delete=models.SET_NULL, null=True, blank=True)
-    scene = models.ForeignKey(Scene, related_name='story_profiles', on_delete=models.SET_NULL, null=True, blank=True)
-    group = models.ForeignKey(StoryGroup, related_name='story_profiles', on_delete=models.SET_NULL, null=True, blank=True)
-    enable_filters = models.BooleanField(default=True)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, verbose_name=_("user"), related_name='story_profile', on_delete=models.CASCADE)
+    story = models.ForeignKey(Story, verbose_name=_("story"), related_name='story_profiles', on_delete=models.SET_NULL, null=True, blank=True)
+    scene = models.ForeignKey(Scene, verbose_name=_("scene"), related_name='story_profiles', on_delete=models.SET_NULL, null=True, blank=True)
+    group = models.ForeignKey(StoryGroup, verbose_name=_("group"), related_name='story_profiles', on_delete=models.SET_NULL, null=True, blank=True)
+    enable_filters = models.BooleanField(_("enable filters"), default=True)
 
     def __str__(self):
         return "{}".format(self.user.username)
@@ -439,37 +437,37 @@ class StoryProfile(models.Model):
 
 class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
     IS_INTRO_CHOICES = [
-        ('scene', 'Scene Intro'),
-        ('story', 'Story Intro')
+        ('scene', _('Scene Intro')),
+        ('story', _('Story Intro'))
     ]
-    name = models.CharField(max_length=200, default="Action")
-    scene = models.ForeignKey(Scene, related_name='actions', on_delete=models.CASCADE)
-    is_intro = models.SlugField(choices=IS_INTRO_CHOICES, null=True, blank=True)
-    prompt = models.TextField(null=True, blank=True)
-    order = models.PositiveIntegerField(default=0, db_index=True)
-    image = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='panel')
-    background = models.ForeignKey(Background, related_name='actions', on_delete=models.SET_NULL, null=True, blank=True)
-    actor = models.ForeignKey(Character, related_name='actions', on_delete=models.SET_NULL, null=True, blank=True)
-    props = models.ManyToManyField(Prop, related_name='actions', blank=True)
-    cast = models.ManyToManyField(Character, related_name='actions_cast', blank=True)
-    consistent_with = models.ForeignKey('self', related_name='consistent_actions', on_delete=models.SET_NULL, null=True, blank=True)
-    prompt_refine = models.TextField(null=True, blank=True)
-    image_refine = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='action_refine')
+    name = models.CharField(_("name"), max_length=200, default="Action")
+    scene = models.ForeignKey(Scene, verbose_name=_("scene"), related_name='actions', on_delete=models.CASCADE)
+    is_intro = models.SlugField(_("is intro"), choices=IS_INTRO_CHOICES, null=True, blank=True)
+    prompt = models.TextField(_("prompt"), null=True, blank=True)
+    order = models.PositiveIntegerField(_("order"), default=0, db_index=True)
+    image = FilerImageField(verbose_name=_("image"), null=True, blank=True, on_delete=models.SET_NULL, related_name='panel')
+    background = models.ForeignKey(Background, verbose_name=_("background"), related_name='actions', on_delete=models.SET_NULL, null=True, blank=True)
+    actor = models.ForeignKey(Character, verbose_name=_("actor"), related_name='actions', on_delete=models.SET_NULL, null=True, blank=True)
+    props = models.ManyToManyField(Prop, verbose_name=_("props"), related_name='actions', blank=True)
+    cast = models.ManyToManyField(Character, verbose_name=_("cast"), related_name='actions_cast', blank=True)
+    consistent_with = models.ForeignKey('self', verbose_name=_("consistent with"), related_name='consistent_actions', on_delete=models.SET_NULL, null=True, blank=True)
+    prompt_refine = models.TextField(_("prompt refine"), null=True, blank=True)
+    image_refine = FilerImageField(verbose_name=_("image refine"), null=True, blank=True, on_delete=models.SET_NULL, related_name='action_refine')
     # video
-    image_first = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='actions_first')
-    image_last = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='actions_last')
-    video = FilerFileField(null=True, blank=True, on_delete=models.SET_NULL, related_name='actions_video')
-    prompt_video = models.TextField(null=True, blank=True)
+    image_first = FilerImageField(verbose_name=_("image first"), null=True, blank=True, on_delete=models.SET_NULL, related_name='actions_first')
+    image_last = FilerImageField(verbose_name=_("image last"), null=True, blank=True, on_delete=models.SET_NULL, related_name='actions_last')
+    video = FilerFileField(verbose_name=_("video"), null=True, blank=True, on_delete=models.SET_NULL, related_name='actions_video')
+    prompt_video = models.TextField(_("prompt video"), null=True, blank=True)
 
     TASK_TYPE_CHOICES = settings.TASK_TYPE_CHOICES
-    action = models.SlugField(choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
+    action = models.SlugField(_("action"), choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
 
-    prompt_comic = models.TextField(null=True, blank=True)
-    image_comic = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='actions_comic')
-    voice = models.ForeignKey(Voice, related_name='actions_voice', on_delete=models.SET_NULL, null=True, blank=True)
-    audio_voice = FilerFileField(null=True, blank=True, on_delete=models.SET_NULL, related_name='actions_audio')
-    prompt_voice = models.TextField(null=True, blank=True)
-    text = models.TextField(null=True, blank=True)
+    prompt_comic = models.TextField(_("prompt comic"), null=True, blank=True)
+    image_comic = FilerImageField(verbose_name=_("image comic"), null=True, blank=True, on_delete=models.SET_NULL, related_name='actions_comic')
+    voice = models.ForeignKey(Voice, verbose_name=_("voice"), related_name='actions_voice', on_delete=models.SET_NULL, null=True, blank=True)
+    audio_voice = FilerFileField(verbose_name=_("audio voice"), null=True, blank=True, on_delete=models.SET_NULL, related_name='actions_audio')
+    prompt_voice = models.TextField(_("prompt voice"), null=True, blank=True)
+    text = models.TextField(_("text"), null=True, blank=True)
     
     def __str__(self):
         return self.get_name()
@@ -585,22 +583,22 @@ class Render(RenderTypeMixin, models.Model, TaskHolder, ModelDisplayMixin):
     RENDER_TYPE_ANIMATIC = 'animatic'
 
     RENDER_TYPE_CHOICES = [
-        (RENDER_TYPE_FILM, 'Film'),
-        (RENDER_TYPE_GRAPHIC_NOVEL, 'Graphic Novel'),
-        (RENDER_TYPE_ANIMATIC, 'Animatic'),
+        (RENDER_TYPE_FILM, _('Film')),
+        (RENDER_TYPE_GRAPHIC_NOVEL, _('Graphic Novel')),
+        (RENDER_TYPE_ANIMATIC, _('Animatic')),
     ]
 
-    name = models.CharField(max_length=200, default="")
-    scene = models.ForeignKey(Scene, related_name='renders', on_delete=models.CASCADE)
-    video = FilerFileField(null=True, blank=True, on_delete=models.SET_NULL, related_name='render_videos')
-    story = models.ForeignKey(Story, related_name='renders', on_delete=models.CASCADE)
+    name = models.CharField(_("name"), max_length=200, default="")
+    scene = models.ForeignKey(Scene, verbose_name=_("scene"), related_name='renders', on_delete=models.CASCADE)
+    video = FilerFileField(verbose_name=_("video"), null=True, blank=True, on_delete=models.SET_NULL, related_name='render_videos')
+    story = models.ForeignKey(Story, verbose_name=_("story"), related_name='renders', on_delete=models.CASCADE)
     render_type = models.CharField(
+        _("render type"),
         max_length=50,
         choices=RENDER_TYPE_CHOICES,
         default=RENDER_TYPE_FILM,
-        help_text="The format in which this scene will be synthesized."
+        help_text=_("The format in which this scene will be synthesized.")
     )
-
     def __str__(self):
         return "{}".format(self.name)
 
@@ -643,8 +641,8 @@ class Render(RenderTypeMixin, models.Model, TaskHolder, ModelDisplayMixin):
             self._create_item_from_action(action, order=i)
 
     class Meta:
-        verbose_name = 'Render Composition'
-        verbose_name_plural = 'Render Compositions'
+        verbose_name = _('Render Composition')
+        verbose_name_plural = _('Render Compositions')
 
     @classmethod
     def get_from_scene(cls, scene):
@@ -652,14 +650,14 @@ class Render(RenderTypeMixin, models.Model, TaskHolder, ModelDisplayMixin):
         
 class RenderItem(models.Model, TaskHolder, ModelDisplayMixin):
     DEFAULT_IMAGE_DURATION = 8
-    image = FilerImageField(null=True, blank=True, on_delete=models.SET_NULL, related_name='video_item')
-    video = FilerFileField(null=True, blank=True, on_delete=models.SET_NULL, related_name='video_item_video')
-    audio = FilerFileField(null=True, blank=True, on_delete=models.SET_NULL, related_name='video_item_audio')
-    order = models.PositiveIntegerField(default=0, db_index=True)
-    config = models.JSONField(null=True, blank=True)
-    render = models.ForeignKey("scene.Render", related_name='render_items',null=True, blank=True, on_delete=models.CASCADE)
-    scene = models.ForeignKey("scene.Scene", related_name='render_items', null=True, blank=True, on_delete=models.SET_NULL)
-    action = models.ForeignKey("scene.Action", related_name='render_items', null=True, blank=True, on_delete=models.SET_NULL)
+    image = FilerImageField(verbose_name=_("image"), null=True, blank=True, on_delete=models.SET_NULL, related_name='video_item')
+    video = FilerFileField(verbose_name=_("video"), null=True, blank=True, on_delete=models.SET_NULL, related_name='video_item_video')
+    audio = FilerFileField(verbose_name=_("audio"), null=True, blank=True, on_delete=models.SET_NULL, related_name='video_item_audio')
+    order = models.PositiveIntegerField(_("order"), default=0, db_index=True)
+    config = models.JSONField(_("config"), null=True, blank=True)
+    render = models.ForeignKey("scene.Render", verbose_name=_("render"), related_name='render_items',null=True, blank=True, on_delete=models.CASCADE)
+    scene = models.ForeignKey("scene.Scene", verbose_name=_("scene"), related_name='render_items', null=True, blank=True, on_delete=models.SET_NULL)
+    action = models.ForeignKey("scene.Action", verbose_name=_("action"), related_name='render_items', null=True, blank=True, on_delete=models.SET_NULL)
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
 
@@ -668,8 +666,8 @@ class RenderItem(models.Model, TaskHolder, ModelDisplayMixin):
     
     class Meta:
         ordering = ['order']
-        verbose_name = 'Render Item'
-        verbose_name_plural = 'Render Items'
+        verbose_name = _('Render Item')
+        verbose_name_plural = _('Render Items')
 
     @property
     def duration(self):
@@ -679,29 +677,29 @@ class RenderItem(models.Model, TaskHolder, ModelDisplayMixin):
         return out
 
 class WorkShop(models.Model):
-    name = models.CharField(max_length=255)
-    description = models.TextField()
-    date = models.DateTimeField()
-    location = models.CharField(max_length=255)
+    name = models.CharField(_("name"), max_length=255)
+    description = models.TextField(_("description"))
+    date = models.DateTimeField(_("date"))
+    location = models.CharField(_("location"), max_length=255)
 
     def __str__(self):
         return self.name
 
 class ContactRequest(models.Model):
     CONTRIBUTION_CHOICES = [
-        ("pay", "I am ok to pay 20/30 dollars/euros for the workshop"),
-        ("api_key", "I am ok to bring my google api key to the project"),
-        ("collaborate", "I want to collaborate in another way"),
-        ("trial", "I just want to try it out and use the local open source version"),
+        ("pay", _("I am ok to pay 20/30 dollars/euros for the workshop")),
+        ("api_key", _("I am ok to bring my google api key to the project")),
+        ("collaborate", _("I want to collaborate in another way")),
+        ("trial", _("I just want to try it out and use the local open source version")),
     ]
 
-    name = models.CharField(max_length=255)
-    email = models.EmailField()
-    contribuition = models.TextField(choices=CONTRIBUTION_CHOICES, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    prompt = models.TextField("A glimpse of your imagination", null=True, blank=True, help_text="Just imagine and write with as many typos as you want. Guillermo will curate your scene", default="#Location\n#Cast\n#Props\n#Actions\n")
-    workshop = models.ForeignKey(WorkShop, related_name='contact_requests', on_delete=models.CASCADE, null=True, blank=True)
-    group_number = models.IntegerField(null=True, blank=True, help_text="How many friends and family member you would bring to the workshop?")
-    
+    name = models.CharField(_("name"), max_length=255)
+    email = models.EmailField(_("email"))
+    contribuition = models.TextField(_("contribution"), choices=CONTRIBUTION_CHOICES, null=True, blank=True)
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
+    prompt = models.TextField(_("A glimpse of your imagination"), null=True, blank=True, help_text=_("Just imagine and write with as many typos as you want. Guillermo will curate your scene"), default="#Location\n#Cast\n#Props\n#Actions\n")
+    workshop = models.ForeignKey(WorkShop, verbose_name=_("workshop"), related_name='contact_requests', on_delete=models.CASCADE, null=True, blank=True)
+    group_number = models.IntegerField(_("group number"), null=True, blank=True, help_text=_("How many friends and family member you would bring to the workshop?"))
+
     def __str__(self):
         return f"{self.name} ({self.email})"

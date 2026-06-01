@@ -4,7 +4,7 @@ from .models import Language, Task, Audio, \
     TaskPreset, Playlist, Speaker, AudioAnalysis
 
 from django.utils.html import format_html
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 from django.template.loader import render_to_string
 
 from import_export import resources
@@ -45,7 +45,7 @@ class TextResource(resources.ModelResource):
 
 @admin.register(Text)
 class TextAdmin(ImportExportModelAdmin, PlaylistLinksMixin):
-    actions = ['speak', 'create_tutorial', 'clone']
+    actions = ['speak', 'create_tutorial', 'clone_object']
     resource_class = TextResource
     list_filter = ['language']
     search_fields = ['text']
@@ -67,6 +67,7 @@ class TextAdmin(ImportExportModelAdmin, PlaylistLinksMixin):
             )
         return format_html(out)
 
+    @admin.action(description=_("Speak and create tutorial"))
     def create_tutorial(self, request, queryset):
         for item in queryset:
             label = "Tutorial creation has been queue for %(text)s"
@@ -76,8 +77,8 @@ class TextAdmin(ImportExportModelAdmin, PlaylistLinksMixin):
                 request,
                 msg
             )
-    create_tutorial.short_description = "Speak and create tutorial"
 
+    @admin.action(description=_("Speak"))
     def speak(self, request, queryset):
         for item in queryset:
             item.speak()
@@ -87,15 +88,14 @@ class TextAdmin(ImportExportModelAdmin, PlaylistLinksMixin):
                 request,
                 msg
             )
-    speak.short_description = "Speak"
 
-    def clone(self, request, queryset):
+    @admin.action(description=_("Clone Object"))
+    def clone_object(self, request, queryset):
         for item in queryset:
             new = item
             new.text = f'{item.text} cloned'
             item.id = None
             item.save()
-    clone.short_description = "Clone Object"
 
 
 class TutorialTextInline(admin.StackedInline):
