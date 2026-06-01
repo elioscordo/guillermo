@@ -77,6 +77,18 @@ class GoogleVoiceResource(resources.ModelResource):
         fields = ('id', 'name', 'description')
         export_order = ('id', 'name', 'description')
 
+class PromptResource(resources.ModelResource):
+    class Meta:
+        model = Prompt
+        fields = ('id', 'name', 'prompt', 'category')
+        export_order = ('id', 'name', 'prompt', 'category')
+
+class AgentResource(resources.ModelResource):
+    class Meta:
+        model = Agent
+        fields = ('id', 'name', 'output_type', 'schema')
+        export_order = ('id', 'name', 'output_type', 'schema')
+
 @admin.register(GoogleVoice)
 class GoogleVoiceAdmin(AdminActionsMixin, ModelAdmin, ImportExportModelAdmin):
     list_display = ('id', 'name', 'description')

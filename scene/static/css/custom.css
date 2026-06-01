@@ -21,19 +21,36 @@
     letter-spacing: 0.025em;
 }
 
-/* Darker, heavier links for items in the change list */
+/* Dark mode overrides for headers */
+.dark .unfold-table thead th, 
+.dark .unfold-table th,
+.dark .unfold-table td::before {
+    color: #9ca3af !important; /* Gray 400 */
+}
+
+/* Links and row text lighter than the responsive headers (#6b7280) */
+.unfold-table tbody td,
 .unfold-table tbody td a,
 .changelist-form table tbody td a,
 .unfold-table td a,
 .result-list a, 
 .data-row a {
     font-family: 'Inter', sans-serif !important;
-    font-weight: 700;
+    font-weight: 300 !important;
+    color: #9ca3af !important; 
     text-decoration: none;
     transition: color 0.2s ease;
 }
 
-
+/* Dark mode overrides for row text and links - lighter than headers */
+.dark .unfold-table tbody td,
+.dark .unfold-table tbody td a,
+.dark .changelist-form table tbody td a,
+.dark .unfold-table td a,
+.dark .result-list a, 
+.dark .data-row a {
+    color: #d1d5db !important; /* Gray 300 */
+}
 
 .markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6  {
     font-weight: bold; 

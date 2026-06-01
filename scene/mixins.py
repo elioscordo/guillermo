@@ -230,12 +230,12 @@ class UserCreatorMixin:
             {'user': user, 
                 'obj': obj,
                 'password': password, 
-                'cta': settings.SITE_URL + f'/admin/brainstorm/script/?id__exact={obj.id}'
+                'cta': settings.SITE_URL + f'/admin/scene/story/?id__exact={obj.id}'
             }
         )
         plain_message = strip_tags(html_message)
         send_mail(
-            f'Invitation to co-author the script: {obj.name}', plain_message, settings.DEFAULT_FROM_EMAIL, [email],
+            f'Invitation to co-author: {obj.name}', plain_message, settings.DEFAULT_FROM_EMAIL, [email],
             html_message=html_message # <--- HTML added here
         )
         return user

@@ -263,7 +263,7 @@ class Nudge(models.Model, EmailSenderMixin):
             author = Author.objects.filter(story=self.story, user=self.receiver).first()
             cta_url = ""
             if author:
-                cta_url = settings.SITE_URL + f'/admin/brainstorm/scene/add?story={self.story.id}&author={author.id}&type={self.story.contribution_type()}'
+                cta_url = settings.SITE_URL + f'/admin/scene/scene/add?story={self.story.id}&author={author.id}&type={self.story.contribution_type()}'
         super().save(*args, **kwargs)
         self.send_email(
             subject=f"Nudge on the story: {self.story.name}. {self.sender.username} nudged you!",
@@ -689,7 +689,7 @@ class ContactRequest(models.Model):
     CONTRIBUTION_CHOICES = [
         ("pay", _("I am ok to pay 20/30 dollars/euros for the workshop")),
         ("api_key", _("I am ok to bring my google api key to the project")),
-        ("collaborate", _("I want to collaborate in another way")),
+        ("collaborate", _("I want to help testing")),
         ("trial", _("I just want to try it out and use the local open source version")),
     ]
 

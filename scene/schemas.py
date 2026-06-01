@@ -61,8 +61,7 @@ class SceneSchema(BaseModel):
                     story=story,
                     defaults={
                         'prompt': voice_data.prompt,
-                        'google_voice': gv,
-                        'code': voice_data.name
+                        'google_voice': gv
                     }
                 )
                 voice_map[item[0].name] = item
