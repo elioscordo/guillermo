@@ -12,7 +12,7 @@ from .models import ActionOrganizer, Character, Scene, Action, Background, Scene
 from .admin_utils import AjaxTaskModelAdmin, AdminLinker
 from django.utils.translation import gettext_lazy as _
 from django.utils.html import format_html
-from .sections import AuthorSection, SceneSection, SceneElementsSection
+from .sections import AuthorSection, SceneSection, SceneElementsSection, SceneCharactersSection, SceneLocationsSection, ScenePropsSection
 from .mixins import ACTION_FIELDSETS, ELEMENT_FIELDSETS, SceneFilterMixin, StaffReadOnlyMixin, StoryFilterMixin, ViewYourOwnMixin, PromptPreviewMixin, AdminActionsMixin
 from unfold.sections import TableSection, TemplateSection, render_to_string
 from rangefilter.filters import NumericRangeFilter
@@ -104,11 +104,31 @@ class AuthorInline(StackedInline):
 @admin.register(Story)
 class StoryAdmin(AdminActionsMixin, AdminLinker, ModelAdmin):
     inlines = [AuthorInline]
+
+    def get_urls(self):
+        return [
+            path('refresh-section/<int:object_id>/<str:section_key>/', 
+                 self.admin_site.admin_view(self.refresh_section_view), 
+                 name='story_refresh_section'),
+        ] + super().get_urls()
+
+    def refresh_section_view(self, request, object_id, section_key):
+        instance = get_object_or_404(Story, pk=object_id)
+        attr_name = 'backgrounds' if section_key == 'locations' else section_key
+        items = getattr(instance, attr_name).all().order_by('name')
+        html = render_to_string("sections/scene_cards_items.html", {
+            "items": items,
+        })
+        return JsonResponse({"html": html})
+
     autocomplete_fields = ['group']
     search_fields = ['name']
     list_sections = [
         SceneSection,
         AuthorSection,
+        SceneCharactersSection,
+        SceneLocationsSection,
+        ScenePropsSection,
     ]
     list_display = ['__str__', 'image_intro','link_scenes', 'link_characters', 'link_backgrounds', 'link_props', 'render_type']
     actions = ['clone', 'add_me_as_author']
@@ -141,12 +161,30 @@ class StoryAdmin(AdminActionsMixin, AdminLinker, ModelAdmin):
 @admin.register(Scene)
 class SceneAdmin(AdminActionsMixin, AdminLinker, StoryFilterMixin, AjaxTaskModelAdmin):
     search_fields = ['name']
+
+    def get_urls(self):
+        return [
+            path('refresh-section/<int:object_id>/<str:section_key>/', 
+                 self.admin_site.admin_view(self.refresh_section_view), 
+                 name='scene_refresh_section'),
+        ] + super().get_urls()
+
+    def refresh_section_view(self, request, object_id, section_key):
+        instance = get_object_or_404(Scene, pk=object_id)
+        items = instance.get_elements().get(section_key, [])
+        html = render_to_string("sections/scene_cards_items.html", {
+            "items": items,
+        })
+        return JsonResponse({"html": html})
+
     list_refresh = ['items']
+    list_sections = [SceneCharactersSection, SceneLocationsSection, ScenePropsSection]
+
     list_display = ['name', 'prompt', 'prompt_refine', 'last_tasks', 'items', 'link_story']
     list_editable = ['prompt', 'prompt_refine']
     list_display_links = ('name',)
     autocomplete_fields = ['story', 'author']
-    actions = ['clone', 'generate_scene_elements', 'generate_scene_actions', 'extract_scene']
+    actions = ['clone','extract_scene',  'generate_scene_elements', 'generate_scene_actions', ]
     list_filter = ['story',]
     fieldsets = (
         ("Write",{

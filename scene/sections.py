@@ -3,6 +3,7 @@ from django.utils.safestring import mark_safe
 import markdown
 from django.utils.translation import gettext_lazy as _
 from django.utils.html import format_html, strip_tags
+from django.urls import reverse
 
 from django.contrib.admin.utils import label_for_field, lookup_field
 from django.db.models import Model
@@ -135,7 +136,16 @@ class SceneSection(TableSection):
             return mark_safe(f"<div class='markdown'>{markdown.markdown(obj.prompt)}</div>")
         return _("No Prompt")
         
-    fields = ['prompt', 'name', 'author']
+    def get_name(self, obj):
+        url = reverse("admin:scene_scene_change", args=[obj.pk])
+        return format_html(
+            '<a href="{}" class="text-primary-600 font-medium hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300">{}</a>',
+            url,
+            obj.name if obj.name else _("Scene {pk}").format(pk=obj.pk)
+        )
+    get_name.short_description = _("Name")
+
+    fields = ['prompt', 'get_name', 'author']
     extra = 0
     show_count = True  # This will run `count()`
     collapsible = False
@@ -170,3 +180,35 @@ class SceneElementsSection(TemplateSection):
                 {"label": "Actions", "count": instance.actions.count(), "url": f"/admin/scene/action/?scene__id__exact={instance.id}"},
             ]
         }
+
+class SceneBaseCardsSection(TemplateSection):
+    template_name = "sections/scene_cards.html"
+    key = None
+    title = None
+
+    def get_context_data(self, request, instance):
+        if hasattr(instance, 'get_elements'):
+            items = instance.get_elements().get(self.key, [])
+        else:
+            # Fallback for Story admin where elements are direct relations
+            attr_name = 'backgrounds' if self.key == 'locations' else self.key
+            items = getattr(instance, attr_name).all().order_by('name')
+
+        return {
+            "title": self.title,
+            "items": items,
+            "instance": instance,
+            "section_key": self.key
+        }
+
+class SceneCharactersSection(SceneBaseCardsSection):
+    key = 'characters'
+    title = _("Characters")
+
+class SceneLocationsSection(SceneBaseCardsSection):
+    key = 'locations'
+    title = _("Locations")
+
+class ScenePropsSection(SceneBaseCardsSection):
+    key = 'props'
+    title = _("Props")

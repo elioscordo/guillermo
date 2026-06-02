@@ -1,0 +1,43 @@
+{% load i18n %}
+<div class="flex flex-col bg-white border border-base-200 rounded-default shadow-xs dark:border-base-800 dark:bg-base-900 overflow-hidden mb-6">
+    <div class="px-4 py-3 border-b border-base-200 dark:border-base-800 flex justify-between items-center">
+        {% if title %}
+            <h2 class="font-semibold text-font-important-light text-sm dark:text-font-important-dark uppercase tracking-widest">{{ title }}</h2>
+        {% endif %}
+        
+        <button 
+            type="button"
+            onclick="refreshSceneSection({{ instance.id }}, '{{ section_key }}')"
+            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+        >
+            <span class="material-symbols-outlined text-[16px] mr-1">refresh</span>
+            {% trans "Refresh" %}
+        </button>
+    </div>
+
+    <div id="section-{{ section_key }}-{{ instance.id }}" class="p-4 transition-opacity duration-200">
+        {% include "sections/scene_cards_items.html" %}
+    </div>
+</div>
+
+<script>
+function refreshSceneSection(objectId, sectionKey) {
+    const container = document.getElementById(`section-${sectionKey}-${objectId}`);
+    container.classList.add('opacity-40', 'pointer-events-none');
+    
+    // Detect if we are in Story or Scene admin based on URL
+    const adminType = window.location.pathname.includes('/story/') ? 'story' : 'scene';
+    
+    fetch(`/admin/scene/${adminType}/refresh-section/${objectId}/${sectionKey}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.html) {
+                container.innerHTML = data.html;
+            }
+        })
+        .catch(error => console.error('Error refreshing section:', error))
+        .finally(() => {
+            container.classList.remove('opacity-40', 'pointer-events-none');
+        });
+}
+</script>

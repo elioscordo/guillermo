@@ -375,14 +375,14 @@ class AdminActionsMixin:
                 obj.generate_voice(obj.PRESET_VOICE, user=request.user)
             self.message_user(request, "voice generated for item ID {}.".format(obj.id))
 
-    @admin.action(description="Generate Missing Elements Images")
+    @admin.action(description="Generate Elements Images (step 2)")
     def generate_scene_elements(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_SCENE_ELEMENTS, owner=request.user) is None:
                 pass
             self.message_user(request, "Generation task for elements started for scene: {}.".format(obj.name))
 
-    @admin.action(description="Generate All Actions Images")
+    @admin.action(description="Generate Actions Images (step 3)")
     def generate_scene_actions(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_SCENE_ACTIONS, owner=request.user) is None:
@@ -395,7 +395,7 @@ class AdminActionsMixin:
             if obj.add_author(request.user):
                 self.message_user(request, f"You have been added as an author to story {obj.name}")
 
-    @admin.action(description="Extract Scene")
+    @admin.action(description="Generate Structure (step 1)" )
     def extract_scene(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_EXTRACT_SCENE, owner=request.user) is None:
