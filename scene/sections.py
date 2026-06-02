@@ -86,7 +86,9 @@ class AuthorSection(TableSection):
     def name(self, obj):
         return f"{obj.user.username if obj.user else obj.email}"
 
-    description
+    def context_data(self) -> dict:
+        return {"description": _("Manage authors within the story edit page. If you add emails, guillermo will send an invitation by email.")}
+
     def scenes(self, obj):
         turn_type = 'scene'
         turn_link = self.NO_USER_LABEL
