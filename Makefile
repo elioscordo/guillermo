@@ -64,6 +64,7 @@ clean:
 	rm -rf staticfiles
 
 refresh:
+	git pull
 	sudo systemctl restart celery.service 
 	sudo systemctl restart nginx.service 
 	sudo systemctl restart gunicorn
