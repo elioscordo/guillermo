@@ -88,7 +88,7 @@ EMAIL_HOST_PASSWORD = os.environ.get('SMTP_KEY', '')
 
 # Default sender settings
 # CRITICAL: This email address MUST be verified in your Brevo Sender dashboard
-DEFAULT_FROM_EMAIL = 'Your Name <noreply@guillermo.studio>'
+DEFAULT_FROM_EMAIL = 'Guillermo By Elio <noreply@guillermo.studio>'
 SERVER_EMAIL = 'admin@guillermo.studio'
 
 

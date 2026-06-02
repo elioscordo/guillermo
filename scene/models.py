@@ -258,24 +258,26 @@ class Nudge(models.Model, EmailSenderMixin):
     def save(self, *args, **kwargs):
         if self.sender == self.receiver:
             raise ValueError("Sender and receiver cannot be the same user.")
-        
+        send = False
         cta_url = ""
         if not self.id:
             author = Author.objects.filter(story=self.story, user=self.receiver).first()
             if author:
-                cta_url = settings.SITE_URL + f'/admin/scene/scene/add?story={self.story.id}&author={author.id}&type={self.story.contribution_type()}'
+                cta_url = settings.SITE_URL + f'/admin/scene/scene/add?story={self.story.id}&author={author.id}'
+                send = True
         super().save(*args, **kwargs)
-        self.send_email(
-            subject=_("Nudge on the story: %(story_name)s. %(sender_name)s nudged you!") % {
-                'story_name': self.story.name,
-                'sender_name': self.sender.username
-            },
-            context={
-                'item': self,
-                'cta': cta_url
-            },
-            recipient_list=[self.receiver.email]
-        )
+        if send:
+            self.send_email(
+                subject=_("Nudge on the story: %(story_name)s. %(sender_name)s nudged you!") % {
+                    'story_name': self.story.name,
+                    'sender_name': self.sender.username
+                },
+                context={
+                    'item': self,
+                    'cta': cta_url
+                },
+                recipient_list=[self.receiver.email]
+            )
 
 
 class Prop(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
