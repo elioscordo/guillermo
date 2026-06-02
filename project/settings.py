@@ -135,7 +135,7 @@ from django.templatetags.static import static
 UNFOLD = {
     "SITE_TITLE": _("Guillermo"),  # Appears in the title and in the top left corner
     "SITE_HEADER": _("Guillermo"),
-    "SITE_SUBHEADER": _("Tell me a story"),
+    "SITE_SUBHEADER": _("The power of your story"),
     "STYLES": [
         lambda request: static("css/unfold_filer_custom.css"),
         lambda request: static("css/custom.css"),

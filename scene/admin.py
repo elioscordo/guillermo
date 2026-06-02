@@ -12,7 +12,7 @@ from .models import ActionOrganizer, Character, Scene, Action, Background, Scene
 from .admin_utils import AjaxTaskModelAdmin, AdminLinker
 from django.utils.translation import gettext_lazy as _
 from django.utils.html import format_html
-from .sections import AuthorSection, SceneSection, SceneElementsSection, SceneCharactersSection, SceneLocationsSection, ScenePropsSection
+from .sections import AuthorSection, SceneSection, SceneCharactersSection, SceneLocationsSection, ScenePropsSection
 from .mixins import ACTION_FIELDSETS, ELEMENT_FIELDSETS, SceneFilterMixin, StaffReadOnlyMixin, StoryFilterMixin, ViewYourOwnMixin, PromptPreviewMixin, AdminActionsMixin
 from unfold.sections import TableSection, TemplateSection, render_to_string
 from rangefilter.filters import NumericRangeFilter

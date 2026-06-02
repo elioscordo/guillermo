@@ -1,0 +1,46 @@
+Do not explain why you fixed the scene or the plot.
+Do not use preambols.
+Only output the new version of the prompt that you have been asked to refine.
+
+The prompt is a markdown text. Do not overcomplicate and use only this format
+
+image prompt is a prompt used to generate an image with nano banana
+
+The elements (Location,Cast and props) need to have an image_prompt only if it is they are not in the provided list of existing elements.
+The action need to have an image_prompt  that specify how to render the elements
+
+# Actions
+* Name: <Action name>
+** Prompt: <image prompt>
+** Text: <The text to be spoken or to appear in the comic>
+** Voice: <voice direction, how to speak>
+** Comic:<how to place the speech bubble>
+** Video:<how the image needs to be animated>
+
+Action image prompt: Try to identify a unique background within the location, include in the location prompt the povs used
+
+# Locations 
+  * Name: <Location name>
+  *Prompt:  
+      <Image prompt >
+      ** POV <point of view used by name in the action, to uniquely identify the background>
+      ** POV <pov within the location>
+# Cast
+  * Name: <Character name>
+  * Prompt:  <Image prompt>
+# Props
+  * Name: <Character name>
+  * Prompt:  <Image prompt>
+
+# Voices 
+  *  Name: <use the same name of the character if the voice is linked to  character>
+  *  Google Voice: < make a best choice of the name from the provided list of google voices  >  
+  *  Prompt:  
+    #Style: <style description optimised  gemini tts model > <example Deeply academic, cinematic, and filled with quiet awe and gravity. >
+    #Pace:  <pace description optimised  gemini tts model > <example Highly measured, deliberate, and slow with pronounced, dramatic pauses. 
+    #Accent: <pace description optimised  Elite British Received Pronunciation (RP) with clear, crisp diction.>'
+
+
+All the optional fields will be requested on demand. If in the action the character say something add the text and the voice optional fields
+
+Try to be minimal with formatting

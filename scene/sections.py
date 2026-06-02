@@ -137,7 +137,7 @@ class SceneSection(TableSection):
         return _("No Prompt")
         
     def get_name(self, obj):
-        url = reverse("admin:scene_scene_change", args=[obj.pk])
+        url = "/admin/scene/scene/?id__exact={0}".format(obj.id)
         return format_html(
             '<a href="{}" class="text-primary-600 font-medium hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300">{}</a>',
             url,
@@ -151,35 +151,6 @@ class SceneSection(TableSection):
     collapsible = False
     related_name = 'scenes'
 
-class SceneElementsSection(TemplateSection):
-    template_name = "sections/scene_elements.html"
-
-    def get_context_data(self, request, instance):
-        elements = instance.get_elements()
-        slides = []
-        for category, items in elements.items():
-            for item in items:
-                model_name = item._meta.model_name
-                app_label = item._meta.app_label
-                slides.append({
-                    "url": item.image.url if item.image else None,
-                    "name": item.name,
-                    "prompt": item.prompt if item.prompt else None,
-                    "type": category[:-1].title(),
-                    "id": item.id,
-                    "edit_url": f"/admin/{app_label}/{model_name}/{item.id}/change/"
-                })
-        return {
-            "instance": instance,
-            "slides": slides,
-            "summary": [
-                {"label": "Locations", "count": elements['locations'].count(), "url": f"/admin/scene/background/?story__id__exact={instance.story_id}"},
-                {"label": "Characters", "count": elements['characters'].count(), "url": f"/admin/scene/character/?story__id__exact={instance.story_id}"},
-                {"label": "Props", "count": elements['props'].count(), "url": f"/admin/scene/prop/?story__id__exact={instance.story_id}"},
-                {"label": "Voices", "count": elements['voices'].count(), "url": f"/admin/scene/voice/?story__id__exact={instance.story_id}"},
-                {"label": "Actions", "count": instance.actions.count(), "url": f"/admin/scene/action/?scene__id__exact={instance.id}"},
-            ]
-        }
 
 class SceneBaseCardsSection(TemplateSection):
     template_name = "sections/scene_cards.html"
