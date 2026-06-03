@@ -8,26 +8,22 @@
    - 'prompt_comic':  optional. A visual description optimized for a comic book panel style (mentioning line work, ink, or stylized colors).
    - 'prompt_video': optional.  A motion-focused description (e.g., camera movement like 'panning', 'dolly-in', or specific character movements).
    - 'prompt_voice': optional. The dialogue or narration text occurring during this specific action.
- - 'voice': the voice name 
+   - 'cast':  a list of the characters involved in the action (match the exact case of the name), in case you are in doubt add the character write ['none'] if no cast in the action
+   - 'props': a list of the props appearing in the action (match the exact case of the name), in case you are in doubt add the prop write ['none'] if no props in the action
 
-4. **Entity Extraction (Props, Backgrounds, Characters)**:
-   - **Background**: For every action, identify the specific environment (Location). Provide a 'name' and a 'prompt' describing the setting's visual appearance (otimise the prompt for nanobanana)
-   - **Props**: List all physical objects ('elements') involved in the action. For each, provide a 'name' and a visual 'prompt'.  (optimise the prompt for nanobanana)
-   - **Characters**: List all characters appearing in the action. In the action object, use the 'characters' field to list their names. For each character, provide a 'name' and a 'prompt' describing their physical appearance, clothing, and current expression. (optimise the prompt for nanobanana)
+   - 'voice': The dialogue or narration text occurring during this specific action.
+   - 'location': match the exact case of the name of the Location, make sure that in the prompt there is a clear reference at the selected location pov
+   - 'voice': the voice name selected for the Scene 
 
- - **Voices**: 
- List all voices required appearing in the action. In the action object, use the 'voices' field to list their names. For each voice, provide a 
- {'name':"voice name (if linked to a character it is the same name of the character)" 
-'google_voice': 'choose the name from the provided list of google voices',
- 'prompt':  'markdown format with following voice prompt 
-    #Style: <style description optimised  gemini tts model > <example Deeply academic, cinematic, and filled with quiet awe and gravity. >
-    #Pace:  <pace description optimised  gemini tts model > <example Highly measured, deliberate, and slow with pronounced, dramatic pauses. 
-    #Accent: <pace description optimised  Elite British Received Pronunciation (RP) with clear, crisp diction.>'
-}
+4. ** Scene Elements Extraction (props, locations, Ccharacters)**:
+   - **locations**: For every action, identify the specific environment (Location). Provide a 'name' and a 'prompt' describing the setting's visual appearance (otimise the prompt for nanobanana)
+   - **Props**: List all the ententies that are not cast or locations which consistence need to be preserve across the actions. For each, provide a 'name' and a 'prompt'.  (optimise the prompt for nanobanana)
+   - **cast**: List all characters appearing in the scene. For each, provide a 'name' and a 'prompt' (optimise the prompt for nanobanana)
+
 
 
 ### Consistency Requirements:
-- **Strict Naming**: Use the EXACT same 'name' for the same Background, Character, or Prop if it appears across multiple actions. 
+- **Strict Naming**: Use the EXACT same 'name' for the same locations, cast, or props if it appears across multiple actions. 
 - **Reuse Context**: If a list of existing entities is provided in the context, you MUST reuse their exact 'name' for matching entities in the story, do not output a prompt for them, only work on the appearance. Do not create duplicates.
 - **Visual Persistence**: Ensure the 'prompt' for a specific named element (e.g., a specific character's appearance) is consistent every time that element is referenced.
 

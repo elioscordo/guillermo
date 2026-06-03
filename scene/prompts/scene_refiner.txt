@@ -4,43 +4,52 @@ Only output the new version of the prompt that you have been asked to refine.
 
 The prompt is a markdown text. Do not overcomplicate and use only this format
 
-image prompt is a prompt used to generate an image with nano banana
-
-The elements (Location,Cast and props) need to have an image_prompt only if it is they are not in the provided list of existing elements.
-The action need to have an image_prompt  that specify how to render the elements
+The elements (Location, Cast and Props) need to have a Prompt only if it is they are not in the provided list of existing elements.
+Actions: improve the given list of actions, since every action represent an image, for complex gestures add extra actions
+Props: everything that it not a location or a character is a prop, animals, group of elements that are expected to mantain consistency across actions
 
 # Actions
 * Name: <Action name>
-** Prompt: <image prompt>
+** Prompt: <define the location pov to uniquely identify the background, how the cast is visible in the space, their gesture and their expression. you are an expert cinema photographer.>
 ** Text: <The text to be spoken or to appear in the comic>
-** Voice: <voice direction, how to speak>
+** Voice: <voice direction, how to speak. use gemini tts emotions>
 ** Comic:<how to place the speech bubble>
-** Video:<how the image needs to be animated>
-
-Action image prompt: Try to identify a unique background within the location, include in the location prompt the povs used
+** Video:<how the image needs to be animated >
 
 # Locations 
   * Name: <Location name>
-  *Prompt:  
-      <Image prompt >
-      ** POV <point of view used by name in the action, to uniquely identify the background>
-      ** POV <pov within the location>
+  * Prompt:  
+      <Image prompt of the location on a wide angle>
+      ** POV name <point of view used by name in the action, to uniquely identify the background>
+      ** POV prompt <pov within the location, add details like zoom to an location detail >
+  // Example
+  * Name: Van interior
+  * Prompt:  
+      * A 2000 elite van wide angle to get the most details
+      ** Dining pov
+      *** zoom to the dining area, show only the window and the sofa
+      ** Rear pov
+      *** place the camere at the rear of the van 
+
 # Cast
   * Name: <Character name>
-  * Prompt:  <Image prompt>
+  * Prompt: 
+    <describe the character, add details like age, epoch, attire, nationality>
+
 # Props
-  * Name: <Character name>
+  * Name: <Prop name>
   * Prompt:  <Image prompt>
 
 # Voices 
   *  Name: <use the same name of the character if the voice is linked to  character>
   *  Google Voice: < make a best choice of the name from the provided list of google voices  >  
   *  Prompt:  
-    #Style: <style description optimised  gemini tts model > <example Deeply academic, cinematic, and filled with quiet awe and gravity. >
-    #Pace:  <pace description optimised  gemini tts model > <example Highly measured, deliberate, and slow with pronounced, dramatic pauses. 
-    #Accent: <pace description optimised  Elite British Received Pronunciation (RP) with clear, crisp diction.>'
+    #Style: 
+     <style description optimised  gemini tts model > <example Deeply academic, cinematic, and filled with quiet awe and gravity. >
+    #Pace:  
+     <pace description optimised  gemini tts model > <example Highly measured, deliberate, and slow with pronounced, dramatic pauses. 
+    #Accent: 
+     <pace description optimised  Elite British Received Pronunciation (RP) with clear, crisp diction.>'
 
 
 All the optional fields will be requested on demand. If in the action the character say something add the text and the voice optional fields
-
-Try to be minimal with formatting

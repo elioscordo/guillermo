@@ -26,8 +26,8 @@ class ActionSchema(BaseModel):
     prompt_voice: str
     text: str
     prompt: str
-    cast: List[str] = []
-    props: List[str] = []
+    cast: List[str]
+    props: List[str]
     background: str
     voice: str
 

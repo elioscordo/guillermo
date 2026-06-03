@@ -145,7 +145,7 @@ class SceneSection(TableSection):
         )
     get_name.short_description = _("Name")
 
-    fields = ['prompt', 'get_name', 'author']
+    fields = ['prompt', 'get_name', 'author', "items"]
     extra = 0
     show_count = True  # This will run `count()`
     collapsible = False
@@ -158,16 +158,9 @@ class SceneBaseCardsSection(TemplateSection):
     title = None
 
     def get_context_data(self, request, instance):
-        if hasattr(instance, 'get_elements'):
-            items = instance.get_elements().get(self.key, [])
-        else:
-            # Fallback for Story admin where elements are direct relations
-            attr_name = 'backgrounds' if self.key == 'locations' else self.key
-            items = getattr(instance, attr_name).all().order_by('name')
-
         return {
             "title": self.title,
-            "items": items,
+            "items": self.get_items(instance),
             "instance": instance,
             "section_key": self.key
         }
@@ -176,10 +169,21 @@ class SceneCharactersSection(SceneBaseCardsSection):
     key = 'characters'
     title = _("Characters")
 
+    def get_items(self, instance):
+        return instance.get_cast()
+
+
 class SceneLocationsSection(SceneBaseCardsSection):
     key = 'locations'
     title = _("Locations")
+    
+    def get_items(self, instance):
+        return instance.get_locations()
+
 
 class ScenePropsSection(SceneBaseCardsSection):
     key = 'props'
     title = _("Props")
+
+    def get_items(self, instance):
+        return instance.get_props()

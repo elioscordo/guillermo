@@ -161,7 +161,8 @@ class StoryAdmin(AdminActionsMixin, AdminLinker, ModelAdmin):
 @admin.register(Scene)
 class SceneAdmin(AdminActionsMixin, AdminLinker, StoryFilterMixin, AjaxTaskModelAdmin):
     search_fields = ['name']
-
+    ajax_shift_fields = ['prompt']
+    
     def get_urls(self):
         return [
             path('refresh-section/<int:object_id>/<str:section_key>/', 

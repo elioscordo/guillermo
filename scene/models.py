@@ -106,6 +106,18 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, models.Model, GetContentsMixi
         if not out:
             out = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_TEXT).first()
         return out
+    
+    def get_locations(self):
+        return self.backgrounds.all().order_by('name')
+
+    def get_cast(self):
+        return self.characters.all().order_by('name')
+
+    def get_props(self):
+        return Prop.objects.filter(story=self).order_by('name')
+
+    def get_voices(self):
+        return Voice.objects.filter(story=self).order_by('name')
 
     def import_group_members(self):
         if self.group is not None:
@@ -191,6 +203,16 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
                     parts.append("### STORY CONTEXT ###\nReuse these existing entities if they appear:\n" + "\n".join(elements_parts))
         return parts
 
+    def get_cast(self):
+        return Character.objects.filter(actions_cast__in=self.actions.all())
+    def get_locations(self):
+        return Background.objects.filter(actions__in=self.actions.all())
+    
+    def get_props(self):
+        return Prop.objects.filter(actions__in=self.actions.all())
+    def get_voices(self):
+        return Voice.objects.filter(actions_voice__in=self.actions.all())
+
     def get_elements(self):
         """
         Returns a dictionary containing distinct Backgrounds, Props, Characters, and Voices
@@ -198,16 +220,11 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
         """
         actions = self.actions.all()
 
-        locations = Background.objects.filter(actions__in=actions).distinct().order_by('name')
-        props = Prop.objects.filter(actions__in=actions).distinct().order_by('name')
-        
-        # Characters can be the main actor or part of the cast in any action of the scene
-        actors = Character.objects.filter(actions__in=actions)
-        cast = Character.objects.filter(actions_cast__in=actions)
-        characters = (actors | cast).distinct().order_by('name')
-
-        voices = Voice.objects.filter(actions_voice__in=actions).distinct().order_by('name')
-
+        locations = self.get_locations()
+        props = self.get_props()
+        characters = self.get_cast()
+        voices = self.get_voices()
+       
         return {
             'locations': locations,
             'characters': characters,
