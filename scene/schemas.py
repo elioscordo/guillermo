@@ -26,8 +26,8 @@ class ActionSchema(BaseModel):
     prompt_voice: str
     text: str
     prompt: str
-    cast: List[str] = []
-    props: List[str] = []
+    cast: List[str]
+    props: List[str]
     background: str
     voice: str
 
@@ -35,7 +35,7 @@ class ActionSchema(BaseModel):
 class SceneSchema(BaseModel):
     name: str
     locations: List[BackgroundSchema]
-    characters: List[CharacterSchema]
+    cast: List[CharacterSchema]
     props: List[PropSchema]
     actions: List[ActionSchema]
     voices: List[VoiceSchema]
@@ -79,8 +79,8 @@ class SceneSchema(BaseModel):
 
         # 3. Sync Global Characters for the Story
         char_map = {}
-        if self.characters:
-            for char_data in self.characters:
+        if self.cast:
+            for char_data in self.cast:
                 item = Character.objects.update_or_create(
                     name=char_data.name,
                     story=story,

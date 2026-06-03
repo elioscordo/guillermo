@@ -17,30 +17,30 @@ from django.apps import apps
 from django.shortcuts import get_object_or_404
 
 ELEMENT_FIELDSETS = (
-        ("Write", {
+        (_("Write"), {
             "classes": ["tab"],
             "fields": ["name","prompt",  'action'],
         }),
-        ("Settings", {
+        (_("Settings"), {
             "classes": ["tab"],
             "fields": ["image","prompt_refine", "story" ],
         }),
     )
 
 ACTION_FIELDSETS = (
-        ("Composition", {
+        (_("Composition"), {
             "classes": ["tab"],
             "fields": ["name", "scene", "prompt","order", "actor", "props", "cast", "background", "consistent_with",  "image"],
         }),
-        ("Video", {
+        (_("Video"), {
             "classes": ["tab"],
             "fields": ["prompt_video", "video", "image_first", "image_last"],
         }),
-        ("Refine", {
+        (_("Refine"), {
             "classes": ["tab"],
             "fields": ["prompt_refine", "image_refine"],
         }),
-        ("Execute On Save", {
+        (_("Execute On Save"), {
             "classes": ["tab"],
             "fields": ["action"],
         }),
@@ -235,7 +235,7 @@ class UserCreatorMixin:
         )
         plain_message = strip_tags(html_message)
         send_mail(
-            f'Invitation to co-author: {obj.name}', plain_message, settings.DEFAULT_FROM_EMAIL, [email],
+            _('Invitation to co-author: %(name)s') % {'name': obj.name}, plain_message, settings.DEFAULT_FROM_EMAIL, [email],
             html_message=html_message # <--- HTML added here
         )
         return user
@@ -267,7 +267,7 @@ class PromptPreviewMixin:
         return JsonResponse({"content": text})
 
 class AdminActionsMixin:
-    @admin.action(description="Add to comic video")
+    @admin.action(description=_("Add to comic video"))
     def comic_to_video(self, request, queryset):
         Render = apps.get_model('scene', 'Render')
         RenderItem = apps.get_model('scene', 'RenderItem')
@@ -279,7 +279,7 @@ class AdminActionsMixin:
                 order=obj.order,
             )
 
-    @admin.action(description="Add to scene video")
+    @admin.action(description=_("Add to scene video"))
     def video_to_scene_video(self, request, queryset):
         Render = apps.get_model('scene', 'Render')
         RenderItem = apps.get_model('scene', 'RenderItem')
@@ -291,7 +291,7 @@ class AdminActionsMixin:
                 order=obj.order,
             )
 
-    @admin.action(description="Clone selected items")
+    @admin.action(description=_("Clone selected items"))
     def clone(self, request, queryset):
         for obj in queryset:
             props = None
@@ -302,7 +302,7 @@ class AdminActionsMixin:
                 cast = list(obj.cast.all())
             obj.pk = None
             if hasattr(obj, 'name') and obj.name:
-                obj.name = f"{obj.name} (Clone)"
+                obj.name = _("%(name)s (Clone)") % {'name': obj.name}
             if hasattr(obj, 'order'):
                 obj.order = obj.order + 1
             obj.save()
@@ -310,104 +310,104 @@ class AdminActionsMixin:
                 obj.props.set(props)
             if cast is not None:
                 obj.cast.set(cast)
-        self.message_user(request, "Selected items have been cloned.")
+        self.message_user(request, _("Selected items have been cloned."))
 
-    @admin.action(description="Generate image")
+    @admin.action(description=_("Generate image"))
     def default_generate_image(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_IMAGE, owner=request.user) is None:
                 obj.generate_image(user=request.user)
-            self.message_user(request, "Image generated for item ID {}.".format(obj.id))
+            self.message_user(request, _("Image generated for item ID %(id)d.") % {'id': obj.id})
 
-    @admin.action(description="Refine image")
+    @admin.action(description=_("Refine image"))
     def default_refine_image(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_REFINE_IMAGE, owner=request.user) is None:
                 obj.refine_image(user=request.user) 
-            self.message_user(request, "Image generated for item ID {}.".format(obj.id))
+            self.message_user(request, _("Image generated for item ID %(id)d.") % {'id': obj.id})
 
-    @admin.action(description="Refined as image")
+    @admin.action(description=_("Refined as image"))
     def accept_refined_image(self, request, queryset):
         for obj in queryset:
             obj.image=obj.image_refine
             obj.save()
-            self.message_user(request, "image accepted for item ID {}.".format(obj.id))
+            self.message_user(request, _("image accepted for item ID %(id)d.") % {'id': obj.id})
 
-    @admin.action(description="Refined as first frame")
+    @admin.action(description=_("Refined as first frame"))
     def accept_refined_first(self, request, queryset):
         for obj in queryset:
             obj.image_first=obj.image_refine
             obj.save()
-            self.message_user(request, "image accepted for item ID {}.".format(obj.id))
+            self.message_user(request, _("image accepted for item ID %(id)d.") % {'id': obj.id})
 
-    @admin.action(description="Refined as last frame")
+    @admin.action(description=_("Refined as last frame"))
     def accept_refined_last(self, request, queryset):
         for obj in queryset:
             obj.image_last=obj.image_refine
             obj.save()
-            self.message_user(request, "image accepted for item ID {}.".format(obj.id))
+            self.message_user(request, _("image accepted for item ID %(id)d.") % {'id': obj.id})
 
-    @admin.action(description="Video from image" )
+    @admin.action(description=_("Video from image"))
     def generate_video(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VIDEO, owner=request.user) is None:
                 obj.generate_video(obj.PRESET_VIDEO, user=request.user)
-            self.message_user(request, "video generated for item ID {}.".format(obj.id))
+            self.message_user(request, _("video generated for item ID %(id)d.") % {'id': obj.id})
 
-    @admin.action(description="Comic from image" )
+    @admin.action(description=_("Comic from image"))
     def generate_comic(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_COMIC, owner=request.user) is None:
                 obj.generate_comic(user=request.user)
-            self.message_user(request, "comic generated for item ID {}.".format(obj.id))
+            self.message_user(request, _("comic generated for item ID %(id)d.") % {'id': obj.id})
 
-    @admin.action(description="Video from first to last")
+    @admin.action(description=_("Video from first to last"))
     def generate_video_first_last(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VIDEO_FIRST_LAST, owner=request.user) is None:
                 obj.generate_video(obj.PRESET_VIDEO_FIRST_LAST, user=request.user)
-            self.message_user(request, "video generated for item ID {}.".format(obj.id))
+            self.message_user(request, _("video generated for item ID %(id)d.") % {'id': obj.id})
 
-    @admin.action(description="Generate Voice")
+    @admin.action(description=_("Generate Voice"))
     def generate_voice(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user) is None:
                 obj.generate_voice(obj.PRESET_VOICE, user=request.user)
-            self.message_user(request, "voice generated for item ID {}.".format(obj.id))
+            self.message_user(request, _("voice generated for item ID %(id)d.") % {'id': obj.id})
 
-    @admin.action(description="Generate Elements Images (step 2)")
+    @admin.action(description=_("Generate Elements Images (step 2)"))
     def generate_scene_elements(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_SCENE_ELEMENTS, owner=request.user) is None:
                 pass
-            self.message_user(request, "Generation task for elements started for scene: {}.".format(obj.name))
+            self.message_user(request, _("Generation task for elements started for scene: %(name)s.") % {'name': obj.name})
 
-    @admin.action(description="Generate Actions Images (step 3)")
+    @admin.action(description=_("Generate Actions Images (step 3)"))
     def generate_scene_actions(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_SCENE_ACTIONS, owner=request.user) is None:
                 pass
-            self.message_user(request, "Generation task for actions started for scene: {}.".format(obj.name))
+            self.message_user(request, _("Generation task for actions started for scene: %(name)s.") % {'name': obj.name})
 
-    @admin.action(description="Add me as author")
+    @admin.action(description=_("Add me as author"))
     def add_me_as_author(self, request, queryset):
         for obj in queryset:
             if obj.add_author(request.user):
-                self.message_user(request, f"You have been added as an author to story {obj.name}")
+                self.message_user(request, _("You have been added as an author to story %(name)s") % {'name': obj.name})
 
-    @admin.action(description="Generate Structure (step 1)" )
+    @admin.action(description=_("Generate Structure (step 1)"))
     def extract_scene(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_EXTRACT_SCENE, owner=request.user) is None:
                 obj.generate_scene(user=request.user)
-            self.message_user(request, f"Extracting scene from contribution {obj.id} in story {obj.story.id}.")
+            self.message_user(request, _("Extracting scene from contribution %(id)d in story %(story_id)d.") % {'id': obj.id, 'story_id': obj.story.id})
 
-    @admin.action(description="Refresh Scene Video" )
+    @admin.action(description=_("Refresh Scene Video"))
     def refresh_scene_video(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_SCENE_VIDEO, owner=request.user) is None:
                 obj.generate_video(obj.PRESET_VIDEO, user=request.user)
-            self.message_user(request, "video generated for item ID {}.".format(obj.id))
+            self.message_user(request, _("video generated for item ID %(id)d.") % {'id': obj.id})
 
 class RenderTypeMixin:
     RENDER_TYPE_FILM = 'film'
@@ -419,6 +419,7 @@ class RenderTypeMixin:
         (RENDER_TYPE_GRAPHIC_NOVEL, 'Graphic Novel'),
         (RENDER_TYPE_ANIMATIC, 'Animatic'),
     ]
+    
     def __getattr__(self, name):
         if name == "is_comic":
             return getattr(self, "render_type", None) == getattr(self, "RENDER_TYPE_GRAPHIC_NOVEL", "comic")
@@ -426,4 +427,4 @@ class RenderTypeMixin:
             return getattr(self, "render_type", None) == getattr(self, "RENDER_TYPE_FILM", "film")
         if name == "is_animatic":
             return getattr(self, "render_type", None) == getattr(self, "RENDER_TYPE_ANIMATIC", "animatic")
-        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+      

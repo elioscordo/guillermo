@@ -94,12 +94,25 @@ const pollStatus = () => {
         pollingTimer = setTimeout(pollStatus, delay);
     };
 
+const logShiftFields = () => {
+    const list = window.ajaxShiftFields || [];
+    console.log(`%c[AdminAjax] Configured Shift+Enter fields: ${JSON.stringify(list)}`, "color: #3b82f6; font-weight: bold;");
+};
 
 document.addEventListener('keydown', function(e) {
     if (e.target.name && e.target.name.startsWith('form-')) {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        const input = e.target;
+        const cleanName = input.name.split('-').slice(-1)[0];
+        const shiftFields = window.ajaxShiftFields || [];
+        const isShiftField = shiftFields.includes(cleanName);
+
+        // Debug log to verify field detection
+        console.log(`[AdminAjax] Keydown on: ${cleanName} | isShiftField: ${isShiftField} | Key: ${e.key} | Shift: ${e.shiftKey}`);
+        
+        const shouldTrigger = isShiftField ? (e.key === 'Enter' && e.shiftKey) : (e.key === 'Enter' && !e.shiftKey);
+
+        if (shouldTrigger) {
             e.preventDefault();
-            const input = e.target;
             const row = input.closest('tr');
             const idInput = row.querySelector('input.action-select');
             if (!idInput) return;
@@ -155,8 +168,23 @@ document.addEventListener('change', function(e) {
     }
 });
 
+// Fetch configuration from the server
+const fetchConfig = () => {
+    return fetch('ajax-config/')
+        .then(response => {
+            if (!response.ok) throw new Error("Config fetch failed");
+            return response.json();
+        })
+        .then(data => {
+            window.ajaxShiftFields = data.ajax_shift_fields || [];
+            logShiftFields();
+        })
+        .catch(err => console.error("[AdminAjax] Could not load config:", err));
+};
+
 // Initialize monitoring for any tasks already in progress on page load
 const initTaskMonitoring = () => {
+    fetchConfig();
     document.querySelectorAll('[id^="task-"]').forEach(el => {
         const status = el.getAttribute('data-status');
         if (["0", "1"].includes(status)) {

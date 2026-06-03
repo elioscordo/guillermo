@@ -122,13 +122,22 @@ class GetContentsMixin:
         return out
 
 class AgentModel(models.Model):
-    name = models.CharField(_("name"), max_length=100, default="name")
+    name = models.CharField(_("name"), max_length=100, default=_("name"))
+
+    class Meta:
+        verbose_name = _("agent model")
+        verbose_name_plural = _("agent models")
+
     def __str__(self):
         return "{}".format(self.name)
 
 class GoogleVoice(models.Model):
-    name = models.CharField(_("name"), max_length=100, default="name")
-    description = models.CharField(max_length=100)
+    name = models.CharField(_("name"), max_length=100, default=_("name"))
+    description = models.CharField(_("description"), max_length=100)
+
+    class Meta:
+        verbose_name = _("google voice")
+        verbose_name_plural = _("google voices")
 
     def __str__(self):
         return "{}".format(self.name)
@@ -147,10 +156,14 @@ class Prompt(models.Model):
         (GetContentsMixin.PRESET_SCENE, _("Sync Scene")),
         
     )
-    name= models.CharField(_("name"), max_length=100, default="name")
-    prompt = models.TextField(null=True, blank=True)
-    category = models.CharField(max_length=100, default="general", choices=CHOICES)
-    content_types = models.ManyToManyField(ContentType, blank=True)
+    name = models.CharField(_("name"), max_length=100, default=_("name"))
+    prompt = models.TextField(_("prompt"), null=True, blank=True)
+    category = models.CharField(_("category"), max_length=100, default="general", choices=CHOICES)
+    content_types = models.ManyToManyField(ContentType, verbose_name=_("content types"), blank=True)
+
+    class Meta:
+        verbose_name = _("prompt")
+        verbose_name_plural = _("prompts")
 
     @classmethod
     def instructions(cls, preset, obj):
@@ -178,7 +191,7 @@ class Agent(models.Model):
     OUTPUT_TYPE_VIDEO = "video"
 
     
-    name = models.CharField(_("name"), max_length=100, default="name")
+    name = models.CharField(_("name"), max_length=100, default=_("name"))
     instructions = models.ManyToManyField("Prompt", verbose_name=_("instructions"), related_name='agents', blank=True)
     agent_model = models.ForeignKey(AgentModel, verbose_name=_("agent model"), related_name='agents', on_delete=models.CASCADE)
     output_type = models.CharField(
@@ -213,7 +226,7 @@ class Agent(models.Model):
             )
             return genai_client
         else:
-            raise Exception("User does not have an API key configured. Please set up your API key in your profile settings.")
+            raise Exception(_("User does not have an API key configured. Please set up your API key in your profile settings."))
 
     def save_usage(self, user, response):
         usage = response.usage_metadata
@@ -231,6 +244,10 @@ class Agent(models.Model):
             tokens= usage_dict.get("total_token_count", 0),
         )
 
+    class Meta:
+        verbose_name = _("agent")
+        verbose_name_plural = _("agents")
+
     def __str__(self):
         return "{}".format(self.name)
     
@@ -239,8 +256,8 @@ class Agent(models.Model):
             return response.text
         except ValueError:
             if response.candidates:
-                return f"Response blocked. Finish reason: {response.candidates[0].finish_reason}"
-            return "No text was generated."
+                return _("Response blocked. Finish reason: {reason}").format(reason=response.candidates[0].finish_reason)
+            return _("No text was generated.")
 
     def generate_voice(self, preset, prompt_obj, user=None):
         # Check for errors if voice is not generated
@@ -304,7 +321,7 @@ class Agent(models.Model):
             operation = client.operations.get(operation)
         # Download the generated video.
         if operation.response.generated_videos is None:
-            raise Exception(operation.response.rai_media_filtered_reasons)
+            raise Exception(_("Video generation failed: {reason}").format(reason=operation.response.rai_media_filtered_reasons))
         generated_video = operation.response.generated_videos[0]
         self.save_usage(user, operation.response)
 
@@ -325,7 +342,7 @@ class Agent(models.Model):
         from google.genai.types import FinishReason
         if response.candidates[0].finish_reason != FinishReason.STOP:
             reason = response.candidates[0].finish_reason
-            raise ValueError(f"Prompt Content Error: {reason}")
+            raise ValueError(_("Prompt Content Error: {reason}").format(reason=reason))
         
         for part in response.candidates[0].content.parts:
             if part.inline_data:
@@ -412,19 +429,27 @@ class Agent(models.Model):
 
 
 class TokenUsage(models.Model):
-    created = models.DateTimeField(auto_now_add=True)
-    modified = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(_("created"), auto_now_add=True)
+    modified = models.DateTimeField(_("modified"), auto_now=True)
     agent = models.ForeignKey(Agent, verbose_name=_("agent"), related_name='token_usages', on_delete=models.SET_NULL, null=True, blank=True)
     task = models.ForeignKey(Task, verbose_name=_("task"), related_name='token_usages', on_delete=models.SET_NULL, null=True, blank=True)
     tokens = models.PositiveIntegerField(_("tokens"), default=0)
-    json_report = models.JSONField(null=True, blank=True)
+    json_report = models.JSONField(_("json report"), null=True, blank=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_("user"), related_name='token_usages', on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        verbose_name = _("token usage")
+        verbose_name_plural = _("token usages")
 
 class GoogleApiKey(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_("user"), related_name='api_keys', on_delete=models.CASCADE)
     name = models.CharField(_("name"), unique=True, max_length=255, null=True, blank=True)
     api_key = models.TextField(_("api key"), null=True, blank=True)
-         
+
+    class Meta:
+        verbose_name = _("google api key")
+        verbose_name_plural = _("google api keys")
+
     def __str__(self):
         return "{}-{}".format(self.name, self.user.username)
 
@@ -442,8 +467,8 @@ class AgentProfile(models.Model):
         return "{}".format(self.user.username)
 
 class Message(models.Model):
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
+    content_type = models.ForeignKey(ContentType, verbose_name=_("content type"), on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField(_("object id"))
     content_object = GenericForeignKey('content_type', 'object_id')
     
     agent = models.ForeignKey(Agent, verbose_name=_("agent"), on_delete=models.SET_NULL, null=True, blank=True, related_name='chat_history')
@@ -453,7 +478,9 @@ class Message(models.Model):
     output_image = FilerImageField(verbose_name=_("output image"), null=True, blank=True, on_delete=models.SET_NULL, related_name='message_images')
     output_file = FilerFileField(verbose_name=_("output file"), null=True, blank=True, on_delete=models.SET_NULL, related_name='message_files')
     target_field = models.CharField(_("target field"), max_length=100, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True)
 
     class Meta:
+        verbose_name = _("message")
+        verbose_name_plural = _("messages")
         ordering = ['-created_at']
