@@ -128,7 +128,7 @@ class AgentModel(models.Model):
 
 class GoogleVoice(models.Model):
     name = models.CharField(_("name"), max_length=100, default="name")
-    description = models.CharField(max_length=100)
+    description = models.TextField(_("description"), blank=True, null=True)
 
     def __str__(self):
         return "{}".format(self.name)
