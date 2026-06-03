@@ -1,3 +1,4 @@
+import json
 from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -18,6 +19,11 @@ class AjaxTaskModelAdmin(ModelAdmin):
         urls = super().get_urls()
         custom_urls = [
             path(
+                'ajax-config/',
+                self.admin_site.admin_view(self.ajax_config_view),
+                name='action_ajax_config',
+            ),
+            path(
                 'ajax-update/<int:object_id>/',
                 self.admin_site.admin_view(self.ajax_update_view),
                 name='action_ajax_update',
@@ -29,6 +35,10 @@ class AjaxTaskModelAdmin(ModelAdmin):
             ),
         ]
         return custom_urls + urls
+
+    def ajax_config_view(self, request):
+        fields = getattr(self, 'ajax_shift_fields', [])
+        return JsonResponse({'ajax_shift_fields': fields})
 
     def get_last_tasks(self, request, object_id):
         # 1. Get the object
@@ -116,29 +126,25 @@ class AdminLinker:
                     return "-"
 
                 if hasattr(linked_object, "all"):  # This is a manager (e.g., ManyToMany or reverse ForeignKey)
-                    count = linked_object.count()
                     model = linked_object.model
-
-                    if not model:
-                        return f"View ({count})"
+                    count = linked_object.count()
 
                     link_field = next((f.name for f in model._meta.get_fields()
                                      if f.is_relation and f.related_model == obj._meta.concrete_model), None)
 
                     if not link_field:
-                        return f"View ({count})"
+                        return format_html("View ({0})", count)
 
                     url = reverse(f"admin:{model._meta.app_label}_{model._meta.model_name}_changelist")
                     return format_html(
                         '<a href="{0}?{1}__id__exact={2}" class="text-primary-600 font-medium hover:underline">{3}</a>',
-                        url, link_field, obj.pk, count
+                        url, link_field, obj.pk, count or 0
                     )
                 else:
                     # This is a single instance (e.g., a ForeignKey)
                     model = linked_object._meta.model
                     url = reverse(f"admin:{model._meta.app_label}_{model._meta.model_name}_change", args=[linked_object.pk])
-                    url = reverse(f"admin:{model._meta.app_label}_{model._meta.model_name}_changelist")
-                    return format_html('<a href="{0}?id__exact={1}" class="text-primary-600 font-medium hover:underline">{2}</a>', url, linked_object.pk, str(linked_object))
+                    return format_html('<a href="{0}" class="text-primary-600 font-medium hover:underline">{1}</a>', url, str(linked_object))
 
             dynamic_link.short_description = related_field.replace("_", " ").title()
             return dynamic_link

@@ -101,6 +101,18 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, models.Model, GetContentsMixi
     def __str__(self):
         return "{}".format(self.name)
 
+    def get_locations(self):
+        return self.backgrounds.all().order_by('name')
+
+    def get_cast(self):
+        return self.cast.all().order_by('name')
+
+    def get_props(self):
+        return Prop.objects.filter(story=self).order_by('name')
+
+    def get_voices(self):
+        return Voice.objects.filter(story=self).order_by('name')
+
     def get_mentor(self):
         out = self.mentor
         if not out:
@@ -166,7 +178,7 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
                     elements_parts.append("Existing Locations (Backgrounds):")
                     for b in backgrounds:
                         elements_parts.append(f"- Name: {b.name}\n  Prompt: {b.prompt}")
-                characters = self.story.characters.all()
+                characters = self.story.cast.all()
                 if characters.exists():
                     elements_parts.append("Existing Characters (Actors - Cast):")
                     for c in characters:
@@ -191,45 +203,46 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
                     parts.append("### STORY CONTEXT ###\nReuse these existing entities if they appear:\n" + "\n".join(elements_parts))
         return parts
 
-    def get_elements(self):
-        """
-        Returns a dictionary containing distinct Backgrounds, Props, Characters, and Voices
-        referenced by all actions within this scene, ordered by name.
-        """
-        actions = self.actions.all()
+    def get_locations(self):
+        return Background.objects.filter(actions__in=self.actions.all()).distinct().order_by('name')
 
-        locations = Background.objects.filter(actions__in=actions).distinct().order_by('name')
-        props = Prop.objects.filter(actions__in=actions).distinct().order_by('name')
-        
-        # Characters can be the main actor or part of the cast in any action of the scene
-        actors = Character.objects.filter(actions__in=actions)
-        cast = Character.objects.filter(actions_cast__in=actions)
-        characters = (actors | cast).distinct().order_by('name')
+    def get_props(self):
+        return Prop.objects.filter(actions__in=self.actions.all()).distinct().order_by('name')
 
-        voices = Voice.objects.filter(actions_voice__in=actions).distinct().order_by('name')
+    def get_cast(self):
+        actors = Character.objects.filter(actions__in=self.actions.all())
+        cast = Character.objects.filter(actions_cast__in=self.actions.all())
+        return (actors | cast).distinct().order_by('name')
 
-        return {
-            'locations': locations,
-            'characters': characters,
-            'props': props,
-            'voices': voices,
-        }
+    def get_voices(self):
+        return Voice.objects.filter(actions_voice__in=self.actions.all()).distinct().order_by('name')
 
     def items(self):
         """
         Renders a summary dropdown of scene elements using a template.
         """
-        context = self.get_elements()
-        context['actions'] = self.actions.all()
+        locs = self.get_locations()
+        chars = self.get_cast()
+        prps = self.get_props()
+        vcs = self.get_voices()
+        acts = self.actions.all()
+
+        context = {
+            'locations': locs,
+            'characters': chars,
+            'props': prps,
+            'voices': vcs,
+            'actions': acts,
+        }
 
         # Pre-calculate counts and IDs for the template
         context.update({
-            "count": sum(qs.count() for qs in context.values()) + context['actions'].count(),
-            "prop_ids": ",".join([str(p.id) for p in context['props']]),
-            "char_ids": ",".join([str(c.id) for c in context['characters']]),
-            "loc_ids": ",".join([str(l.id) for l in context['locations']]),
-            "voice_ids": ",".join([str(v.id) for v in context['voices']]),
-            "action_ids": ",".join([str(a.id) for a in context['actions']]),
+            "count": locs.count() + chars.count() + prps.count() + vcs.count() + acts.count(),
+            "prop_ids": ",".join([str(p.id) for p in prps]),
+            "char_ids": ",".join([str(c.id) for c in chars]),
+            "loc_ids": ",".join([str(l.id) for l in locs]),
+            "voice_ids": ",".join([str(v.id) for v in vcs]),
+            "action_ids": ",".join([str(a.id) for a in acts]),
             "instance": self,
         })
         return render_to_string("scene/items_dropdown.html", context)
