@@ -172,22 +172,36 @@ class SceneSection(TableSection):
         )
     get_name.short_description = _("Name")
 
-    fields = ['prompt', 'get_name', 'author', "items"]
+    fields = ['get_name', "items", 'prompt']
     extra = 0
     show_count = True  # This will run `count()`
     collapsible = False
     related_name = 'scenes'
 
+class SceneRenderSection(TemplateSection):
+    template_name = "sections/scene_renders.html"
+    key = 'renders'
 
+    def get_context_data(self, request, instance):
+        return {
+            "renders": instance.renders.all(),
+            "instance": instance,
+            "section_key": self.key
+        }
 class SceneBaseCardsSection(TemplateSection):
     template_name = "sections/scene_cards.html"
     key = None
     title = None
+    item_method = None
 
     def get_context_data(self, request, instance):
+        items = []
+        if self.item_method and hasattr(instance, self.item_method):
+            items = getattr(instance, self.item_method)()
+
         return {
             "title": self.title,
-            "items": self.get_items(instance),
+            "items": items,
             "instance": instance,
             "section_key": self.key
         }
@@ -195,22 +209,16 @@ class SceneBaseCardsSection(TemplateSection):
 class SceneCharactersSection(SceneBaseCardsSection):
     key = 'characters'
     title = _("Characters")
-
-    def get_items(self, instance):
-        return instance.get_cast()
+    item_method = 'get_cast'
 
 
 class SceneLocationsSection(SceneBaseCardsSection):
     key = 'locations'
     title = _("Locations")
-    
-    def get_items(self, instance):
-        return instance.get_locations()
+    item_method = 'get_locations'
 
 
 class ScenePropsSection(SceneBaseCardsSection):
     key = 'props'
     title = _("Props")
-
-    def get_items(self, instance):
-        return instance.get_props()
+    item_method = 'get_props'

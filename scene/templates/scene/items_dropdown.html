@@ -9,6 +9,14 @@
 
         <el-menu anchor="bottom start" popover class="w-44 origin-top-left rounded-lg bg-white dark:bg-base-900 shadow-xl border border-base-200 dark:border-base-800 p-1.5 transition transition-discrete data-closed:scale-95 data-closed:opacity-0">
             <div class="flex flex-col gap-0.5">
+              {% if instance.story %}
+                <a href="/admin/scene/story/?id__exact={{ instance.story.id }}" target="_blank" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item border-b border-base-100 dark:border-base-800 mb-0.5 pb-2">
+                    <span class="font-bold text-primary-600 dark:text-primary-400 truncate grow min-w-0" title="{{ instance.story.name }}">{{ instance.story.name }}</span>
+                    <span class="flex items-center justify-center font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/30 px-1.5 py-0.5 rounded">
+                        <span class="material-symbols-outlined text-[16px]">arrow_upward</span>
+                    </span>
+                </a>
+              {% endif %}
               <a href="/admin/scene/prop/?id__in={{ prop_ids }}" target="_blank" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Props" %}</span>
                     <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ props.count }}</span>

@@ -10,7 +10,7 @@
     <div class="px-4 py-3 bg-base-50/50 dark:bg-white/[.01]">
         <p class="text-sm text-font-secondary-light dark:text-font-secondary-dark">
             {% trans "Each author can add a scene. Everyone can edit and refine scenes using the refine tool." %}
-            <a href="/admin/scene/scene/?story__id__exact={{ story.id }}" class="text-primary-600 font-medium hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300">{% trans "Refine Scenes" %}</a>
+            <a href="/admin/scene/scene/?story__id__exact={{ story.id }}" class="text-primary-600 font-medium hover:text-primary-500 dark:text-primary-600 dark:hover:text-primary-300">{% trans "Refine Scenes" %}</a>
         </p>
     </div>
 
@@ -104,11 +104,8 @@
         <p class="px-2 text-sm text-font-secondary-light dark:text-font-secondary-dark bg-white dark:bg-base-900">
         {% if author %}
             {% trans "It is your moment to contribute. Do not overthink it!" %}
-            <a class="px-1 text-primary-600 font-medium hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300" href="/admin/scene/scene/add/?author={{ author.id }}&story={{ story.id }}&next=/admin/scene/scene/?story__id__exact={{ story.id }}"><b>{% trans " Add a scene" %}</b></a>
-            <a class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white rounded-md text-xs font-semibold hover:bg-primary-500 transition-colors shadow-sm" href="/admin/scene/scene/add/?author={{ author.id }}&story={{ story.id }}&next=/admin/scene/scene/?story__id__exact={{ story.id }}">
-                <span class="material-symbols-outlined text-[16px]">add</span>
-                {% trans "Add a scene" %}
-            </a>
+            <a class="px-1 text-primary-600 font-medium hover:text-primary-500 dark:text-primary-600 dark:hover:text-primary-300" href="/admin/scene/scene/add/?author={{ author.id }}&story={{ story.id }}&next=/admin/scene/scene/?story__id__exact={{ story.id }}"><b>{% trans " Add a scene" %}</b></a>
+           
         {% else %}
             {% trans "You are not an author yet. Just add yourself by editing the object." %}
         {% endif %}

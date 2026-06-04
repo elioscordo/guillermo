@@ -12,7 +12,7 @@ from .models import ActionOrganizer, Character, Scene, Action, Background, Scene
 from .admin_utils import AjaxTaskModelAdmin, AdminLinker
 from django.utils.translation import gettext_lazy as _
 from django.utils.html import format_html
-from .sections import AuthorSection, SceneSection, SceneCharactersSection, SceneLocationsSection, ScenePropsSection
+from .sections import AuthorSection, SceneSection, SceneCharactersSection, SceneLocationsSection, ScenePropsSection, SceneRenderSection
 from .mixins import ACTION_FIELDSETS, ELEMENT_FIELDSETS, SceneFilterMixin, StaffReadOnlyMixin, StoryFilterMixin, ViewYourOwnMixin, PromptPreviewMixin, AdminActionsMixin
 from unfold.sections import TableSection, TemplateSection, render_to_string
 from rangefilter.filters import NumericRangeFilter
@@ -189,16 +189,22 @@ class SceneAdmin(AdminActionsMixin, AdminLinker, StoryFilterMixin, AjaxTaskModel
 
     def refresh_section_view(self, request, object_id, section_key):
         instance = get_object_or_404(Scene, pk=object_id)
-        items = instance.get_elements().get(section_key, [])
-        html = render_to_string("sections/scene_cards_items.html", {
-            "items": items,
-        })
+        if section_key == 'renders':
+            renders = instance.renders.all()
+            html = render_to_string("sections/scene_renders_items.html", {
+                "renders": renders,
+            })
+        else:
+            items = instance.get_elements().get(section_key, [])
+            html = render_to_string("sections/scene_cards_items.html", {
+                "items": items,
+            })
         return JsonResponse({"html": html})
 
     list_refresh = ['items']
-    list_sections = [SceneCharactersSection, SceneLocationsSection, ScenePropsSection]
+    list_sections = [SceneCharactersSection, SceneLocationsSection, ScenePropsSection, SceneRenderSection]
 
-    list_display = ['name', 'items', 'prompt', 'prompt_refine', 'last_tasks', 'link_story']
+    list_display = ['name', 'items', 'prompt', 'prompt_refine', 'last_tasks']
     list_editable = ['prompt', 'prompt_refine']
     list_display_links = ('name',)
     autocomplete_fields = ['story', 'author']
@@ -316,7 +322,7 @@ class ActionAdmin(AdminActionsMixin, SceneFilterMixin, AjaxTaskModelAdmin):
     list_display = ('get_name', 'items', 'pic', 'prompt','prompt_refine', 'last_tasks')
     list_refresh = ['pic']
     list_editable = ( 'prompt', 'prompt_refine')
-    list_filter = ["scene", "order", "id"]
+    list_filter = ["scene__story", "scene", "order", "id"]
     ordering_field = "order"
     hide_ordering_field = True
     list_display_links = ('get_name',)
@@ -329,7 +335,7 @@ class ActionAdmin(AdminActionsMixin, SceneFilterMixin, AjaxTaskModelAdmin):
 class VideoActionAdmin(AdminActionsMixin, SceneFilterMixin, AjaxTaskModelAdmin):
     list_display = ('name', 'items', 'pic', 'prompt_video', 'video_player','last_tasks')
     list_editable = ['prompt_video']
-    list_filter = ["scene", "id"]
+    list_filter = ["scene__story", "scene", "id"]
     list_display_links = ('name',)
     search_fields = ['name']
     actions = ['generate_video', 'generate_video_first_last']
@@ -339,7 +345,7 @@ class VideoActionAdmin(AdminActionsMixin, SceneFilterMixin, AjaxTaskModelAdmin):
 class ActionOrganizerAdmin(AdminActionsMixin, SceneFilterMixin, ModelAdmin):
     list_display = ('id', 'name', 'items', 'pic', 'scene', 'is_intro')
     list_editable = ['name', 'scene', 'is_intro']
-    list_filter = ["scene"]
+    list_filter = ["scene__story", "scene"]
     search_fields = ['name']
 
 @admin.register(SceneOrganizer)
@@ -353,7 +359,7 @@ class SceneOrganizerAdmin(AdminActionsMixin, AdminLinker, SceneFilterMixin, Mode
 class ComicActionAdmin(AdminActionsMixin, SceneFilterMixin, AjaxTaskModelAdmin):
     list_display = ('name', 'items', 'pic', 'pic_comic', 'prompt_comic', 'last_tasks')
     list_editable = ['prompt_comic']
-    list_filter = ["scene", "id"]
+    list_filter = ["scene__story", "scene", "id"]
     list_display_links = ('name',)
     search_fields = ['name']
     actions = ['generate_comic', 'comic_to_video']
@@ -382,7 +388,7 @@ class VoiceAdmin(AdminActionsMixin,AdminLinker, AjaxTaskModelAdmin):
 class VoiceActionAdmin(AdminActionsMixin, SceneFilterMixin, AjaxTaskModelAdmin):
     list_display = ('name', 'items', 'pic', 'prompt_voice','text',  'voice', 'voice_player', 'last_tasks')
     list_editable = ['prompt_voice', 'voice', 'text']
-    list_filter = ["scene", "id"]
+    list_filter = ["scene__story", "scene", "id"]
     list_display_links = ('name',)
     search_fields = ['name']
     actions = ['generate_voice']

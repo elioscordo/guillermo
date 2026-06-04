@@ -402,7 +402,7 @@ TASK_DELEGATES = {
     TASK_TYPE_GENERATE_SCENE_ACTIONS: 'scene.tasks.TaskGenerateSceneActions',
     TASK_TYPE_EXTRACT_SCENE: 'scene.tasks.TaskExtractScene',
 }
-
+IMPORT_EXPORT_TMP_STORAGE_CLASS = 'import_export.tmp_storages.MediaStorage'
 TASK_TYPE_CHOICES = (
     (TASK_TYPE_GENERATE_IMAGE, _("Generate Image")),
     (TASK_TYPE_REFINE_IMAGE, _("Refine Image")),

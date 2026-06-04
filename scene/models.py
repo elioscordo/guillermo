@@ -158,6 +158,10 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, models.Model, GetContentsMixi
         props = self.get_props()
         voices = self.get_voices()
         scenes = self.scenes.all()
+        actions = Action.objects.filter(scene__story=self)
+        video_actions = VideoAction.objects.filter(scene__story=self)
+        comic_actions = ComicAction.objects.filter(scene__story=self)
+        voice_actions = VoiceAction.objects.filter(scene__story=self)
 
         context = {
             'locations': locations,
@@ -165,7 +169,12 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, models.Model, GetContentsMixi
             'props': props,
             'voices': voices,
             'scenes': scenes,
-            'count': locations.count() + characters.count() + props.count() + voices.count() + scenes.count(),
+            'actions': actions,
+            'video_actions': video_actions,
+            'comic_actions': comic_actions,
+            'voice_actions': voice_actions,
+            'count': (locations.count() + characters.count() + props.count() + 
+                      voices.count() + scenes.count() + actions.count()),
             "prop_ids": ",".join([str(p.id) for p in props]),
             "char_ids": ",".join([str(c.id) for c in characters]),
             "loc_ids": ",".join([str(l.id) for l in locations]),
@@ -229,14 +238,15 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
         return parts
 
     def get_cast(self):
-        return Character.objects.filter(actions_cast__in=self.actions.all())
+        return Character.objects.filter(actions_cast__in=self.actions.all()).distinct()
     def get_locations(self):
-        return Background.objects.filter(actions__in=self.actions.all())
+        return Background.objects.filter(actions__in=self.actions.all()).distinct()
     
     def get_props(self):
-        return Prop.objects.filter(actions__in=self.actions.all())
+        return Prop.objects.filter(actions__in=self.actions.all()).distinct()   
     def get_voices(self):
-        return Voice.objects.filter(actions_voice__in=self.actions.all())
+        return Voice.objects.filter(actions_voice__in=self.actions.all()).distinct()
+
 
     def get_elements(self):
         """
