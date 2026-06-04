@@ -102,8 +102,12 @@ class AuthorInline(StackedInline):
     autocomplete_fields = ['user']
 
 @admin.register(Story)
-class StoryAdmin(AdminActionsMixin, AdminLinker, ModelAdmin):
+class StoryAdmin(AdminActionsMixin, AdminLinker, AjaxTaskModelAdmin):
     inlines = [AuthorInline]
+
+    def changelist_view(self, request, extra_context=None):
+        self.request = request
+        return super().changelist_view(request, extra_context)
 
     def get_urls(self):
         return [
@@ -123,6 +127,7 @@ class StoryAdmin(AdminActionsMixin, AdminLinker, ModelAdmin):
 
     autocomplete_fields = ['group']
     search_fields = ['name']
+    list_refresh = ['items']
     list_sections = [
         SceneSection,
         AuthorSection,
@@ -130,7 +135,7 @@ class StoryAdmin(AdminActionsMixin, AdminLinker, ModelAdmin):
         SceneLocationsSection,
         ScenePropsSection,
     ]
-    list_display = ['__str__', 'image_intro','link_scenes', 'link_characters', 'link_backgrounds', 'link_props', 'render_type']
+    list_display = ['__str__', 'items', 'image_intro', 'add_scene', 'last_tasks']
     actions = ['clone', 'add_me_as_author']
     fieldsets = (
         ("Write",{
@@ -146,6 +151,18 @@ class StoryAdmin(AdminActionsMixin, AdminLinker, ModelAdmin):
             "fields": [ "style", "theme", "group", "render_type"],
         })
     )
+
+    def add_scene(self, obj):
+        author = Author.objects.filter(user=self.request.user, story=obj).first()
+        if author:
+            url = reverse("admin:scene_scene_add")
+            return format_html(
+                '<a href="{}?story={}&author={}&next=/admin/scene/story/" class="bg-primary-600 text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-primary-500 transition-colors shadow-sm inline-flex items-center gap-1.5">'
+                '<span class="material-symbols-outlined text-[18px]">add</span>{}</a>',
+                url, obj.id, author.id, _("Add Scene")
+            )
+        return "-"
+    add_scene.short_description = _("Add Scene")
 
     def scene_links(self, obj):
         return format_html("<a href='/admin/scene/Scene/?story__id__exact={0}'>Edit ({1})</a>", obj.id, obj.scenes.count())
@@ -181,7 +198,7 @@ class SceneAdmin(AdminActionsMixin, AdminLinker, StoryFilterMixin, AjaxTaskModel
     list_refresh = ['items']
     list_sections = [SceneCharactersSection, SceneLocationsSection, ScenePropsSection]
 
-    list_display = ['name', 'prompt', 'prompt_refine', 'last_tasks', 'items', 'link_story']
+    list_display = ['name', 'items', 'prompt', 'prompt_refine', 'last_tasks', 'link_story']
     list_editable = ['prompt', 'prompt_refine']
     list_display_links = ('name',)
     autocomplete_fields = ['story', 'author']

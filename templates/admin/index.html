@@ -15,29 +15,27 @@
 {% endblock %}
 
 {% block content %}
-    <div class="px-4 py-8 md:px-8">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <div>
-                <h1 class="text-2xl font-bold text-font-important-light dark:text-font-important-dark">
-                    {% trans "My Creative Workspace" %}
-                </h1>
-                <p class="text-sm text-font-secondary-light dark:text-font-secondary-dark">
-                    {% trans "Manage your collaborative stories." %}
-                </p>
-            </div>
-            <a href="{% url 'admin:scene_story_add' %}" class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm self-start md:self-auto">
-                <span class="material-symbols-outlined text-[20px]">add</span>
-                {% trans "New Story" %}
-            </a>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+    <div class="px-4 py-8 lg:px-12 lg:py-12">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {% for story in stories %}
-                <div class="group bg-white dark:bg-base-900 border border-base-200 dark:border-base-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-primary-300 dark:hover:border-primary-900 transition-all flex flex-col">
-                    <!-- Intro Image -->
-                    <div class="aspect-video w-full overflow-hidden bg-base-100 dark:bg-base-800 border-b border-base-100 dark:border-base-800 relative group">
+                <div class="group flex flex-col bg-white border border-base-200 rounded-xl shadow-sm hover:shadow-md transition-all dark:bg-base-900 dark:border-base-800 overflow-visible">
+                    <!-- Header -->
+                    <div class="p-5 border-b border-base-100 dark:border-base-800 bg-base-50/50 dark:bg-white/[.01] flex items-center justify-between gap-4">
+                        <h3 class="text-lg font-bold text-font-important-light dark:text-font-important-dark truncate grow">
+                            <a href="/admin/scene/story/?id__exact={{ story.id }}" class="hover:text-primary-600 transition-colors">
+                                {{ story.name }}
+                            </a>
+                        </h3>
+                        <div class="flex-shrink-0">
+                            {{ story.items|safe }}
+                        </div>
+                    </div>
+
+                    <!-- Body -->
+                     <div class="aspect-video w-full overflow-hidden bg-base-100 dark:bg-base-800 border-b border-base-100 dark:border-base-800 relative group">
                         {% with intro=story.intro %}
-                            {% if intro %}
+                        
+                            {% if intro and intro.url %}
                                 <img src="{{ intro.url }}" alt="{{ story.name }}" 
                                      class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-in-out">
                                 <div class="absolute inset-0 bg-primary-600/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
@@ -49,46 +47,21 @@
                         {% endwith %}
                     </div>
 
-                    <!-- Header -->
-                    <div class="p-5 border-b border-base-100 dark:border-base-800 bg-base-50/50 dark:bg-white/[.01]">
-                        <div class="flex items-start justify-between mb-3">
-                            <span class="text-xs text-font-secondary-light dark:text-font-secondary-dark flex items-center gap-1 ml-auto">
-                                <span class="material-symbols-outlined text-[14px]">history</span>
-                                {{ story.scenes.count }} {% trans "scenes" %}
-                            </span>
-                        </div>
-                        <h3 class="text-lg font-bold text-font-important-light dark:text-font-important-dark truncate group-hover:text-primary-600 transition-colors">
-                            <a href="/admin/scene/story/?id__exact={{ story.id }}">
-                                {{ story.name }}
-                            </a>
-                        </h3>
-                        <p class="text-xs text-font-secondary-light dark:text-font-secondary-dark mt-1 flex items-center gap-1">
-                            <span class="material-symbols-outlined text-[14px]">palette</span>
-                            {{ story.theme.name|default:"No Theme" }}
-                        </p>
-                    </div>
-
                     <!-- Footer/Actions -->
-                    <div class="p-4 mt-auto bg-white dark:bg-base-900 grid grid-cols-2 gap-2">
+                    <div class="p-4 mt-auto border-t border-base-100 dark:border-base-800 bg-white dark:bg-base-900 grid grid-cols-2 gap-2">
                         <a href="/admin/scene/story/?id__exact={{ story.id }}" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-base-200 dark:border-base-700 text-xs font-semibold rounded-lg text-font-important-light dark:text-font-important-dark bg-white dark:bg-base-900 hover:bg-base-50 dark:hover:bg-base-800 transition-all">
-                            <span class="material-symbols-outlined text-[18px]">menu_book</span>
-                            {% trans "Open Story" %}
+                            <span class="material-symbols-outlined text-[18px]">visibility</span>
+                            {% trans "View Story" %}
                         </a>
-                        <a href="/admin/scene/scene/?story__id__exact={{ story.id }}" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-primary-50 dark:bg-primary-600/10 text-primary-600 dark:text-primary-400 border border-primary-100 dark:border-primary-900/30 text-xs font-bold rounded-lg hover:bg-primary-600 hover:text-white dark:hover:bg-primary-500 transition-all shadow-sm">
-                            <span class="material-symbols-outlined text-[18px]">layers</span>
-                            {% trans "Scenes" %}
-                        </a>
+                        {% for author in story.authors.all %}
+                            {% if author.user == request.user %}
+                                <a href="{% url 'admin:scene_scene_add' %}?story={{ story.id }}&author={{ author.id }}&next={{ request.path }}" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-primary-600 text-white text-xs font-bold rounded-lg hover:bg-primary-500 transition-all shadow-sm">
+                                    <span class="material-symbols-outlined text-[18px]">add</span>
+                                    {% trans "Add Scene" %}
+                                </a>
+                            {% endif %}
+                        {% endfor %}
                     </div>
-                </div>
-            {% empty %}
-                <div class="col-span-full py-20 text-center bg-white dark:bg-base-900 border border-dashed border-base-300 dark:border-base-800 rounded-2xl">
-                    <span class="material-symbols-outlined text-base-300 dark:text-base-700 text-6xl mb-4">edit_square</span>
-                    <h3 class="text-lg font-medium text-font-important-light dark:text-font-important-dark">{% trans "No stories yet" %}</h3>
-                    <p class="text-font-secondary-light dark:text-font-secondary-dark mb-6">{% trans "Start your first collaborative storyboarding session today." %}</p>
-                    <a href="{% url 'admin:scene_story_add' %}" class="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-primary-200 dark:shadow-none">
-                        <span class="material-symbols-outlined">add</span>
-                        {% trans "Create New Story" %}
-                    </a>
                 </div>
             {% endfor %}
         </div>

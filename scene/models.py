@@ -148,6 +148,32 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, models.Model, GetContentsMixi
         if intro_action:
             return intro_action.intro()
         return None
+    
+    def items(self):
+        """
+        Renders a summary dropdown of story elements using a template.
+        """
+        locations = self.get_locations()
+        characters = self.get_cast()
+        props = self.get_props()
+        voices = self.get_voices()
+        scenes = self.scenes.all()
+
+        context = {
+            'locations': locations,
+            'characters': characters,
+            'props': props,
+            'voices': voices,
+            'scenes': scenes,
+            'count': locations.count() + characters.count() + props.count() + voices.count() + scenes.count(),
+            "prop_ids": ",".join([str(p.id) for p in props]),
+            "char_ids": ",".join([str(c.id) for c in characters]),
+            "loc_ids": ",".join([str(l.id) for l in locations]),
+            "voice_ids": ",".join([str(v.id) for v in voices]),
+            "scene_ids": ",".join([str(s.id) for s in scenes]),
+            "instance": self,
+        }
+        return render_to_string("story/items_dropdown.html", context)
 
 class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, ModelDisplayMixin):
     name = models.CharField(_("name"), max_length=200, null=True, blank=True)

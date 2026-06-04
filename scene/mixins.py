@@ -49,6 +49,11 @@ ACTION_FIELDSETS = (
 class ModelDisplayMixin:
     MAX_IMAGE_HEIGHT = 400
 
+    @property
+    def model_name(self):
+        """Exposes the model name to templates (avoids underscore access restriction)."""
+        return self._meta.model_name
+
     def video_download(self):
         video = getattr(self, 'video', None)
         if video:

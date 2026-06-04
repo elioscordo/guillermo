@@ -91,14 +91,22 @@ class AuthorSection(TableSection):
         return {"description": _("Manage authors within the story edit page. If you add emails, guillermo will send an invitation by email.")}
 
     def scenes(self, obj):
-        turn_type = 'scene'
-        turn_link = self.NO_USER_LABEL
         if obj.user:
-            turn_link = format_html("<a href='/admin/scene/scene/?story__id__exact={0}&author__id__exact={1}' class='text-primary-600 font-medium hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300'>{2}</a>", obj.story.id, obj.id, obj.scenes.filter(author=obj).count())
-            if (obj.user == self.request.user):
-                add_link = format_html("<a href='/admin/scene/scene/add/?story={0}&author={1}' class='text-primary-600 font-medium hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 ml-1'>[+]</a>", obj.story.id, obj.id)
-                turn_link = format_html("{} {}", turn_link, add_link)
-        return mark_safe(turn_link)
+            if obj.user == self.request.user:
+                url = reverse("admin:scene_scene_add")
+                return format_html(
+                    '<a href="{}?story={}&author={}&next=/admin/scene/story/" class="bg-primary-600 text-white px-2 py-1 rounded-md text-[10px] font-bold hover:bg-primary-500 transition-colors shadow-sm inline-flex items-center gap-1">'
+                    '<span class="material-symbols-outlined text-[14px]">add</span>{}</a>',
+                    url, obj.story.id, obj.id, _("Add Scene")
+                )
+            else:
+                url = f"/admin/scene/scene/?story__id__exact={obj.story.id}&author__id__exact={obj.id}"
+                return format_html(
+                    '<a href="{}" class="text-primary-600 font-medium hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 inline-flex items-center gap-1">'
+                    '<span class="material-symbols-outlined text-[16px]">visibility</span>{}</a>',
+                    url, _("View")
+                )
+        return self.NO_USER_LABEL
     
     def nudges(self, obj):
         nudge_link = self.NO_USER_LABEL
@@ -132,9 +140,28 @@ class SceneSection(TableSection):
         }
 
     def prompt(self, obj):
-        if obj.prompt:
-            return mark_safe(f"<div class='markdown'>{markdown.markdown(obj.prompt)}</div>")
-        return _("No Prompt")
+        if not obj.prompt:
+            return _("No Prompt")
+
+        full_html = markdown.markdown(obj.prompt)
+        plain_text = strip_tags(full_html)
+        char_limit = 180
+
+        if len(plain_text) <= char_limit:
+            return mark_safe(f"<div class='markdown prose prose-sm dark:prose-invert max-w-none'>{full_html}</div>")
+
+        truncated = plain_text[:char_limit].rsplit(' ', 1)[0] + "..."
+        return format_html(
+            '<div x-data="{{ expanded: false }}" class="relative">'
+                '<div x-show="!expanded" class="text-sm text-gray-600 dark:text-gray-400">'
+                    '{} <button type="button" @click="expanded = true" class="text-primary-600 font-semibold hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 ml-1 transition-colors bg-transparent border-none p-0 cursor-pointer inline">{}</button>'
+                '</div>'
+                '<div x-show="expanded" class="markdown prose prose-sm dark:prose-invert max-w-none" style="display: none;">'
+                    '{} <button type="button" @click="expanded = false" class="text-primary-600 font-semibold hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 mt-2 transition-colors bg-transparent border-none p-0 cursor-pointer block">{}</button>'
+                '</div>'
+            '</div>',
+            truncated, _("Read more"), mark_safe(full_html), _("Read less")
+        )
         
     def get_name(self, obj):
         url = "/admin/scene/scene/?id__exact={0}".format(obj.id)

@@ -154,7 +154,8 @@ class TaskGenerateScene:
 class TaskGenerateSceneElements:
     """
     Iterates through all actions of a scene and triggers image generation 
-    for any missing background (location), character (cast/actor), or prop.
+    for any missing background (location), character (cast/actor), or prop,
+    as well as voice generation for missing character voice samples.
     """
     def __init__(self, task):
         self.task = task
@@ -162,12 +163,18 @@ class TaskGenerateSceneElements:
     def process(self):
         scene = self.task.subject
         elements = set()
+        voices = set()
 
         for action in scene.actions.all():
             if action.background: elements.add(action.background)
-            if action.actor: elements.add(action.actor)
-            for char in action.cast.all(): elements.add(char)
+            if action.actor: 
+                elements.add(action.actor)
+                if action.actor.voice: voices.add(action.actor.voice)
+            for char in action.cast.all(): 
+                elements.add(char)
+                if char.voice: voices.add(char.voice)
             for prop in action.props.all(): elements.add(prop)
+            if action.voice: voices.add(action.voice)
 
         for element in elements:
             if not element.image:
@@ -175,6 +182,16 @@ class TaskGenerateSceneElements:
                 Task.createTaskIfQueueEnabled(
                     subject=element,
                     task_type=settings.TASK_TYPE_GENERATE_IMAGE,
+                    thr=scene,
+                    owner=self.task.owner
+                )
+
+        for voice in voices:
+            if not voice.audio_voice:
+                self.task.log(f"Queueing voice generation for {voice.name}")
+                Task.createTaskIfQueueEnabled(
+                    subject=voice,
+                    task_type=settings.TASK_TYPE_GENERATE_VOICE,
                     thr=scene,
                     owner=self.task.owner
                 )
@@ -199,6 +216,16 @@ class TaskGenerateSceneActions:
             if action.actor: elements.append(action.actor)
             elements.extend(list(action.cast.all()))
             elements.extend(list(action.props.all()))
+
+            # Ensure action-specific voice is generated if dialogue text exists
+            if action.voice and action.text and not action.audio_voice:
+                self.task.log(f"Queuing dialogue voice generation for action: {action.get_name()}")
+                Task.createTaskIfQueueEnabled(
+                    subject=action,
+                    task_type=settings.TASK_TYPE_GENERATE_VOICE,
+                    thr=scene,
+                    owner=self.task.owner
+                )
 
             # Identify tasks for missing element images
             action_dependencies = []
