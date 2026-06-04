@@ -355,13 +355,25 @@ class ComicActionAdmin(AdminActionsMixin, SceneFilterMixin, AjaxTaskModelAdmin):
 
 @admin.register(Voice)
 class VoiceAdmin(AdminActionsMixin,AdminLinker, AjaxTaskModelAdmin):
-    list_display = ('name','prompt', 'google_voice', 'sample_text', 'voice_player', 'last_tasks')
+    list_display = ('name', 'prompt', 'google_voice', 'sample_text', 'link_story' 'voice_player', 'last_tasks')
     list_display_links = ('name',)
+    list_editable = ['prompt', 'sample_text']
     actions = ['generate_voice']
     list_filter = (
         'story',
         'global_default'
     )
+
+    def ajax_update_view(self, request, object_id):
+        # Implementation of the view logic from step 1
+        # Use 'self' instead of passing model_admin
+        obj = get_object_or_404(self.model, pk=object_id)
+        if request.POST.get('prompt') is not None:
+            obj.prompt = request.POST.get('prompt')
+            obj.save()
+            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user) is None:
+                obj.generate_voice(obj.PRESET_VOICE, user=request.user)
+        return JsonResponse({'status': 'success'})
 
 
 @admin.register(VoiceAction)

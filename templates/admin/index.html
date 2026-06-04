@@ -34,6 +34,21 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
             {% for story in stories %}
                 <div class="group bg-white dark:bg-base-900 border border-base-200 dark:border-base-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-primary-300 dark:hover:border-primary-900 transition-all flex flex-col">
+                    <!-- Intro Image -->
+                    <div class="aspect-video w-full overflow-hidden bg-base-100 dark:bg-base-800 border-b border-base-100 dark:border-base-800 relative group">
+                        {% with intro=story.intro %}
+                            {% if intro %}
+                                <img src="{{ intro.url }}" alt="{{ story.name }}" 
+                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-in-out">
+                                <div class="absolute inset-0 bg-primary-600/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                            {% else %}
+                                <div class="w-full h-full flex items-center justify-center text-base-300 dark:text-base-700 bg-base-50/50 dark:bg-base-900/50">
+                                    <span class="material-symbols-outlined text-5xl">auto_stories</span>
+                                </div>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+
                     <!-- Header -->
                     <div class="p-5 border-b border-base-100 dark:border-base-800 bg-base-50/50 dark:bg-white/[.01]">
                         <div class="flex items-start justify-between mb-3">
