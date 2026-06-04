@@ -185,8 +185,8 @@ class SceneAdmin(AdminActionsMixin, AdminLinker, StoryFilterMixin, AjaxTaskModel
     list_editable = ['prompt', 'prompt_refine']
     list_display_links = ('name',)
     autocomplete_fields = ['story', 'author']
-    actions = ['clone','extract_scene',  'generate_scene_elements', 'generate_scene_actions', ]
-    list_filter = ['story',]
+    actions = ['clone','extract_scene',  'generate_scene_elements', 'generate_scene_actions', 'generate_render', 'refresh_render']
+    list_filter = ['story', 'id']
     fieldsets = (
         ("Write",{
             "classes": ["tab"],
@@ -209,18 +209,11 @@ class SceneAdmin(AdminActionsMixin, AdminLinker, StoryFilterMixin, AjaxTaskModel
                 obj.author = author
         super().save_model(request, obj, form, change)
 
-    def ajax_update_view(self, request, object_id):
-        obj = get_object_or_404(self.model, pk=object_id)
-        if request.POST.get('prompt_refine') is not None:
-            obj.prompt_refine = request.POST.get('prompt_refine')
-            obj.save()
+    def trigger_ajax_task(self, request, obj, target_field):
+        if target_field == 'prompt_refine':
             agent = obj.story.get_mentor()
             if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_TEXT, thr=agent, owner=request.user) is None:
                 obj.generate_text(request.user, agent)
-        if request.POST.get('prompt') is not None:
-            obj.prompt = request.POST.get('prompt')
-            obj.save()
-        return JsonResponse({'status': 'success'})
 
 
 @admin.register(StoryGroup)
@@ -303,7 +296,7 @@ class NudgeAdmin(AdminActionsMixin, ModelAdmin):
 
 @admin.register(Action)
 class ActionAdmin(AdminActionsMixin, SceneFilterMixin, AjaxTaskModelAdmin):
-    list_display = ('get_name', 'pic', 'prompt','prompt_refine', 'last_tasks')
+    list_display = ('get_name', 'items', 'pic', 'prompt','prompt_refine', 'last_tasks')
     list_refresh = ['pic']
     list_editable = ( 'prompt', 'prompt_refine')
     list_filter = ["scene", "order", "id"]
@@ -317,9 +310,9 @@ class ActionAdmin(AdminActionsMixin, SceneFilterMixin, AjaxTaskModelAdmin):
 
 @admin.register(VideoAction)
 class VideoActionAdmin(AdminActionsMixin, SceneFilterMixin, AjaxTaskModelAdmin):
-    list_display = ('name', 'pic', 'prompt_video', 'video_player','last_tasks')
+    list_display = ('name', 'items', 'pic', 'prompt_video', 'video_player','last_tasks')
     list_editable = ['prompt_video']
-    list_filter = ["scene"]
+    list_filter = ["scene", "id"]
     list_display_links = ('name',)
     search_fields = ['name']
     actions = ['generate_video', 'generate_video_first_last']
@@ -327,8 +320,8 @@ class VideoActionAdmin(AdminActionsMixin, SceneFilterMixin, AjaxTaskModelAdmin):
 
 @admin.register(ActionOrganizer)
 class ActionOrganizerAdmin(AdminActionsMixin, SceneFilterMixin, ModelAdmin):
-    list_display = ('id', 'name', 'pic', 'scene', 'is_intro')
-    list_editable = ['name',  'scene','is_intro']
+    list_display = ('id', 'name', 'items', 'pic', 'scene', 'is_intro')
+    list_editable = ['name', 'scene', 'is_intro']
     list_filter = ["scene"]
     search_fields = ['name']
 
@@ -341,12 +334,9 @@ class SceneOrganizerAdmin(AdminActionsMixin, AdminLinker, SceneFilterMixin, Mode
 
 @admin.register(ComicAction)
 class ComicActionAdmin(AdminActionsMixin, SceneFilterMixin, AjaxTaskModelAdmin):
-    list_display = ('name', 'pic', 'pic_comic', 'prompt_comic', 'last_tasks')
+    list_display = ('name', 'items', 'pic', 'pic_comic', 'prompt_comic', 'last_tasks')
     list_editable = ['prompt_comic']
-    list_filter = ["scene"]
-    list_filter = (
-        'scene',
-    )
+    list_filter = ["scene", "id"]
     list_display_links = ('name',)
     search_fields = ['name']
     actions = ['generate_comic', 'comic_to_video']
@@ -355,35 +345,27 @@ class ComicActionAdmin(AdminActionsMixin, SceneFilterMixin, AjaxTaskModelAdmin):
 
 @admin.register(Voice)
 class VoiceAdmin(AdminActionsMixin,AdminLinker, AjaxTaskModelAdmin):
-    list_display = ('name', 'prompt', 'google_voice', 'sample_text', 'link_story' 'voice_player', 'last_tasks')
+    list_display = ('name', 'prompt', 'google_voice', 'sample_text', 'link_story' , 'voice_player', 'last_tasks')
     list_display_links = ('name',)
     list_editable = ['prompt', 'sample_text']
+    list_refresh = ['voice_player']    
     actions = ['generate_voice']
     list_filter = (
         'story',
         'global_default'
     )
 
-    def ajax_update_view(self, request, object_id):
-        # Implementation of the view logic from step 1
-        # Use 'self' instead of passing model_admin
-        obj = get_object_or_404(self.model, pk=object_id)
-        if request.POST.get('prompt') is not None:
-            obj.prompt = request.POST.get('prompt')
-            obj.save()
-            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user) is None:
+    def trigger_ajax_task(self, request, obj, target_field):
+        if target_field in ['prompt', 'sample_text']:
+            if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user) is None:
                 obj.generate_voice(obj.PRESET_VOICE, user=request.user)
-        return JsonResponse({'status': 'success'})
 
 
 @admin.register(VoiceAction)
 class VoiceActionAdmin(AdminActionsMixin, SceneFilterMixin, AjaxTaskModelAdmin):
-    list_display = ('name', 'pic', 'prompt_voice','text',  'voice', 'last_tasks')
+    list_display = ('name', 'items', 'pic', 'prompt_voice','text',  'voice', 'voice_player', 'last_tasks')
     list_editable = ['prompt_voice', 'voice', 'text']
-    list_filter = ["scene"]
-    list_filter = (
-        'scene', 
-    )
+    list_filter = ["scene", "id"]
     list_display_links = ('name',)
     search_fields = ['name']
     actions = ['generate_voice']

@@ -394,7 +394,7 @@ TASK_DELEGATES = {
     TASK_TYPE_GENERATE_VIDEO: 'scene.tasks.TaskGenerateVideo',
     TASK_TYPE_GENERATE_VIDEO_FIRST_LAST: 'scene.tasks.TaskGenerateVideoFirstLast',
     TASK_TYPE_GENERATE_COMIC: 'scene.tasks.TaskGenerateComic',
-    TASK_TYPE_GENERATE_SCENE_VIDEO: 'scene.tasks.TaskGenerateSceneVideo',
+    TASK_TYPE_GENERATE_SCENE_VIDEO: 'scene.tasks.VideoRender',
     TASK_TYPE_GENERATE_VOICE: 'scene.tasks.TaskGenerateVoice',
     TASK_TYPE_GENERATE_TEXT: 'scene.tasks.TaskGenerateText',
     TASK_TYPE_GENERATE_SCENE: 'scene.tasks.TaskGenerateScene',

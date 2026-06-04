@@ -80,36 +80,43 @@ class AjaxTaskModelAdmin(ModelAdmin):
         }
         return JsonResponse(response_data)
     
+    def save_ajax_fields(self, obj, request):
+        """Updates model fields from POST data, handling Booleans and Foreign Keys."""
+        for field in obj._meta.fields:
+            if field.name in request.POST:
+                val = request.POST.get(field.name)
+                if val == 'on': val = True
+                elif val == 'off': val = False
+                
+                # Use get_attname to handle ForeignKeys via their ID field (e.g., 'story_id')
+                setattr(obj, field.get_attname(), val if val != "" else None)
+        obj.save()
+
     def ajax_update_view(self, request, object_id):
-        # Implementation of the view logic from step 1
-        # Use 'self' instead of passing model_admin
+        """Standard entry point for AJAX updates: saves fields then triggers tasks."""
         obj = get_object_or_404(self.model, pk=object_id)
-        if request.POST.get('prompt') is not None:
-            obj.prompt = request.POST.get('prompt')
-            obj.save()
+        target_field = request.POST.get('target_field')
+        self.save_ajax_fields(obj, request)
+        self.trigger_ajax_task(request, obj, target_field)
+        return JsonResponse({'status': 'success'})
+
+    def trigger_ajax_task(self, request, obj, target_field):
+        """Hook for triggering specific background tasks based on the updated field."""
+        if target_field == 'prompt':
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_IMAGE, owner=request.user) is None:
                 obj.generate_image(user=request.user)
-        elif request.POST.get('prompt_refine') is not None:
-            obj.prompt_refine = request.POST.get('prompt_refine')
-            obj.save()
+        elif target_field == 'prompt_refine':
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_REFINE_IMAGE, owner=request.user) is None:
                 obj.refine_image(user=request.user)
-        elif request.POST.get('prompt_comic') is not None:
-            obj.prompt_comic = request.POST.get('prompt_comic')
-            obj.save()
+        elif target_field == 'prompt_comic':
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_COMIC, owner=request.user) is None:
                 obj.generate_comic(user=request.user)
-        elif request.POST.get('prompt_video') is not None:
-            obj.prompt_video = request.POST.get('prompt_video')
-            obj.save()
+        elif target_field == 'prompt_video':
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VIDEO, owner=request.user) is None:
                 obj.generate_video(obj.PRESET_VIDEO, user=request.user)
-        elif request.POST.get('prompt_voice') is not None:
-            obj.prompt_voice = request.POST.get('prompt_voice')
-            obj.save()
+        elif target_field == 'prompt_voice':
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user) is None:
                 obj.generate_voice(obj.PRESET_VOICE, user=request.user)
-        return JsonResponse({'status': 'success'})
 
 class AdminLinker:
     def __getattr__(self, name):

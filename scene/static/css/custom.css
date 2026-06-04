@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;700&display=swap');
 
-.data-row .field-my_prompt, .data-row .field-pic, .data-row .field-prompt, .data-row .field-prompt_refine, .data-row .field-text, .data-row .field-prompt_voice, .data-row .field-sample_text {
+.data-row .field-my_prompt, .data-row .field-pic, .data-row .field-prompt, .data-row .field-prompt_refine, .data-row .field-text, .data-row .field-prompt_voice, .data-row .field-sample_text, .data-row .field-prompt_video {
     height: fit-content;
     flex-direction: column;
     align-items: end;
@@ -9,6 +9,18 @@
     align-content: flex-start;
 }
 
+.ajax-help-text {
+    font-size: 10px;
+    margin-top: 4px;
+    font-weight: 400;
+    color: #9ca3af; /* Gray 400 */
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 0.025em;
+}
+
+.dark .ajax-help-text {
+    color: #6b7280; /* Gray 500 */
+}
 
 /* Apply light font and custom color to desktop headers and responsive mobile labels */
 .unfold-table thead th, 
@@ -95,4 +107,21 @@
 .dark .unfold-table [data-label]::before {
     color: var(--color-font-default-dark) !important;
     color: var(--color-font-subtle-dark) !important;
+}
+
+/* Audio Player Styling */
+audio {
+    height: 32px;
+    width: 100%;
+    min-width: 200px;
+    max-width: 280px;
+    border-radius: 8px;
+    background-color: #f3f4f6; /* Tailwind gray-100 */
+    transition: all 0.2s ease;
+}
+
+.dark audio {
+    /* This filter makes native browser audio controls look native to dark mode */
+    filter: invert(100%) hue-rotate(180deg) brightness(1.4);
+    background-color: transparent;
 }

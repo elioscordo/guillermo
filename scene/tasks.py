@@ -1,6 +1,6 @@
 from task.models import Task
 from agent.models import GetContentsMixin
-from moviepy import ImageClip, VideoFileClip, concatenate_videoclips
+from moviepy import ImageClip, VideoFileClip, AudioFileClip, concatenate_videoclips
 from moviepy.video.fx import Resize
 import random
 from django.utils.text import slugify
@@ -107,7 +107,13 @@ class VideoRender:
 
             elif item.render_type == item.RENDER_TYPE_ANIMATIC:
                 if render_item.image and render_item.audio:
-                    clip = ImageClip(render_item.image.path, duration=render_item.duration)
+                    audio_clip = AudioFileClip(render_item.audio.path)
+                    duration = audio_clip.duration
+                    clip = ImageClip(render_item.image.path, duration=duration)
+                    
+                    # Professional subtle zoom-in effect (Ken Burns)
+                    clip = clip.with_effects([Resize(lambda t: 1.0 + 0.1 * (t / duration))])
+                    clip = clip.with_audio(audio_clip)
                 else:
                     self.task.log(f"Render item {render_item.order} skipped: Animatic requires both image and audio.")
 

@@ -80,6 +80,7 @@ const pollStatus = () => {
                                 fieldEl.innerHTML = data.refresh[key];
                             }
                         });
+                        addInputHints();
                     }
 
                     
@@ -117,14 +118,19 @@ document.addEventListener('keydown', function(e) {
             const idInput = row.querySelector('input.action-select');
             if (!idInput) return;
             const objectId = idInput.value;
-            updateRowState(row, "0"); // Optimistically lock the row immediately
-            // Extract the clean field name (e.g., "notes")
-            const cleanName = input.name.split('-').slice(-1)[0];
-            const value = input.type === 'checkbox' ? (input.checked ? 'on' : '') : input.value;
+            updateRowState(row, "0");
 
+            const targetField = input.name.split('-').slice(-1)[0];
             const formData = new URLSearchParams();
-            formData.append(cleanName, value);
-            formData.append('single_field_mode', cleanName); // Tell Django which field we're updating
+
+            row.querySelectorAll('input, textarea, select').forEach(el => {
+                if (el.name && !el.classList.contains('action-select')) {
+                    const fieldName = el.name.split('-').slice(-1)[0];
+                    const val = el.type === 'checkbox' ? (el.checked ? 'on' : '') : el.value;
+                    formData.set(fieldName, val);
+                }
+            });
+            formData.append('target_field', targetField);
 
             fetch(`ajax-update/${objectId}/`, {
                 method: 'POST',
@@ -168,6 +174,20 @@ document.addEventListener('change', function(e) {
     }
 });
 
+const addInputHints = () => {
+    const shiftFields = window.ajaxShiftFields || [];
+    document.querySelectorAll('textarea[name^="form-"], input[name^="form-"][type="text"]').forEach(input => {
+        const fieldName = input.name.split('-').pop();
+        if (input.nextElementSibling?.classList.contains('ajax-help-text')) return;
+
+        const isShift = shiftFields.includes(fieldName);
+        const hint = document.createElement('div');
+        hint.className = 'ajax-help-text';
+        hint.textContent = isShift ? "⚡ Shift + Enter to save" : "⏎ Enter to save";
+        input.after(hint);
+    });
+};
+
 // Fetch configuration from the server
 const fetchConfig = () => {
     return fetch('ajax-config/')
@@ -178,6 +198,7 @@ const fetchConfig = () => {
         .then(data => {
             window.ajaxShiftFields = data.ajax_shift_fields || [];
             logShiftFields();
+            addInputHints();
         })
         .catch(err => console.error("[AdminAjax] Could not load config:", err));
 };

@@ -198,7 +198,6 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
                     elements_parts.append("Reference Google Voices To chose base voice from:")
                     for p in google_voices:
                         elements_parts.append(f"- Name: {p.name}\n  Prompt: {p.description}")
-                
                 if elements_parts:
                     parts.append("### STORY CONTEXT ###\nReuse these existing entities if they appear:\n" + "\n".join(elements_parts))
         return parts
@@ -250,6 +249,34 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
             "instance": self,
         })
         return render_to_string("scene/items_dropdown.html", context)
+
+    def generate_render(self):
+        """
+        Creates a new Render object for this scene based on the story's render type
+        and populates it with RenderItems for each action in the scene.
+        """
+        from django.apps import apps
+        Render = apps.get_model('scene', 'Render')
+        RenderItem = apps.get_model('scene', 'RenderItem')
+
+        render = Render.objects.create(
+            scene=self,
+            story=self.story,
+            name=f"Render for {self.name or self.id}",
+            render_type=self.story.render_type if self.story else 'animatic'
+        )
+
+        for i, action in enumerate(self.actions.all().order_by('order')):
+            RenderItem.objects.create(
+                render=render,
+                scene=self,
+                action=action,
+                order=i,
+                audio=action.audio_voice,
+                video=action.video,
+                image=action.image_comic or action.image
+            )
+        return render
 
     class Meta:
         ordering = ['order']
@@ -497,6 +524,11 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
     def get_name(self):
         return self.name if self.name else f"#{self.id} of{self.scene.name}"
 
+    def items(self):
+        """Renders the explore dropdown for the action."""
+        return render_to_string("scene/action_items_dropdown.html", {"instance": self, "scene": self.scene})
+    items.short_description = _("Items")
+
     class Meta:
         ordering = ['-order', 'name']
 
@@ -542,11 +574,10 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
         elif preset == self.PRESET_VOICE:
             contents = {}
             out = self.prompt_voice
-            voice = self.actor.voice if self.actor and self.actor.voice else self.scene.voice if self.scene and self.scene.voice else None
             if self.text is not None:
                 out = f"{out} text to speak: {self.text}"
-            contents = voice.get_contents(generate_self=False, preset=Voice.PRESET_VOICE)
-            contents["prompts"] += out
+            contents = self.voice.get_contents(generate_self=False, preset=Voice.PRESET_VOICE)
+            contents["prompt"] += out
         else:
             # preset refine is handled in the mixin
             contents = super().get_contents(generate_self=generate_self, preset=preset)

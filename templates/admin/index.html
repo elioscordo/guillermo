@@ -70,10 +70,12 @@
 
                     <!-- Footer/Actions -->
                     <div class="p-4 mt-auto bg-white dark:bg-base-900 grid grid-cols-2 gap-2">
-                        <a href="/admin/scene/story/?id__exact={{ story.id }}" class="inline-flex items-center justify-center px-3 py-2 border border-base-200 dark:border-base-700 text-xs font-semibold rounded-lg text-font-important-light dark:text-font-important-dark bg-white dark:bg-base-900 hover:bg-base-50 dark:hover:bg-base-800 transition-all">
+                        <a href="/admin/scene/story/?id__exact={{ story.id }}" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-base-200 dark:border-base-700 text-xs font-semibold rounded-lg text-font-important-light dark:text-font-important-dark bg-white dark:bg-base-900 hover:bg-base-50 dark:hover:bg-base-800 transition-all">
+                            <span class="material-symbols-outlined text-[18px]">menu_book</span>
                             {% trans "Open Story" %}
                         </a>
-                        <a href="/admin/scene/scene/?story__id__exact={{ story.id }}" class="inline-flex items-center justify-center px-3 py-2 bg-primary-50 dark:bg-primary-950/30 text-primary-700 dark:text-primary-400 text-xs font-semibold rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-all">
+                        <a href="/admin/scene/scene/?story__id__exact={{ story.id }}" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-primary-50 dark:bg-primary-600/10 text-primary-600 dark:text-primary-400 border border-primary-100 dark:border-primary-900/30 text-xs font-bold rounded-lg hover:bg-primary-600 hover:text-white dark:hover:bg-primary-500 transition-all shadow-sm">
+                            <span class="material-symbols-outlined text-[18px]">layers</span>
                             {% trans "Scenes" %}
                         </a>
                     </div>

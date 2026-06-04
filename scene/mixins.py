@@ -402,12 +402,30 @@ class AdminActionsMixin:
                 obj.generate_scene(user=request.user)
             self.message_user(request, f"Extracting scene from contribution {obj.id} in story {obj.story.id}.")
 
-    @admin.action(description="Refresh Scene Video" )
-    def refresh_scene_video(self, request, queryset):
+    @admin.action(description="Generate Render Preview (step 3.5)")
+    def generate_render(self, request, queryset):
         for obj in queryset:
-            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_SCENE_VIDEO, owner=request.user) is None:
-                obj.generate_video(obj.PRESET_VIDEO, user=request.user)
-            self.message_user(request, "video generated for item ID {}.".format(obj.id))
+            if hasattr(obj, 'generate_render'):
+                obj.generate_render()
+                self.message_user(request, _("Render generated for scene: {}").format(obj.name))
+
+    @admin.action(description="Refresh Render (step 4)" )
+    def refresh_render(self, request, queryset):
+        Scene = apps.get_model('scene', 'Scene')
+        for obj in queryset:
+            if isinstance(obj, Scene):
+                render = obj.generate_render()
+                Task.createTaskIfQueueEnabled(
+                    subject=render,
+                    task_type=settings.TASK_TYPE_GENERATE_SCENE_VIDEO,
+                    thr=obj,
+                    owner=request.user
+                )
+                self.message_user(request, _("Render generated and video task queued for scene: {}").format(obj.name))
+            else:
+                if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VIDEO, owner=request.user) is None:
+                    obj.generate_video(obj.PRESET_VIDEO, user=request.user)
+                self.message_user(request, "video generated for item ID {}.".format(obj.id))
 
 class RenderTypeMixin:
     RENDER_TYPE_FILM = 'film'
