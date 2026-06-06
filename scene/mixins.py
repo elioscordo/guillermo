@@ -64,43 +64,73 @@ class ModelDisplayMixin:
     def pic(self):
         image = getattr(self, 'image', None)
         if image:
-            return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', image.url, image.url, self.MAX_IMAGE_HEIGHT)
-        return _("No Image")
+            return format_html(
+                '<a href="{0}" download class="block">'
+                '<img src="{0}" style="max-height: {1}px;" class="rounded-md border border-gray-200 dark:border-gray-700 shadow-sm" />'
+                '</a>',
+                image.url, self.MAX_IMAGE_HEIGHT
+            )
+        return "-"
     pic.short_description = _("Image")
 
     def pic_comic(self):
         image_comic = getattr(self, 'image_comic', None)
         if image_comic:
-            return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', image_comic.url, image_comic.url, self.MAX_IMAGE_HEIGHT)
-        return _("No Image")
+            return format_html(
+                '<a href="{0}" download class="block">'
+                '<img src="{0}" style="max-height: {1}px;" class="rounded-md border border-gray-200 dark:border-gray-700 shadow-sm" />'
+                '</a>',
+                image_comic.url, self.MAX_IMAGE_HEIGHT
+            )
+        return "-"
     pic_comic.short_description = _("Comic Image")
     
     def pic_refine(self):
         image_refine = getattr(self, 'image_refine', None)
         if image_refine:
-            return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', image_refine.url, image_refine.url, self.MAX_IMAGE_HEIGHT)
-        return _("No Image")
+            return format_html(
+                '<a href="{0}" download class="block">'
+                '<img src="{0}" style="max-height: {1}px;" class="rounded-md border border-gray-200 dark:border-gray-700 shadow-sm" />'
+                '</a>',
+                image_refine.url, self.MAX_IMAGE_HEIGHT
+            )
+        return "-"
     pic_refine.short_description = _("Refined Image")
     
     def pic_first(self):
         image_first = getattr(self, 'image_first', None)
         if image_first:
-            return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', image_first.url, image_first.url, self.MAX_IMAGE_HEIGHT)
-        return _("No Image")
+            return format_html(
+                '<a href="{0}" download class="block">'
+                '<img src="{0}" style="max-height: {1}px;" class="rounded-md border border-gray-200 dark:border-gray-700 shadow-sm" />'
+                '</a>',
+                image_first.url, self.MAX_IMAGE_HEIGHT
+            )
+        return "-"
     pic_first.short_description = _("First Frame")
     
     def pic_last(self):
         image_last = getattr(self, 'image_last', None)
         if image_last:
-            return format_html('<a href="{}" download ><img src="{}" style="max-height: {}px;" /></a>', image_last.url, image_last.url, self.MAX_IMAGE_HEIGHT)
-        return _("No Image")
+            return format_html(
+                '<a href="{0}" download class="block">'
+                '<img src="{0}" style="max-height: {1}px;" class="rounded-md border border-gray-200 dark:border-gray-700 shadow-sm" />'
+                '</a>',
+                image_last.url, self.MAX_IMAGE_HEIGHT
+            )
+        return "-"
     pic_last.short_description = _("Last Frame")
 
     def action_pic(self):
         action = getattr(self, 'action', None)
         if action and hasattr(action, 'image') and action.image:
-             return format_html('<img src="{}" style="max-height: {}px;" />', action.image.url, self.MAX_IMAGE_HEIGHT)
-        return _("No Image")
+             return format_html(
+                 '<a href="{0}" download class="block">'
+                 '<img src="{0}" style="max-height: {1}px;" class="rounded-md border border-gray-200 dark:border-gray-700 shadow-sm" />'
+                 '</a>',
+                 action.image.url, self.MAX_IMAGE_HEIGHT
+             )
+        return "-"
     action_pic.short_description = _("Action Image")
     
     def contents_html(self):

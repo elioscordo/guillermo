@@ -365,8 +365,8 @@ class VideoActionAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, 
 
 @admin.register(ActionOrganizer)
 class ActionOrganizerAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, ModelAdmin):
-    list_display = ('id', 'name', 'items', 'pic', 'scene', 'is_intro')
-    list_editable = ['name', 'scene', 'is_intro']
+    list_display = ('id', 'name', 'items', 'pic', 'scene', 'is_intro', 'order')
+    list_editable = ['name', 'scene', 'is_intro', 'order']
     list_filter = ["scene__story", "scene"]
     search_fields = ['name']
     list_sections = [PromptPreviewSection]

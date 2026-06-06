@@ -170,9 +170,12 @@ class AdminLinker:
                 if not img or not hasattr(img, "url"):
                     return "-"
 
+                max_h = getattr(obj, "MAX_IMAGE_HEIGHT", 80)
                 return format_html(
-                    '<img src="{0}" style="max-height: 80px;" class="rounded-md border border-gray-200 dark:border-gray-700 shadow-sm" />',
-                    img.url
+                    '<a href="{0}" download class="block">'
+                    '<img src="{0}" style="max-height: {1}px;" class="rounded-md border border-gray-200 dark:border-gray-700 shadow-sm" />'
+                    '</a>',
+                    img.url, max_h
                 )
 
             dynamic_image.short_description = related_field.replace("_", " ").title()
