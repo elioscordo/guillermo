@@ -21,6 +21,7 @@ class BackgroundSchema(BaseModel):
 
 class ActionSchema(BaseModel):
     name: str
+    order: int
     prompt_comic: str
     prompt_video: str
     prompt_voice: str
@@ -110,7 +111,7 @@ class SceneSchema(BaseModel):
                     scene=scene,
                     name=action_data.name,
                     defaults={
-                        'order': i,
+                        'order': action_data.order,
                         'prompt': action_data.prompt,
                         'prompt_comic': action_data.prompt_comic,
                         'prompt_video': action_data.prompt_video,

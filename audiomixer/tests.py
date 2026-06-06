@@ -1,8 +1,8 @@
 import os
 from django.test import TestCase
-from is_core.models import Text, Tutorial, \
+from audiomixer.models import Text, Tutorial, \
     Task, Language, TaskPreset, Audio, Speaker
-from is_core.tasks import TaskSpeaker, TaskAnalyst, TaskVideo, process_task
+from audiomixer.tasks import TaskSpeaker, TaskAnalyst, TaskVideo, process_task
 from filer.models import File
 from django.conf import settings
 

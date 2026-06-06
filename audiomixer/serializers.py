@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from is_core.models import Tutorial, Audio, \
+from audiomixer.models import Tutorial, Audio, \
     AudioAnalysis, Speaker, Language, Playlist
 
 

@@ -8,8 +8,8 @@ from is_lib.audio import AudioAnalyst
 from is_lib.dsp import resize
 from is_lib.image import ImageMaker
 from is_lib.manim import ISPlot
-from is_core.models import Audio, AudioAnalysis, Language, Task
-from is_core.tasks import TaskVideo
+from audiomixer.models import Audio, AudioAnalysis, Language, Task
+from audiomixer.tasks import TaskVideo
 
 
 class TestImageMaker(TestCase):

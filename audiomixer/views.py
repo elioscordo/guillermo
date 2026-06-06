@@ -2,8 +2,8 @@ from rest_framework import viewsets, filters, generics
 
 from django_filters.rest_framework import DjangoFilterBackend
 
-from is_core.models import Tutorial, Language
-from is_core.serializers import TutorialSerializer
+from audiomixer.models import Tutorial, Language
+from audiomixer.serializers import TutorialSerializer
 
 
 class TutorialViewSet(viewsets.ModelViewSet):

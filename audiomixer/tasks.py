@@ -6,7 +6,7 @@ from simple_youtube_api.Channel import Channel
 from simple_youtube_api.LocalVideo import LocalVideo
 from celery.utils.log import get_task_logger
 
-from is_core.models import Task, Tutorial, \
+from audiomixer.models import Task, Tutorial, \
     Audio, AudioAnalysis, TaskPreset, Speaker
 from is_lib.speakers import GoogleSpeaker
 from is_lib.audio import AudioAnalyst

@@ -113,6 +113,13 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, models.Model, GetContentsMixi
     def get_cast(self):
         return self.characters.all().order_by('name')
 
+    def get_slides(self):
+        slides = []
+        for scene in self.scenes.all().order_by('order'):
+            for action in scene.actions.all().order_by('order'):
+                slides.append(action.slide())
+        return slides
+
     def get_props(self):
         return Prop.objects.filter(story=self).order_by('name')
 
@@ -205,6 +212,30 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
             if preset == self.PRESET_REFINE_PROMPT:
                 parts = [self.prompt_refine]
                 parts.append("following prompt to be improved")
+
+                actions = self.actions.all().order_by('order')
+                if actions.exists():
+                    import json
+                    from .schemas import ActionSchema
+                    action_list = [
+                        ActionSchema(
+                            name=a.name,
+                            order=a.order,
+                            prompt=a.prompt or "",
+                            prompt_comic=a.prompt_comic or "",
+                            prompt_video=a.prompt_video or "",
+                            prompt_voice=a.prompt_voice or "",
+                            text=a.text or "",
+                            voice=a.voice.name if a.voice else "None",
+                            background=a.background.name if a.background else "None",
+                            cast=[c.name for c in a.cast.all()],
+                            props=[p.name for p in a.props.all()]
+                        ).model_dump()
+                        for a in actions
+                    ]
+                    parts.append("### EXISTING ACTIONS DATA (Match names to update) ###")
+                    parts.append(json.dumps(action_list, indent=2))
+
             parts.append(self.prompt)
             if self.story:
                 elements_parts = []
@@ -492,6 +523,34 @@ class Background(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolde
         verbose_name = _('Location')
         verbose_name_plural = _('Locations')
 
+class Sync(AfterSaveActionMixin, models.Model, TaskHolder, ModelDisplayMixin):
+    story = models.ForeignKey('Story', verbose_name=_("story"), related_name='syncs', on_delete=models.CASCADE)
+    last_file_in = FilerFileField(verbose_name=_("last file in"), null=True, blank=True, on_delete=models.SET_NULL, related_name='syncs_in')
+    last_file_out = FilerFileField(verbose_name=_("last file out"), null=True, blank=True, on_delete=models.SET_NULL, related_name='syncs_out')
+
+    def __str__(self):
+        return f"Sync: {self.story.name}"
+
+class SyncItem(AfterSaveActionMixin, models.Model, TaskHolder, ModelDisplayMixin):
+    TYPE_IMPORT = 'import'
+    TYPE_EXPORT = 'export'
+    TYPE_CHOICES = [
+        (TYPE_IMPORT, _('Import')),
+        (TYPE_EXPORT, _('Export')),
+    ]
+    sync = models.ForeignKey(Sync, verbose_name=_("sync"), related_name='items', on_delete=models.CASCADE)
+    type = models.CharField(_("type"), max_length=10, choices=TYPE_CHOICES)
+    zip_file = FilerFileField(verbose_name=_("zip file"), null=True, blank=True, on_delete=models.SET_NULL, related_name='sync_items')
+    
+    TASK_TYPE_CHOICES = settings.TASK_TYPE_CHOICES
+    action = models.SlugField(_("action"), choices=TASK_TYPE_CHOICES, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.get_type_display()} for {self.sync.story.name} ({self.id})"
+
+    class Meta:
+        ordering = ['-id']
+
 
 class StoryGroup(models.Model):
     story = models.ForeignKey(Story, verbose_name=_("story"), related_name='story_groups', on_delete=models.SET_NULL, null=True, blank=True)
@@ -565,8 +624,17 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
         return render_to_string("scene/action_items_dropdown.html", {"instance": self, "scene": self.scene})
     items.short_description = _("Items")
 
+    def slide(self):
+        return {
+            "media_url": self.video.url if self.video else (self.image_comic.url if self.image_comic else (self.image.url if self.image else None)),
+            "media_type": "video" if self.video else "image",
+            "audio_url": self.audio_voice.url if self.audio_voice else None,
+            "text": self.text,
+            "name": self.get_name()
+        }
+
     class Meta:
-        ordering = ['-order', 'name']
+        ordering = ['order', 'name']
 
     def elements(self):
         props = []
@@ -617,7 +685,7 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
         else:
             # preset refine is handled in the mixin
             contents = super().get_contents(generate_self=generate_self, preset=preset)
-            if preset != self.PRESET_COMIC:
+            if preset != self.PRESET_COMIC and preset != self.PRESET_REFINE:
                 if self.consistent_with:
                     contents.extend(["Maximise consistency, preserve character features and objects to the following image", self.consistent_with.get_thumbnail()])
                 if self.actor:
@@ -744,6 +812,7 @@ class RenderItem(models.Model, TaskHolder, ModelDisplayMixin):
     audio = FilerFileField(verbose_name=_("audio"), null=True, blank=True, on_delete=models.SET_NULL, related_name='video_item_audio')
     order = models.PositiveIntegerField(_("order"), default=0, db_index=True)
     config = models.JSONField(_("config"), null=True, blank=True)
+    params = models.CharField(_("params"), max_length=255, null=True, blank=True)
     render = models.ForeignKey("scene.Render", verbose_name=_("render"), related_name='render_items',null=True, blank=True, on_delete=models.CASCADE)
     scene = models.ForeignKey("scene.Scene", verbose_name=_("scene"), related_name='render_items', null=True, blank=True, on_delete=models.SET_NULL)
     action = models.ForeignKey("scene.Action", verbose_name=_("action"), related_name='render_items', null=True, blank=True, on_delete=models.SET_NULL)

@@ -108,6 +108,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages'
             ],
+            'debug': DEBUG,
         },
     }
 ]
@@ -384,6 +385,8 @@ TASK_TYPE_GENERATE_SCENE = 'generate_scene'
 TASK_TYPE_GENERATE_SCENE_ELEMENTS = 'generate_scene_elements'
 TASK_TYPE_GENERATE_SCENE_ACTIONS = 'generate_scene_actions'
 TASK_TYPE_EXTRACT_SCENE = 'extract_scene'
+TASK_TYPE_SYNC_EXPORT = 'sync_export'
+TASK_TYPE_SYNC_IMPORT = 'sync_import'
 
 
 
@@ -401,6 +404,8 @@ TASK_DELEGATES = {
     TASK_TYPE_GENERATE_SCENE_ELEMENTS: 'scene.tasks.TaskGenerateSceneElements',
     TASK_TYPE_GENERATE_SCENE_ACTIONS: 'scene.tasks.TaskGenerateSceneActions',
     TASK_TYPE_EXTRACT_SCENE: 'scene.tasks.TaskExtractScene',
+    TASK_TYPE_SYNC_EXPORT: 'scene.tasks.TaskSyncExport',
+    TASK_TYPE_SYNC_IMPORT: 'scene.tasks.TaskSyncImport',
 }
 IMPORT_EXPORT_TMP_STORAGE_CLASS = 'import_export.tmp_storages.MediaStorage'
 TASK_TYPE_CHOICES = (
@@ -415,7 +420,9 @@ TASK_TYPE_CHOICES = (
     (TASK_TYPE_GENERATE_SCENE, _("Generate Scene")),
     (TASK_TYPE_GENERATE_SCENE_ELEMENTS, _("Generate Scene Elements")),
     (TASK_TYPE_GENERATE_SCENE_ACTIONS, _("Generate Scene Actions")),
-    (TASK_TYPE_EXTRACT_SCENE, _("Extract Scene"))
+    (TASK_TYPE_EXTRACT_SCENE, _("Extract Scene")),
+    (TASK_TYPE_SYNC_EXPORT, _("Sync Export")),
+    (TASK_TYPE_SYNC_IMPORT, _("Sync Import")),
 )
 
 

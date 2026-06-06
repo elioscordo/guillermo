@@ -26,7 +26,7 @@ from PIL import Image
 
 
 class GetContentsMixin:
-    PRESET_GENERIC = "generic"
+    PRESET_IMAGE = "image"
     PRESET_REFINE = "refine"
     PRESET_VIDEO = "video_image"
     PRESET_VIDEO_FIRST_LAST = "video_first_last"
@@ -74,7 +74,7 @@ class GetContentsMixin:
 
     def generate_image(self, user=None):
         agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_IMAGE).first()
-        self.image = agent.generate(self, user=user, target_field="image")
+        self.image = agent.generate(self, preset=self.PRESET_IMAGE, user=user, target_field="image")
         self.save()
         return self.image
     
@@ -106,7 +106,7 @@ class GetContentsMixin:
 
     def refine_image(self, save=True, user=None):
         image_agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_IMAGE).first()
-        out = image_agent.generate(self, preset=self.PRESET_REFINE_PROMPT, user=user, target_field="image")
+        out = image_agent.generate(self, preset=self.PRESET_REFINE, user=user, target_field="image")
         if save and out:
             self.image = out
             self.save()
@@ -115,7 +115,7 @@ class GetContentsMixin:
     def refine_prompt(self, save=True, user=None, agent=None):
         if agent is None:
             text_agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_TEXT).first()
-        out = text_agent.generate(self, preset=self.PRESET_REFINE, user=user, target_field="prompt")
+        out = text_agent.generate(self, preset=self.PRESET_REFINE_PROMPT, user=user, target_field="prompt")
         if save and out:
             self.image = out
             self.save()

@@ -1,6 +1,6 @@
 import os
 from django.core.management.base import BaseCommand
-from is_core.models import Text, Language
+from audiomixer.models import Text, Language
 from django.conf import settings
 
 

@@ -457,6 +457,8 @@ class AudioAnalysis(models.Model):
         return f"{self.pk}"
 
 
+
+
 class Audio(models.Model, ModelDiffMixin):
     diff_fields = ['id', 'file']
     created = models.DateTimeField(auto_now_add=True)

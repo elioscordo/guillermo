@@ -2,7 +2,7 @@
 
 from django.db import migrations, models
 import django.db.models.deletion
-import is_core.utils
+import audiomixer.utils
 
 
 class Migration(migrations.Migration):
@@ -21,6 +21,6 @@ class Migration(migrations.Migration):
                 ('input', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='input', to='is_core.audio')),
                 ('output', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='output', to='is_core.audio')),
             ],
-            bases=(models.Model, is_core.utils.ModelDiffMixin),
+            bases=(models.Model, audiomixer.utils.ModelDiffMixin),
         ),
     ]

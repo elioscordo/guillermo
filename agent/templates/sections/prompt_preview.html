@@ -1,9 +1,9 @@
-<div class="prompt-preview-container mt-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
+<div class="prompt-preview-container mt-4 p-4 bg-base-50 dark:bg-base-900 rounded-lg border border-base-200 dark:border-base-800">
     <div class="flex items-center justify-between mb-3">
-        <label class="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+        <label class="text-[10px] font-bold uppercase tracking-widest text-font-secondary-light dark:text-font-tertiary-dark">
             Prompt Preview Engine
         </label>
-        <select class="prompt-preset-select text-xs bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded shadow-sm focus:ring-primary-500 focus:border-primary-500 py-1" 
+        <select class="prompt-preset-select text-xs bg-white dark:bg-base-800 border-base-300 dark:border-base-700 dark:text-white rounded shadow-sm focus:ring-primary-500 focus:border-primary-500 py-1" 
                 data-url="prompt-preview/{{ instance.pk }}/">
             <option value="">-- Standard Prompt --</option>
             {% for preset in presets %}
@@ -11,5 +11,30 @@
             {% endfor %}
         </select>
     </div>
-    <div class="prompt-preview-content font-mono text-[11px] whitespace-pre-wrap leading-relaxed text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 p-4 rounded border border-gray-100 dark:border-gray-700 min-h-[100px] max-h-[400px] overflow-y-auto">Select a preset to visualize the data sent to the AI agent...</div>
+
+    <div class="flex flex-col gap-4">
+        <div class="prompt-preview-content font-mono text-[11px] whitespace-pre-wrap leading-relaxed text-font-important-light dark:text-gray-300 bg-white dark:bg-base-950 p-4 rounded border border-base-100 dark:border-base-800 min-h-[100px] max-h-[400px] overflow-y-auto shadow-inner">Select a preset to visualize the data sent to the AI agent...</div>
+
+        {% if instance.image or instance.image_comic or instance.image_first or instance.image_last %}
+            <div class="prompt-preview-metadata grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 border-t border-base-200 dark:border-base-800 pt-4">
+                {% if instance.image %}
+                    <div class="flex flex-col gap-1">
+                        <span class="text-[9px] font-bold uppercase text-font-secondary-light dark:text-font-tertiary-dark">Main Source Image</span>
+                        <a href="{{ instance.image.url }}" target="_blank" class="text-[10px] text-primary-600 dark:text-primary-400 truncate hover:underline transition-colors flex items-center gap-1">
+                            <span class="material-symbols-outlined text-xs">link</span> {{ instance.image.url }}
+                        </a>
+                    </div>
+                {% endif %}
+
+                {% if instance.image_comic %}
+                    <div class="flex flex-col gap-1">
+                        <span class="text-[9px] font-bold uppercase text-font-secondary-light dark:text-font-tertiary-dark">Comic Source</span>
+                        <a href="{{ instance.image_comic.url }}" target="_blank" class="text-[10px] text-primary-600 dark:text-primary-400 truncate hover:underline transition-colors flex items-center gap-1">
+                            <span class="material-symbols-outlined text-xs">link</span> {{ instance.image_comic.url }}
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
 </div>
