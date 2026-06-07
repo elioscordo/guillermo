@@ -120,7 +120,7 @@ class VideoRender:
 
                     # Get margins from 'params' field (space separated "start_ms end_ms")
                     # Fallback to config or settings if params is empty
-                    default_margin = (render_item.config or {}).get('audio_margin', getattr(settings, 'DEFAULT_AUDIO_MARGIN', 0))
+                    default_margin = (render_item.config or {}).get('audio_margin', getattr(settings, 'DEFAULT_AUDIO_MARGIN', 0.5))
                     start_ms, end_ms = default_margin, default_margin
                     
                     if render_item.params:

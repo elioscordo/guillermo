@@ -207,16 +207,31 @@ class StoryFilterMixin:
     # anything that has a story foreign key can use this mixin to filter by the user's current scene
     
     def save_model(self, request, obj, form, change):
-        if obj.story is None:
-            obj.story = request.user.story_profile.get_current_story()
-        save_obj = super().save_model(request, obj, form, change)
-        return save_obj
+        if not change:
+            story = request.user.story_profile.get_current_story()
+            if story and hasattr(obj, 'story') and getattr(obj, 'story') is None:
+                obj.story = story
+        super().save_model(request, obj, form, change)
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request) #call original queryset method that you are overriding
-        profile = request.user.story_profile
-        if profile.enable_filters:
-            return qs.filter(story=profile.get_current_story())
+        qs = super().get_queryset(request)
+        profile = getattr(request.user, 'story_profile', None)
+        
+            
+        story = profile.get_current_story()
+        if not story:
+            return qs
+
+        model_name = self.model._meta.model_name
+        if model_name == 'story':
+            return qs.filter(pk=story.pk)
+        
+        field_names = [f.name for f in self.model._meta.get_fields()]
+        if 'story' in field_names:
+            return qs.filter(story=story)
+        elif 'scene' in field_names:
+            return qs.filter(scene__story=story)
+            
         return qs
 
 class StaffReadOnlyMixin:

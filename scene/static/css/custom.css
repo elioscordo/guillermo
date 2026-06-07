@@ -14,7 +14,9 @@
 .data-row .field-text,
 .data-row .field-prompt_voice,
 .data-row .field-sample_text,
-.data-row .field-prompt_video {
+.data-row .field-prompt_video,
+.data-row .field-prompt_comic
+{
     height: fit-content;
     flex-direction: column;
     align-items: end;

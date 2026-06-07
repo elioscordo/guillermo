@@ -115,9 +115,8 @@ class AuthorInline(StackedInline):
     autocomplete_fields = ['user']
 
 @admin.register(Story)
-class StoryAdmin(AdminActionsMixin, AdminLinker, AjaxTaskModelAdmin, UnfoldImportExportModelAdmin):
+class StoryAdmin(StoryFilterMixin, AdminActionsMixin, AdminLinker, AjaxTaskModelAdmin):
     inlines = [AuthorInline]
-    resource_classes = [StoryResource]
     autocomplete_fields = ['group']
     search_fields = ['name']
     list_refresh = ['items']
@@ -191,7 +190,7 @@ class StoryAdmin(AdminActionsMixin, AdminLinker, AjaxTaskModelAdmin, UnfoldImpor
 
 
 @admin.register(Scene)
-class SceneAdmin(AdminActionsMixin, AdminLinker, StoryFilterMixin, AjaxTaskModelAdmin):
+class SceneAdmin(StoryFilterMixin, AdminActionsMixin, AdminLinker, AjaxTaskModelAdmin):
     search_fields = ['name']
     ajax_shift_fields = ['prompt']
     list_refresh = ['items']
@@ -271,7 +270,7 @@ class StoryProfileAdmin(ViewYourOwnMixin, StaffReadOnlyMixin, ModelAdmin):
     
 
 @admin.register(Character)
-class CharacterAdmin(AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin, UnfoldImportExportModelAdmin):
+class CharacterAdmin(StoryFilterMixin, AdminActionsMixin, PromptPreviewMixin, AjaxTaskModelAdmin, UnfoldImportExportModelAdmin):
     resource_classes = [CharacterResource]
     list_display = ('name', 'pic', 'prompt', 'prompt_refine', 'last_tasks')
     list_refresh = ['pic']
@@ -285,7 +284,7 @@ class CharacterAdmin(AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, Aj
     list_sections = [PromptPreviewSection]
 
 @admin.register(Background)
-class BackgroundAdmin(AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin, UnfoldImportExportModelAdmin):
+class BackgroundAdmin(StoryFilterMixin, AdminActionsMixin, PromptPreviewMixin, AjaxTaskModelAdmin, UnfoldImportExportModelAdmin):
     resource_classes = [BackgroundResource]
     list_display = ('name', 'pic', 'prompt', 'prompt_refine', 'last_tasks')
     list_refresh = ['pic']
@@ -300,7 +299,7 @@ class BackgroundAdmin(AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, A
 
 
 @admin.register(Prop)
-class PropAdmin(AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin, UnfoldImportExportModelAdmin):
+class PropAdmin(StoryFilterMixin, AdminActionsMixin, PromptPreviewMixin, AjaxTaskModelAdmin, UnfoldImportExportModelAdmin):
     resource_classes = [PropResource]
     search_fields = ['name']
     list_refresh = ['pic']
@@ -339,6 +338,7 @@ class NudgeAdmin(AdminActionsMixin, ModelAdmin):
 
 @admin.register(Action)
 class ActionAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxTaskModelAdmin):
+    ajax_shift_fields = ['prompt', 'prompt_refine']
     list_display = ('get_name', 'items', 'pic', 'prompt','prompt_refine', 'last_tasks')
     list_refresh = ['pic']
     list_editable = ( 'prompt', 'prompt_refine')
@@ -380,6 +380,7 @@ class SceneOrganizerAdmin(AdminActionsMixin, AdminLinker, SceneFilterMixin, Mode
 
 @admin.register(ComicAction)
 class ComicActionAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxTaskModelAdmin):
+    ajax_shift_fields = ['prompt_comic']
     list_display = ('name', 'items', 'pic', 'pic_comic', 'prompt_comic', 'last_tasks')
     list_editable = ['prompt_comic']
     list_filter = ["scene__story", "scene", "id"]

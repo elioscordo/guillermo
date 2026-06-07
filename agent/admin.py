@@ -140,7 +140,7 @@ class AgentProfileAdmin(ModelAdmin):
 
 @admin.register(TokenUsage)
 class TokenUsageAdmin(ModelAdmin):
-    list_display = ('id', 'user', 'tokens', 'created')
+    list_display = ('id', 'user', 'agent', 'tokens', 'preset', 'content_object', 'created')
     list_display_links = ('id',)
     autocomplete_fields = ['user']
 

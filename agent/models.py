@@ -215,20 +215,25 @@ class Agent(models.Model):
         else:
             raise Exception("User does not have an API key configured. Please set up your API key in your profile settings.")
 
-    def save_usage(self, user, response):
+    def save_usage(self, user, response, obj=None, preset=None):
         usage = response.usage_metadata
         usage_dict = {
-            "prompt_token_count": str(usage.prompt_token_count),
-            "candidates_token_count": str(usage.candidates_token_count),
-            "total_token_count": str(usage.total_token_count),
-            "api_key_id": user.agent_profile.google_api_key.id,
+            "prompt_token_count": usage.prompt_token_count,
+            "candidates_token_count": usage.candidates_token_count,
+            "total_token_count": usage.total_token_count,
+            "api_key_id": user.agent_profile.google_api_key.id if user.agent_profile.google_api_key else None,
             
             # Fields for advanced features (if available)
         }
+        
         TokenUsage.objects.create(
             user=user,
+            agent=self,
             json_report=usage_dict,
-            tokens= usage_dict.get("total_token_count", 0),
+            tokens=usage.total_token_count,
+            preset=preset,
+            content_type=ContentType.objects.get_for_model(obj.__class__) if obj else None,
+            object_id=obj.pk if obj else None
         )
 
     def __str__(self):
@@ -264,7 +269,7 @@ class Agent(models.Model):
             )
         )
         data = response.candidates[0].content.parts[0].inline_data.data
-        self.save_usage(user, response)
+        self.save_usage(user, response, obj=prompt_obj, preset=preset)
         name = f"voice_{slugify(prompt_obj.__class__.__name__)}_{slugify(prompt_obj.name)}_{slugify(self.name)}_{random.randint(1000,9999)}.wav"
         filepath_relative = f"agent_voices/{name}"
         filepath_abs = os.path.join( settings.MEDIA_ROOT, filepath_relative)
@@ -306,7 +311,7 @@ class Agent(models.Model):
         if operation.response.generated_videos is None:
             raise Exception(operation.response.rai_media_filtered_reasons)
         generated_video = operation.response.generated_videos[0]
-        self.save_usage(user, operation.response)
+        self.save_usage(user, operation.response, obj=prompt_obj, preset=preset)
 
         name = f"video_{slugify(prompt_obj.__class__.__name__)}_{slugify(prompt_obj.name)}_{slugify(self.name)}_{random.randint(1000,9999)}.mp4"
         filepath_relative = f"agent_videos/{name}"
@@ -386,7 +391,7 @@ class Agent(models.Model):
                     config=config
                 )
                 out = None
-                self.save_usage(user, response)
+                self.save_usage(user, response, obj=obj, preset=preset)
                 if self.output_type == self.OUTPUT_TYPE_TEXT:
                     out =  self.extract_text(response, obj)
                 elif self.output_type == self.OUTPUT_TYPE_IMAGE:
@@ -417,6 +422,10 @@ class TokenUsage(models.Model):
     agent = models.ForeignKey(Agent, verbose_name=_("agent"), related_name='token_usages', on_delete=models.SET_NULL, null=True, blank=True)
     task = models.ForeignKey(Task, verbose_name=_("task"), related_name='token_usages', on_delete=models.SET_NULL, null=True, blank=True)
     tokens = models.PositiveIntegerField(_("tokens"), default=0)
+    preset = models.CharField(_("preset"), max_length=100, null=True, blank=True)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
+    object_id = models.PositiveIntegerField(null=True, blank=True)
+    content_object = GenericForeignKey('content_type', 'object_id')
     json_report = models.JSONField(null=True, blank=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_("user"), related_name='token_usages', on_delete=models.SET_NULL, null=True, blank=True)
 
