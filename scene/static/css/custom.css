@@ -15,7 +15,8 @@
 .data-row .field-prompt_voice,
 .data-row .field-sample_text,
 .data-row .field-prompt_video,
-.data-row .field-prompt_comic
+.data-row .field-prompt_comic,
+.data-row .field-video_player
 {
     height: fit-content;
     flex-direction: column;
@@ -139,6 +140,20 @@ audio {
     /* This filter makes native browser audio controls look native to dark mode */
     filter: invert(100%) hue-rotate(180deg) brightness(1.4);
     background-color: transparent;
+}
+
+/* Video Player Styling */
+video {
+    max-height: 200px;
+    width: 100%;
+    min-width: 200px;
+    max-width: 300px;
+    border-radius: 8px;
+    background-color: #000;
+}
+
+.dark video {
+    border: 1px solid var(--color-border-primary, #374151);
 }
 
 /* Slideshow (Swiper) Custom Styles */

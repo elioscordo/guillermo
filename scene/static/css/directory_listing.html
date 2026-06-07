@@ -1,0 +1,65 @@
+{% extends "admin/filer/base_site.html" %}
+{% load i18n static filer_admin_tags %}
+
+{% block content %}
+<div class="@container px-4 pb-4 grow">
+    <div id="content" class="container mx-auto">
+        <div class="navigator-top-nav !flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 p-3 md:p-4 mb-6 bg-white border border-base-200 rounded-xl dark:bg-base-900 dark:border-base-800 shadow-sm">
+            
+            <!-- Left: Breadcrumbs -->
+            <div class="flex items-center gap-2 overflow-hidden flex-shrink-0">
+                <div class="navigator-breadcrumbs flex items-center gap-2">
+                    <div class="filer-dropdown-container">
+                        <a href="#" data-toggle="filer-dropdown" class="hover:opacity-70 transition-opacity">
+                            <img src="{% static 'filer/icons/folder-dropdown.svg' %}" alt="" width="24" height="24" class="dark:invert dark:brightness-200">
+                        </a>
+                        <ul class="filer-dropdown-menu">
+                            <li>
+                                <a href="{% url 'admin:filer-directory_listing-root' %}{% filer_admin_context_url_params %}" title="{% trans 'Go back to Root folder' %}">
+                                    <img src="{% static 'filer/icons/folder-root.svg' %}" alt="Root" width="20" height="20"> {% trans 'Root' %}
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <span class="text-base-400 dark:text-base-600">
+                        <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+                    </span>
+                </div>
+
+                <div class="font-bold text-base text-font-important-light dark:text-font-important-dark truncate">
+                    {% if folder.name %}
+                        {{ folder.name }}
+                    {% else %}
+                        {% trans 'Unsorted Uploads' %}
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Middle: Search -->
+            <div class="flex-grow w-full md:max-w-md md:mx-4">
+                <form class="js-filter-files-container relative" action="." method="get">
+                    {% filer_admin_context_hidden_formfields %}
+                    <input type="text" placeholder="{% trans 'Search files...' %}" 
+                           class="w-full pl-10 pr-4 py-2.5 text-sm bg-base-50 border border-base-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-base-800 dark:border-base-700 dark:text-font-default-dark" 
+                           value="{{ search_string }}" name="q">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-base-400">search</span>
+                </form>
+            </div>
+
+            <!-- Right: Tools -->
+            <div class="flex items-center justify-end w-full md:w-auto gap-3 flex-shrink-0">
+                <div class="flex items-center border-r border-base-200 dark:border-base-800 pr-3 gap-2">
+                    <a href="?_list_type=th{% filer_admin_context_url_params %}" class="p-2 text-base-500 hover:bg-base-100 rounded-lg dark:hover:bg-base-800" title="{% trans 'Thumbnail view' %}">
+                        <span class="material-symbols-outlined text-[20px]">grid_view</span>
+                    </a>
+                </div>
+                <a href="#" id="id_upload_button" class="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-bold rounded-lg hover:bg-primary-500 shadow-sm transition-all dz-clickable">
+                    <span class="material-symbols-outlined text-[20px]">upload</span>
+                    {% trans "Upload" %}
+                </a>
+            </div>
+        </div>
+        {{ block.super }}
+    </div>
+</div>
+{% endblock %}

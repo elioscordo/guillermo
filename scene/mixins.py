@@ -168,7 +168,7 @@ class ModelDisplayMixin:
         video = getattr(self, 'video', None)
         if video:
             return format_html('''
-        <video height="500" controls>
+        <video controls class="rounded-md shadow-sm">
             <source src="{}" type="video/mp4">
         </video>
         ''', video.url)

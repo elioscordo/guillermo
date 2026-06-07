@@ -48,6 +48,7 @@
                                 <div class="splide h-full w-full" 
                                      x-init="new Splide($el, { 
                                         type: 'loop', 
+                                        start: 0,
                                         arrows: {{ slides|length|yesno:'true,false' }}, 
                                         pagination: false,
                                         autoplay: false,
