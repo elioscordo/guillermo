@@ -172,12 +172,16 @@ video {
 }
 
 /* Markdown Content Styling & Readability */
+.markdown {
+    font-family: 'Inter', sans-serif !important;
+}
+
 .markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6 {
-    font-weight: 700;
+    font-weight: 700 !important;
     margin-top: 1.25rem;
     margin-bottom: 0.75rem;
     line-height: 1.25;
-    color: var(--color-font-important-light, #111827);
+    color: var(--color-font-important-light, #111827) !important;
 }
 
 .dark .markdown h1, 
@@ -186,35 +190,54 @@ video {
 .dark .markdown h4, 
 .dark .markdown h5, 
 .dark .markdown h6 {
-    color: var(--color-font-important-dark, #f9fafb) !important;
+    color: #ffffff !important; /* Maximum contrast white for titles in dark mode */
 }
 
 .markdown p, .markdown ul, .markdown ol {
     margin-bottom: 1rem;
     line-height: 1.6;
-    color: var(--color-font-default-light, #374151);
+    color: var(--color-font-default-light, #374151) !important;
+    font-weight: 400 !important; /* Thicker than table default for readability */
 }
 
 .dark .markdown p, 
 .dark .markdown ul, 
 .dark .markdown ol, 
 .dark .markdown li {
-    color: var(--color-font-default-dark, #d1d5db) !important;
+    color: #e5e7eb !important; /* Lighter gray for body text in dark mode */
+    font-weight: 400 !important;
 }
 
 .dark .markdown strong {
-    color: var(--color-font-important-dark, #ffffff) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
 }
 
 /* Ensure lists are correctly styled and visible */
 .markdown ul {
     list-style-type: disc !important;
     padding-left: 1.5rem !important;
+    margin-left: 0.5rem !important;
 }
 
 .markdown ol {
     list-style-type: decimal !important;
     padding-left: 1.5rem !important;
+    margin-left: 0.5rem !important;
+}
+
+.markdown li {
+    margin-bottom: 0.5rem !important;
+    display: list-item !important;
+}
+
+.markdown li p {
+    display: inline !important; /* Prevents awkward breaks in bulleted items */
+}
+
+.dark .markdown {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* Slideshow (Swiper) Custom Styles */

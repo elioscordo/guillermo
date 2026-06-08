@@ -156,7 +156,7 @@ class SceneSection(TableSection):
                 '<div x-show="!expanded" class="text-sm text-font-default-light dark:text-font-default-dark opacity-90">'
                     '{} <button type="button" @click="expanded = true" class="text-primary-600 font-semibold hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 ml-1 transition-colors bg-transparent border-none p-0 cursor-pointer inline">{}</button>'
                 '</div>'
-                '<div x-show="expanded" class="markdown prose prose-sm dark:prose-invert max-w-none" style="display: none;">'
+                '<div x-show="expanded" class="markdown prose prose-sm dark:prose-invert max-w-none bg-base-50/50 dark:bg-white/[.02] p-4 rounded-lg border border-base-200 dark:border-base-800" style="display: none;">'
                     '{} <button type="button" @click="expanded = false" class="text-primary-600 font-semibold hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 mt-2 transition-colors bg-transparent border-none p-0 cursor-pointer block">{}</button>'
                 '</div>'
             '</div>',
