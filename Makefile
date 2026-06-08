@@ -65,7 +65,7 @@ clean:
 
 refresh:
 	git pull
-	gotoguillermo
+	source venv/bin/activate
 	python manage.py collectstatic --noinput
 	python manage.py migrate
 	sudo systemctl restart celery.service 
