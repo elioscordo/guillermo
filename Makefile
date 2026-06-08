@@ -65,6 +65,9 @@ clean:
 
 refresh:
 	git pull
+	gotoguillermo
+	python manage.py collectstatic --noinput
+	python manage.py migrate
 	sudo systemctl restart celery.service 
 	sudo systemctl restart nginx.service 
 	sudo systemctl restart gunicorn
