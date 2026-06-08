@@ -1,13 +1,13 @@
 ### Extraction Rules:
-1. **Scene Identification**: Generate a descriptive 'name' for the overall scene.
+1. **Scene Identification**: If not given generate a descriptive 'name' for the overall scene.
 2. **Action Decomposition**: Break the script into a sequential list of 'actions' (storyboard panels).
 3. **Action Details**: For each action, provide:
    - 'order': The sequential index (starting from 0).
-   - 'name': A short, descriptive title for the action.
-   - 'prompt': A detailed visual description optimized for high-quality image generation (nanobanana).
-   - 'prompt_comic':  optional. A visual description optimized for a comic book panel style (mentioning line work, ink, or stylized colors).
-   - 'prompt_video': optional.  A motion-focused description (e.g., camera movement like 'panning', 'dolly-in', or specific character movements).
-   - 'prompt_voice': optional. The dialogue or narration text occurring during this specific action.
+   - 'name':  A short, descriptive title for the action.
+   - 'prompt':  (generate if not given) A detailed visual description optimized for high-quality image generation (nanobanana).
+   - 'prompt_comic':  (empty if not given). A visual description optimized for a comic book panel style (mentioning line work, ink, or stylized colors).
+   - 'prompt_video': (empty if not given)  A motion-focused description (e.g., camera movement like 'panning', 'dolly-in', or specific character movements).
+   - 'prompt_voice': <empty if not given>. The dialogue or narration text occurring during this specific action.
    - 'cast':  a list of the characters involved in the action (match the exact case of the name), in case you are in doubt add the character write ['none'] if no cast in the action
    - 'props': a list of the props appearing in the action (match the exact case of the name), in case you are in doubt add the prop write ['none'] if no props in the action
 

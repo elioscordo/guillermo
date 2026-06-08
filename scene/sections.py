@@ -153,7 +153,7 @@ class SceneSection(TableSection):
         truncated = plain_text[:char_limit].rsplit(' ', 1)[0] + "..."
         return format_html(
             '<div x-data="{{ expanded: false }}" class="relative">'
-                '<div x-show="!expanded" class="text-sm text-gray-600 dark:text-gray-400">'
+                '<div x-show="!expanded" class="text-sm text-font-default-light dark:text-font-default-dark opacity-90">'
                     '{} <button type="button" @click="expanded = true" class="text-primary-600 font-semibold hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 ml-1 transition-colors bg-transparent border-none p-0 cursor-pointer inline">{}</button>'
                 '</div>'
                 '<div x-show="expanded" class="markdown prose prose-sm dark:prose-invert max-w-none" style="display: none;">'

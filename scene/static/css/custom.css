@@ -90,6 +90,21 @@
     font-weight: bold; 
 }
 
+/* Highlight the main object link in changelists (usually the first column) */
+.unfold-table .field-__str__ a,
+.unfold-table th.field-__str__ a,
+.unfold-table a
+{
+    color: var(--color-primary-600) !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+}
+
+.dark .unfold-table .field-__str__ a,
+.dark .unfold-table th.field-__str__ a {
+    color: var(--color-primary-400) !important;
+}
+
 .unfold-table tbody td a:hover {
     color: #4f46e5 !important; /* Indigo hover state */
 }
@@ -154,6 +169,52 @@ video {
 
 .dark video {
     border: 1px solid var(--color-border-primary, #374151);
+}
+
+/* Markdown Content Styling & Readability */
+.markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6 {
+    font-weight: 700;
+    margin-top: 1.25rem;
+    margin-bottom: 0.75rem;
+    line-height: 1.25;
+    color: var(--color-font-important-light, #111827);
+}
+
+.dark .markdown h1, 
+.dark .markdown h2, 
+.dark .markdown h3, 
+.dark .markdown h4, 
+.dark .markdown h5, 
+.dark .markdown h6 {
+    color: var(--color-font-important-dark, #f9fafb) !important;
+}
+
+.markdown p, .markdown ul, .markdown ol {
+    margin-bottom: 1rem;
+    line-height: 1.6;
+    color: var(--color-font-default-light, #374151);
+}
+
+.dark .markdown p, 
+.dark .markdown ul, 
+.dark .markdown ol, 
+.dark .markdown li {
+    color: var(--color-font-default-dark, #d1d5db) !important;
+}
+
+.dark .markdown strong {
+    color: var(--color-font-important-dark, #ffffff) !important;
+}
+
+/* Ensure lists are correctly styled and visible */
+.markdown ul {
+    list-style-type: disc !important;
+    padding-left: 1.5rem !important;
+}
+
+.markdown ol {
+    list-style-type: decimal !important;
+    padding-left: 1.5rem !important;
 }
 
 /* Slideshow (Swiper) Custom Styles */
