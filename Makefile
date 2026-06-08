@@ -1,5 +1,7 @@
 .PHONY: help install migrate migrations run worker shell superuser clean install-postgres install-redis redis-start redis-stop db-shell db-create
 
+SHELL := /bin/bash
+
 help:
 	@echo "Usage: make <command>"
 	@echo ""
@@ -65,9 +67,9 @@ clean:
 
 refresh:
 	git pull
-	source venv/bin/activate
-	python manage.py collectstatic --noinput
-	python manage.py migrate
-	sudo systemctl restart celery.service 
-	sudo systemctl restart nginx.service 
+	source venv/bin/activate && \
+	python manage.py collectstatic --noinput && \
+	python manage.py migrate && \
+	sudo systemctl restart celery.service && \
+	sudo systemctl restart nginx.service && \
 	sudo systemctl restart gunicorn
