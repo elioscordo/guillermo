@@ -1,0 +1,91 @@
+# Actions
+* Name: Opening Desert
+** Prompt: Wide angle cinematic shot of the Mali desert, heat haze shimmering over the red dunes, epic scale.
+** Text: "En el desconocido desierto de la Muerte Roja en Mali, África."
+** Voice: Charon
+** Comic: Bottom center
+** Video: Heat haze distortion animation
+
+* Name: Lao Meditation
+** Prompt: Bird's-eye view looking down at Lao Miazaki sitting cross-legged on a jagged red rock, eyes closed, robes fluttering in the wind, cinematic focus.
+** Text: "Un desafío entre los mejores cuenta historias de nuestro tiempo: Lao Miazaki."
+** Voice: Lao
+** Comic: Lower third
+** Video: Hair and robes gently blowing in the wind
+
+* Name: Quentin Walking
+** Prompt: Mid shot of Quentin walking across the desert, clutching his organetto, looking exhausted, sweat on his brow, red sand terrain.
+** Text: "Otro ingenuo intento de salvar el mundo con el arte."
+** Voice: Quentin
+** Comic: Top left
+** Video: Character walking cycle
+
+* Name: Guillermo Arrival
+** Prompt: Full shot of Guillermo riding on top of a desert goat, bouncing along, looking sweaty and flustered, cinematic desert background.
+** Text: "¡Madre mía, qué calor! Ni en África tendría que estar este desierto rojo."
+** Voice: Guillermo
+** Comic: Bottom right
+** Video: Goat trotting animation
+
+* Name: Reunion
+** Prompt: Mid shot of Quentin and Lao hugging, Quentin's back to the camera, Lao looking over Quentin's shoulder with a comically disgusted expression, organetto visible on the sand.
+** Text: "¡Ven aquí, querido maestro!"
+** Voice: Quentin
+** Comic: Floating bubble
+** Video: Subtle movement of the hug
+
+* Name: The Mission
+** Prompt: Full shot of Lao gesturing expressively while Quentin sits on a rock below, looking worried.
+** Text: "El mundo está en grave desequilibrio. Tenemos que convencer a Elon Macho de que deje de hacer dinero; ¡se lo está quedando todo!"
+** Voice: Lao
+** Comic: Bottom left
+** Video: Hand gestures animation
+
+* Name: Phone Call
+** Prompt: Full shot of Quentin holding a phone to his ear, looking determined, standing in the middle of the desert.
+** Text: "Vale, llamo yo."
+** Voice: Quentin
+** Comic: Top center
+** Video: Holding the phone to the ear
+
+* Name: Elon and Donald
+** Prompt: High angle full shot of Elon Macho fixing an open tractor engine while Donald the Rooster stands nearby holding a beer, gold chains clinking.
+** Text: "Claro, eres un gallo bien grande."
+** Voice: Elion
+** Comic: Bottom right
+** Video: Mechanical arm movement
+
+* Name: The Spaceship
+** Prompt: Wide shot of a horizontal spaceship resembling a SpaceX rocket laying flat, gate wide open in the desert field.
+** Text: ""
+** Voice: 
+** Comic: 
+** Video: Steam/exhaust coming from the gate
+
+* Name: Marco Introduction
+** Prompt: Wide shot of the spaceship gate, Marco the gnome with Barbie-Ken hair and Marco Rubio's face, dressed in green, standing formally.
+** Text: "Marco, ven a conocer a tu nuevo dueño."
+** Voice: Elion
+** Comic: Top right
+** Video: Subtle blinking
+
+* Name: Final Guillermo
+** Prompt: Close-up of Guillermo on the goat, grinning at the camera.
+** Text: "Sígueme por más y, si quieres tú también crear tus historias, apúntate a un workshop en guillermo.studio."
+** Voice: Guillermo
+** Comic: Bottom center
+** Video: Talking mouth animation
+
+# Locations
+* Name: Red Desert Field
+  Prompt: A vast, arid African desert landscape characterized by deep red soil, jagged rocks, and sparse shrubs under a scorching sun.
+  ** Wide pov: Panoramic view of the red desert floor meeting the horizon.
+  ** Rock pov: Close-up on a single large, sun-scorched rock.
+
+# Cast
+* Name: Marco
+  Prompt: A gnome character with Barbie-Ken hair, wearing green clothing, featuring the distinct facial features of Marco Rubio.
+
+# Props
+* Name: Spaceship
+  Prompt: A large, horizontal, futuristic metallic rocket ship with a wide, open bay gate on the side, resting on desert sand.
