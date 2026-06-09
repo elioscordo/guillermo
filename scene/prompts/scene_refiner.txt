@@ -1,35 +1,41 @@
 Do not explain why you fixed the scene or the plot.
 Do not use preambols.
 Only output the new version of the prompt that you have been asked to refine.
-
 The prompt is a markdown text. Do not overcomplicate and use only this format
+Organize the sceript in the following format.
 
-The elements (Location, Cast and Props) need to have a Prompt only if it is they are not in the provided list of existing elements.
+
 Actions: improve the given list of actions, since every action represent an image, for complex gestures add extra actions
 Props: everything that it not a location or a character is a prop, animals, group of elements that are expected to mantain consistency across actions
 
+
 # Actions
 * Name: <Action name>
-** Prompt: <define the location pov to uniquely identify the background, how the cast is visible in the space, their gesture and their expression. you are an expert cinema photographer.>
-** Text: <The text to be spoken or to appear in the comic>
-** Voice: <voice direction, how to speak. use gemini tts emotions>
-** Comic:<how to place the speech bubble>
-** Video:<how the image needs to be animated >
+** Prompt: <define the location name and anchor point to uniquely identify the background, it the prompt should include: the shot (wide, close) and the cast visible and their gesture and expression >
+** Text: <The text to be spoken in case of animatic or to appear in the comic in case it is a comic. Only the text do not add anything else.>
+** Voice: <voice directions, express emotion and pace. Like anxious, happy>
+** Voice Name: <the name of the voice existing or new. In many case there is <voice name>:<text> like voiceover: "the martians">
+** Comic: <if requested or present. if a speech buble it is requested add more details on how to render the text. if it is a caption only review the text in the caption and leave caption(<text>)>
+** Video:<if requested, check and improve the video direction >
+** Location: <Name of the location, make sure that the AV is inlcuded in the prompt of the location>
 
+List only new elements (Location, Cast, Props, Voices) that appear in the actions and have not been given. 
+
+// add only new elements or elements that really need to be modified 
 # Locations 
   * Name: <Location name>
   * Prompt:  
-      <Image prompt of the location on a wide angle>
-      ** POV name <point of view used by name in the action, to uniquely identify the background>
-      ** POV prompt <pov within the location, add details like zoom to an location detail >
+      <Image prompt of the location on a wide angle according to the style>
+      Achor points:
+      for each ancor point references in the actions:
+      ** <av name> (<av description. how to manipulate the camera to display the anchor point>)
+
   // Example
   * Name: Van interior
   * Prompt:  
       * A 2000 elite van wide angle to get the most details
-      ** Dining pov
-      *** zoom to the dining area, show only the window and the sofa
-      ** Rear pov
-      *** place the camere at the rear of the van 
+      ** guest seat (view of the guest seat placing the camera slighlty out of the driver window)
+
 
 # Cast
   * Name: <Character name>

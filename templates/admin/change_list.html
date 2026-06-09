@@ -99,9 +99,7 @@
                         {% endif %}
 
                         {% block result_list %}
-                            <div x-show="!expandId">
-                                {% include "unfold/helpers/change_list_actions.html" %}
-                            </div>
+                            {% include "unfold/helpers/change_list_actions.html" %}
 
                             {% unfold_result_list cl %}
                         {% endblock %}

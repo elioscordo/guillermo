@@ -374,6 +374,8 @@ class Agent(models.Model):
                     temperature=0.1,
                 )
             elif self.output_type == self.OUTPUT_TYPE_IMAGE:
+                instructions = self.get_instructions(user=user, preset=preset, obj=obj)
+                contents.extend(instructions)
                 config = types.GenerateContentConfig(
                     image_config=types.ImageConfig(
                         aspect_ratio="9:16",
@@ -402,11 +404,20 @@ class Agent(models.Model):
                         data = schema_class.model_validate_json(response.text)
                         out = data.sync_model(obj) if hasattr(data, "sync_model") else data
 
+        # Prepare serializable history data
+        if isinstance(contents, list):
+            # Store strings and representations of objects (ignoring raw binary/PIL data)
+            input_history = [str(c) for c in contents if not hasattr(c, 'tobytes')]
+        elif isinstance(contents, dict):
+            input_history = {k: str(v) for k, v in contents.items()}
+        else:
+            input_history = str(contents)
+
         Message.objects.create(
             content_object=obj,
             agent=self,
             user=user, # Add the user here
-            input_text=str(contents),
+            input_data=input_history,
             output_text=out if self.output_type == self.OUTPUT_TYPE_TEXT else "",
             output_image=out if self.output_type == self.OUTPUT_TYPE_IMAGE else None,
             output_file=out if self.output_type in [self.OUTPUT_TYPE_VIDEO, self.OUTPUT_TYPE_VOICE] else None,
@@ -457,7 +468,7 @@ class Message(models.Model):
     
     agent = models.ForeignKey(Agent, verbose_name=_("agent"), on_delete=models.SET_NULL, null=True, blank=True, related_name='chat_history')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_("user"), on_delete=models.SET_NULL, null=True, blank=True, related_name='agent_messages')
-    input_text = models.TextField(_("input text"), blank=True)
+    input_data = models.JSONField(_("input data"), blank=True, default=list)
     output_text = models.TextField(_("output text"), blank=True)
     output_image = FilerImageField(verbose_name=_("output image"), null=True, blank=True, on_delete=models.SET_NULL, related_name='message_images')
     output_file = FilerFileField(verbose_name=_("output file"), null=True, blank=True, on_delete=models.SET_NULL, related_name='message_files')

@@ -15,7 +15,7 @@ from .models import ActionOrganizer, Character, Scene, Action, Background, Scene
 from .admin_utils import AjaxTaskModelAdmin, AdminLinker
 from django.utils.translation import gettext_lazy as _
 from django.utils.html import format_html
-from .sections import AuthorSection, SceneSection, SceneCharactersSection, SceneLocationsSection, ScenePropsSection, SceneRenderSection
+from .sections import AuthorSection, SceneSection, SceneCharactersSection, SceneLocationsSection, ScenePropsSection, SceneRenderSection, MessageHistorySection
 from .mixins import ACTION_FIELDSETS, ELEMENT_FIELDSETS, SceneFilterMixin, StaffReadOnlyMixin, StoryFilterMixin, ViewYourOwnMixin, PromptPreviewMixin, AdminActionsMixin
 from unfold.sections import TableSection, TemplateSection, render_to_string
 from rangefilter.filters import NumericRangeFilter
@@ -126,6 +126,7 @@ class StoryAdmin(StoryFilterMixin, AdminActionsMixin, AdminLinker, AjaxTaskModel
         SceneCharactersSection,
         SceneLocationsSection,
         ScenePropsSection,
+        MessageHistorySection,
     ]
     list_display = ['__str__', 'items', 'image_intro', 'add_scene', 'last_tasks']
     actions = ['clone', 'add_me_as_author']
@@ -194,7 +195,7 @@ class SceneAdmin(StoryFilterMixin, AdminActionsMixin, AdminLinker, AjaxTaskModel
     search_fields = ['name']
     ajax_shift_fields = ['prompt']
     list_refresh = ['items']
-    list_sections = [SceneCharactersSection, SceneLocationsSection, ScenePropsSection, SceneRenderSection]
+    list_sections = [SceneCharactersSection, SceneLocationsSection, ScenePropsSection, SceneRenderSection, MessageHistorySection]
 
     list_display = ['name', 'items', 'prompt', 'prompt_refine', 'last_tasks']
     list_editable = ['prompt', 'prompt_refine']
@@ -281,7 +282,7 @@ class CharacterAdmin(StoryFilterMixin, AdminActionsMixin, PromptPreviewMixin, Aj
     actions = ['clone', 'default_generate_image', 'default_refine_image']
     search_fields = ['name']
     fieldsets = ELEMENT_FIELDSETS
-    list_sections = [PromptPreviewSection]
+    list_sections = [PromptPreviewSection, MessageHistorySection]
 
 @admin.register(Background)
 class BackgroundAdmin(StoryFilterMixin, AdminActionsMixin, PromptPreviewMixin, AjaxTaskModelAdmin, UnfoldImportExportModelAdmin):
@@ -295,7 +296,7 @@ class BackgroundAdmin(StoryFilterMixin, AdminActionsMixin, PromptPreviewMixin, A
     actions = ['clone', 'default_generate_image', 'default_refine_image']
     search_fields = ['name']
     fieldsets = ELEMENT_FIELDSETS
-    list_sections = [PromptPreviewSection]
+    list_sections = [PromptPreviewSection, MessageHistorySection]
 
 
 @admin.register(Prop)
@@ -311,7 +312,7 @@ class PropAdmin(StoryFilterMixin, AdminActionsMixin, PromptPreviewMixin, AjaxTas
     actions = ['clone', 'default_generate_image', 'default_refine_image']
     search_fields = ['name']
     fieldsets = ELEMENT_FIELDSETS
-    list_sections = [PromptPreviewSection]
+    list_sections = [PromptPreviewSection, MessageHistorySection]
 
 
 @admin.register(Author)
@@ -350,7 +351,7 @@ class ActionAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxT
     search_fields = ['get_name']
     actions = ['clone', 'default_generate_image', 'default_refine_image']
     fieldsets = ACTION_FIELDSETS
-    list_sections = [PromptPreviewSection]
+    list_sections = [PromptPreviewSection, MessageHistorySection]
 
 @admin.register(VideoAction)
 class VideoActionAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxTaskModelAdmin):
@@ -358,10 +359,11 @@ class VideoActionAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, 
     list_editable = ['prompt_video']
     list_filter = ["scene__story", "scene", "id"]
     list_display_links = ('name',)
+    list_refresh = ['video_player']
     search_fields = ['name']
     actions = ['generate_video', 'generate_video_first_last']
     fieldsets = ACTION_FIELDSETS
-    list_sections = [PromptPreviewSection]
+    list_sections = [PromptPreviewSection, MessageHistorySection]
 
 @admin.register(ActionOrganizer)
 class ActionOrganizerAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, ModelAdmin):
@@ -384,11 +386,12 @@ class ComicActionAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, 
     list_display = ('name', 'items', 'pic', 'pic_comic', 'prompt_comic', 'last_tasks')
     list_editable = ['prompt_comic']
     list_filter = ["scene__story", "scene", "id"]
+    list_refresh = ['pic_comic']
     list_display_links = ('name',)
     search_fields = ['name']
     actions = ['generate_comic', 'comic_to_video']
     fieldsets = ACTION_FIELDSETS
-    list_sections = [PromptPreviewSection]
+    list_sections = [PromptPreviewSection, MessageHistorySection]
 
 
 @admin.register(Voice)
@@ -415,10 +418,11 @@ class VoiceActionAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, 
     list_editable = ['prompt_voice', 'voice', 'text']
     list_filter = ["scene__story", "scene", "id"]
     list_display_links = ('name',)
+    list_refresh = ['voice_player']
     search_fields = ['name']
     actions = ['generate_voice']
     fieldsets = ACTION_FIELDSETS
-    list_sections = [PromptPreviewSection]
+    list_sections = [PromptPreviewSection, MessageHistorySection]
 
 @admin.register(RenderItem)
 class RenderItemAdmin(ModelAdmin):

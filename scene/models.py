@@ -703,15 +703,18 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
         return contents
     
     def context_text(self, generate_self=True, preset=None):
-        if preset == self.PRESET_COMIC:
+        out = None
+        if not generate_self:
+            out = self.name
+        elif preset == self.PRESET_IMAGE:
+            out = self.prompt
+        elif preset == self.PRESET_COMIC:
             out = self.prompt_comic 
             if self.text is not None:
-                out = f"{out} text/content: {self.text}" 
-        if preset == self.PRESET_REFINE:
+                out = f"{out} use text if not provided: {self.text}" 
+        elif preset == self.PRESET_REFINE:
             return self.prompt_refine
-        if not generate_self:
-            return self.name
-        return self.prompt
+        return out
 
 class SceneOrganizer(Scene):
     class Meta:

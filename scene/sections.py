@@ -1,3 +1,4 @@
+import os
 from typing import Any
 from django.utils.safestring import mark_safe
 import markdown
@@ -222,3 +223,67 @@ class ScenePropsSection(SceneBaseCardsSection):
     key = 'props'
     title = _("Props")
     item_method = 'get_props'
+
+
+class MessageHistorySection(TableSection):
+    verbose_name = _("AI Generation History")
+    related_name = 'messages'
+    fields = ['created_at_fmt', 'agent_info', 'input_parts', 'output_result']
+
+    def created_at_fmt(self, obj):
+        return obj.created_at.strftime("%Y-%m-%d %H:%M")
+    created_at_fmt.short_description = _("Date")
+
+    def agent_info(self, obj):
+        target = obj.target_field if obj.target_field else "-"
+        return format_html(
+            '<span class="font-bold text-font-important-light dark:text-font-important-dark">{}</span><br/>'
+            '<span class="text-[10px] uppercase tracking-wider text-base-500">Target: {}</span>',
+            obj.agent.name if obj.agent else "-",
+            target
+        )
+    agent_info.short_description = _("Agent / Target")
+
+    def input_parts(self, obj):
+        if not obj.input_data:
+            return "-"
+
+        items = []
+        if isinstance(obj.input_data, list):
+            for i, part in enumerate(obj.input_data):
+                items.append(format_html(
+                    '<div class="mb-3 last:mb-0 pb-2 border-b border-base-200 dark:border-base-700 last:border-0">'
+                    '<span class="text-[9px] font-bold opacity-50 uppercase block mb-1">Part {}</span>'
+                    '{}</div>', 
+                    i + 1, part
+                ))
+        elif isinstance(obj.input_data, dict):
+            for key, val in obj.input_data.items():
+                items.append(format_html('<div><b class="capitalize text-primary-600">{}</b>: {}</div>', key, val))
+        else:
+            items.append(str(obj.input_data))
+
+        return format_html(
+            '<div class="max-h-48 min-w-[300px] overflow-y-auto text-[10px] font-mono bg-base-50 dark:bg-base-800/50 p-3 rounded-lg border border-base-200 dark:border-base-700 text-base-600 dark:text-base-400">{}</div>',
+            mark_safe("".join(items))
+        )
+    input_parts.short_description = _("Input Context")
+
+    def output_result(self, obj):
+        if obj.output_image:
+            return format_html('<img src="{}" class="h-20 w-auto rounded border border-base-200 dark:border-base-700 shadow-sm" />', obj.output_image.url)
+        
+        if obj.output_file:
+            ext = os.path.splitext(obj.output_file.name)[1].lower()
+            if ext in ['.mp4', '.mov', '.webm']:
+                return format_html('<video src="{}" class="h-20 w-auto rounded bg-black" controls muted></video>', obj.output_file.url)
+            if ext in ['.mp3', '.wav']:
+                return format_html('<audio src="{}" controls class="h-8 w-48 scale-90 origin-left"></audio>', obj.output_file.url)
+            return format_html('<a href="{}" class="text-primary-600 underline text-xs" download>{}</a>', obj.output_file.url, _("Download File"))
+            
+        if obj.output_text:
+            html = markdown.markdown(obj.output_text)
+            return format_html('<div class="max-h-32 overflow-y-auto text-xs prose prose-sm dark:prose-invert max-w-sm">{}</div>', mark_safe(html))
+            
+        return "-"
+    output_result.short_description = _("Output")
