@@ -233,32 +233,32 @@ UNFOLD = {
                 ]
             },
             {
-                "title": _("Actions"),
+                "title": _("Shots"),
                 "separator": True,
                 "items": [
 
                     {
-                        "title": _("Image Actions"),
+                        "title": _("Image Shots"),
                         "icon": "play_arrow",
                         "link": reverse_lazy("admin:scene_action_changelist"),
                     },
                     {
-                        "title": _("Comic Actions"),
+                        "title": _("Comic Shots"),
                         "icon": "auto_awesome",
                         "link": reverse_lazy("admin:scene_comicaction_changelist"),
                     },
                     {
-                        "title": _("Video Actions"),
+                        "title": _("Video Shots"),
                         "icon": "videocam",
                         "link": reverse_lazy("admin:scene_videoaction_changelist"),
                     },
                     {
-                        "title": _("Voice Actions"),
+                        "title": _("Voice Shots"),
                         "icon": "mic",
                         "link": reverse_lazy("admin:scene_voiceaction_changelist"),
                     },
                     {
-                        "title": _("Action Organizer"),
+                        "title": _("Shot Organizer"),
                         "icon": "play_arrow",
                         "link": reverse_lazy("admin:scene_actionorganizer_changelist"),
                     },

@@ -25,7 +25,6 @@ class ActionSchema(BaseModel):
     prompt_comic: str
     prompt_video: str
     prompt_voice: str
-    text: str
     prompt: str
     cast: List[str]
     props: List[str]
@@ -38,7 +37,7 @@ class SceneSchema(BaseModel):
     locations: List[BackgroundSchema]
     characters: List[CharacterSchema]
     props: List[PropSchema]
-    actions: List[ActionSchema]
+    shots: List[ActionSchema]
     voices: List[VoiceSchema]
 
     def sync_model(self, scene):
@@ -100,39 +99,38 @@ class SceneSchema(BaseModel):
                 )
                 prop_map[item[0].name] = item
 
-        # 5. Sync Actions for the Scene
-        action_map = {}
-        if self.actions:
-            for i, action_data in enumerate(self.actions):
-                voice_obj = voice_map.get(action_data.voice)[0] if action_data.voice in voice_map else None
-                bg_obj = location_map.get(action_data.background)[0] if action_data.background in location_map else None
+        # 5. Sync Shots for the Scene
+        shot_map = {}
+        if self.shots:
+            for i, shot_data in enumerate(self.shots):
+                voice_obj = voice_map.get(shot_data.voice)[0] if shot_data.voice in voice_map else None
+                bg_obj = location_map.get(shot_data.background)[0] if shot_data.background in location_map else None
 
-                action, created = Action.objects.update_or_create(
+                shot, created = Action.objects.update_or_create(
                     scene=scene,
-                    name=action_data.name,
+                    name=shot_data.name,
                     defaults={
-                        'order': action_data.order,
-                        'prompt': action_data.prompt,
-                        'prompt_comic': action_data.prompt_comic,
-                        'prompt_video': action_data.prompt_video,
-                        'prompt_voice': action_data.prompt_voice,
-                        'text': action_data.text,
+                        'order': shot_data.order,
+                        'prompt': shot_data.prompt,
+                        'prompt_comic': shot_data.prompt_comic,
+                        'prompt_video': shot_data.prompt_video,
+                        'prompt_voice': shot_data.prompt_voice,
                         'voice': voice_obj,
                         'background': bg_obj,
                     }
                 )
-                if action_data.cast:
-                    action.cast.set([char_map[name][0] for name in action_data.cast if name in char_map])
-                if action_data.props:
-                    action.props.set([prop_map[name][0] for name in action_data.props if name in prop_map])
-                action_map[action.name] = action
+                if shot_data.cast:
+                    shot.cast.set([char_map[name][0] for name in shot_data.cast if name in char_map])
+                if shot_data.props:
+                    shot.props.set([prop_map[name][0] for name in shot_data.props if name in prop_map])
+                shot_map[shot.name] = shot
 
         return {
             'locations': [(item[0].name, item[1]) for item in location_map.values()],
             'characters': [(item[0].name, item[1]) for item in char_map.values()],
             'props': [(item[0].name, item[1]) for item in prop_map.values()],
             'voices': [(item[0].name, item[1]) for item in voice_map.values()],
-            'actions': [item.name for item in action_map.values()]
+            'actions': [item.name for item in shot_map.values()]
         }
 
 

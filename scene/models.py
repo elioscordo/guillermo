@@ -101,6 +101,10 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, models.Model, GetContentsMixi
     def __str__(self):
         return "{}".format(self.name)
 
+    class Meta:
+        verbose_name = _('Story')
+        verbose_name_plural = _('Stories')
+
     def get_mentor(self):
         out = self.mentor
         if not out:
@@ -208,7 +212,7 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, models.Model, GetContentsMixi
 
 class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, ModelDisplayMixin):
     name = models.CharField(_("name"), max_length=200, null=True, blank=True)
-    prompt = models.TextField(_("prompt"), null=True, blank=True, default="#Location\n#Cast\n#Props\n#Actions\n")
+    prompt = models.TextField(_("prompt"), null=True, blank=True, default="#Shots\n")
     prompt_refine = models.TextField(_("prompt refine"), null=True, blank=True)
     action = models.SlugField(_("action"), choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
 
@@ -227,29 +231,31 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
             if preset == self.PRESET_REFINE_PROMPT:
                 parts = [self.prompt_refine]
                 parts.append("following prompt to be improved")
-
-                actions = self.actions.all().order_by('order')
-                if actions.exists():
-                    import json
-                    from .schemas import ActionSchema
-                    action_list = [
-                        ActionSchema(
-                            name=a.name,
-                            order=a.order,
-                            prompt=a.prompt or "",
-                            prompt_comic=a.prompt_comic or "",
-                            prompt_video=a.prompt_video or "",
-                            prompt_voice=a.prompt_voice or "",
-                            text=a.text or "",
-                            voice=a.voice.name if a.voice else "None",
-                            background=a.background.name if a.background else "None",
-                            cast=[c.name for c in a.cast.all()],
-                            props=[p.name for p in a.props.all()]
-                        ).model_dump()
-                        for a in actions
-                    ]
-                    parts.append("### EXISTING ACTIONS DATA (Match names to update) ###")
-                    parts.append(json.dumps(action_list, indent=2))
+            parts.append(self.prompt)
+            shots = self.actions.all().order_by('order')
+            parts.append("### [Existing JSON/Text/MD State] ###")
+                
+            if shots.exists():
+                import json
+                from .schemas import ActionSchema
+                action_list = [
+                    ActionSchema(
+                        name=a.name,
+                        order=a.order,
+                        prompt=a.prompt or "",
+                        prompt_comic=a.prompt_comic or "",
+                        prompt_video=a.prompt_video or "",
+                        prompt_voice=a.prompt_voice or "",
+                        text=a.text or "",
+                        voice=a.voice.name if a.voice else "None",
+                        background=a.background.name if a.background else "None",
+                        cast=[c.name for c in a.cast.all()],
+                        props=[p.name for p in a.props.all()]
+                    ).model_dump()
+                    for a in shots
+                ]
+                parts.append("### EXISTING Shots  (Match names to update) ###")
+                parts.append(json.dumps(action_list, indent=2))
 
             parts.append(self.prompt)
             if self.story:
@@ -281,7 +287,7 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
                         elements_parts.append(f"- Name: {p.name}\n  Prompt: {p.description}")
                 if elements_parts:
                     parts.append("### STORY CONTEXT ###\nReuse these existing entities if they appear:\n" + "\n".join(elements_parts))
-        return parts
+        return [p for p in parts if p is not None and (not isinstance(p, str) or p.strip() != "")]
 
     def get_cast(self):
         return Character.objects.filter(actions_cast__in=self.actions.all()).distinct()
@@ -635,6 +641,8 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
 
     class Meta:
         ordering = ['order', 'name']
+        verbose_name = _('Shot')
+        verbose_name_plural = _('Shots')
 
     def elements(self):
         props = []
@@ -697,6 +705,8 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
                     contents.extend(self.background.get_contents(generate_self=False))
                 if self.scene:
                     contents.extend(self.scene.get_contents(generate_self=False))
+        if isinstance(contents, list):
+            return [c for c in contents if c is not None and (not isinstance(c, str) or c.strip() != "")]
         return contents
     
     def context_text(self, generate_self=True, preset=None):
@@ -714,23 +724,34 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
 class SceneOrganizer(Scene):
     class Meta:
         proxy = True
+        verbose_name = _('Scene Organizer')
+        verbose_name_plural = _('Scene Organizers')
 
 class ActionOrganizer(Action):
     class Meta:
         proxy = True
-
+        verbose_name = _('Shot Organizer')
+        verbose_name_plural = _('Shot Organizers')
 
 class VideoAction(Action):
     class Meta:
         proxy = True
+        verbose_name = _('Video Shot ')
+        verbose_name_plural = _('Video Shots')
 
 class ComicAction(Action):
     class Meta:
         proxy = True
+        verbose_name = _('Comic Shot')
+        verbose_name_plural = _('Comic Shots')
+
 
 class VoiceAction(Action):
     class Meta:
         proxy = True
+        verbose_name = _('Voice Shot')
+        verbose_name_plural = _('Voice Shots')
+
 
 class Render(RenderTypeMixin, models.Model, TaskHolder, ModelDisplayMixin):
     RENDER_TYPE_FILM = 'film'

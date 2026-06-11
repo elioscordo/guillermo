@@ -186,7 +186,7 @@ class StoryAdmin(AjaxSectionAdminMixin, StoryFilterMixin, AdminActionsMixin, Adm
         if author:
             url = reverse("admin:scene_scene_add")
             return format_html(
-                '<a href="{}?story={}&author={}&next=/admin/scene/story/" class="bg-primary-600 text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-primary-500 transition-colors shadow-sm inline-flex items-center gap-1.5">'
+                '<a href="{}?story={}&author={}&next=/admin/scene/story/" class="bg-primary-600 text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-primary-500 transition-colors shadow-sm inline-flex items-center gap-1.5 whitespace-nowrap" style="color: white !important;">'
                 '<span class="material-symbols-outlined text-[18px]">add</span>{}</a>',
                 url, obj.id, author.id, _("Add Scene")
             )

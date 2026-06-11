@@ -51,7 +51,7 @@ class GetContentsMixin:
         if not generate_self or preset in [self.PRESET_REFINE, self.PRESET_COMIC]:
             if hasattr(self, 'image') and self.image:
                 parts.append(self.get_thumbnail(preset=preset))
-        return parts
+        return [p for p in parts if p is not None and (not isinstance(p, str) or p.strip() != "")]
     
     def get_thumbnail(self, preset=None):
         if self.image:
@@ -280,12 +280,13 @@ class Agent(models.Model):
         )
         return out
 
-    def generate_video(self, preset, prompt_obj, user=None):
+    def generate_video(self, preset, prompt_obj, user=None, contents=None):
         # Check for errors if a video is not generated
         from google.genai import types
         out = None
         client = self.get_genai_client(user)
-        contents = prompt_obj.get_contents(generate_self=True, preset=preset)
+        if contents is None:
+            contents = prompt_obj.get_contents(generate_self=True, preset=preset)
         if preset == GetContentsMixin.PRESET_VIDEO:
             operation = client.models.generate_videos(
                 model=self.agent_model.name,
@@ -350,19 +351,29 @@ class Agent(models.Model):
         instructions = [ item.prompt for item in self.instructions.all()]
         if preset:
             instructions += Prompt.instructions(preset, obj)
-        return instructions
+        return [i for i in instructions if i and str(i).strip() != ""]
     
     def generate(self, obj, preset=None, user=None, target_field=None):
         from google.genai import types
         # Placeholder for agent generation logic
         contents = obj.get_contents(generate_self=True, preset=preset)
+
+        # General filter for contents
+        if isinstance(contents, list):
+            contents = [c for c in contents if c is not None and (not isinstance(c, str) or c.strip() != "")]
+        elif isinstance(contents, dict):
+            # Sanitize values in the dictionary (e.g. prompt text)
+            for k, v in contents.items():
+                if isinstance(v, str) and v.strip() == "":
+                    contents[k] = None
+
         config = None
         out = None
         # video has  a different config and response handling so handle it separately
         if self.output_type == self.OUTPUT_TYPE_VIDEO:
-            out = self.generate_video(preset, obj, user=user)
+            out = self.generate_video(preset, obj, user=user, contents=contents)
         if self.output_type == self.OUTPUT_TYPE_VOICE:
-            out = self.generate_voice(preset, obj, user=user)
+            out = self.generate_voice(preset, obj, user=user, contents=contents)
         else:
             if self.output_type == self.OUTPUT_TYPE_STRUCTURED:
                 schema_class = self.get_schema_class()
