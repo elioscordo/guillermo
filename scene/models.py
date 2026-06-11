@@ -705,8 +705,6 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
                     contents.extend(self.background.get_contents(generate_self=False))
                 if self.scene:
                     contents.extend(self.scene.get_contents(generate_self=False))
-        if isinstance(contents, list):
-            return [c for c in contents if c is not None and (not isinstance(c, str) or c.strip() != "")]
         return contents
     
     def context_text(self, generate_self=True, preset=None):

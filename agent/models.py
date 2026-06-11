@@ -356,25 +356,15 @@ class Agent(models.Model):
     def generate(self, obj, preset=None, user=None, target_field=None):
         from google.genai import types
         # Placeholder for agent generation logic
-        contents = obj.get_contents(generate_self=True, preset=preset)
-
-        # General filter for contents
-        if isinstance(contents, list):
-            contents = [c for c in contents if c is not None and (not isinstance(c, str) or c.strip() != "")]
-        elif isinstance(contents, dict):
-            # Sanitize values in the dictionary (e.g. prompt text)
-            for k, v in contents.items():
-                if isinstance(v, str) and v.strip() == "":
-                    contents[k] = None
-
         config = None
         out = None
         # video has  a different config and response handling so handle it separately
         if self.output_type == self.OUTPUT_TYPE_VIDEO:
-            out = self.generate_video(preset, obj, user=user, contents=contents)
+            out = self.generate_video(preset, obj, user=user)
         if self.output_type == self.OUTPUT_TYPE_VOICE:
-            out = self.generate_voice(preset, obj, user=user, contents=contents)
+            out = self.generate_voice(preset, obj, user=user)
         else:
+            contents = obj.get_contents(generate_self=True, preset=preset)
             if self.output_type == self.OUTPUT_TYPE_STRUCTURED:
                 schema_class = self.get_schema_class()
                 config = types.GenerateContentConfig(
