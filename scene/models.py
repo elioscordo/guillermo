@@ -186,10 +186,25 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, models.Model, GetContentsMixi
             "char_ids": ",".join([str(c.id) for c in characters]),
             "loc_ids": ",".join([str(l.id) for l in locations]),
             "voice_ids": ",".join([str(v.id) for v in voices]),
+            "action_ids": ",".join([str(a.id) for a in actions]),
             "scene_ids": ",".join([str(s.id) for s in scenes]),
             "instance": self,
         }
         return render_to_string("story/items_dropdown.html", context)
+
+    def generate_render(self):
+        """
+        Creates a new Render object for this scene based on the story's render type
+        and populates it with RenderItems for each action in the scene.
+        """
+        
+        render = Render.objects.create(
+            story=self,
+            name=f"Render for {self.name or self.id}",
+            render_type=self.render_type if self.render_type else 'animatic'
+        )
+        render.refresh_render()    
+        return render
 
 class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, ModelDisplayMixin):
     name = models.CharField(_("name"), max_length=200, null=True, blank=True)
@@ -270,14 +285,15 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
 
     def get_cast(self):
         return Character.objects.filter(actions_cast__in=self.actions.all()).distinct()
+
     def get_locations(self):
         return Background.objects.filter(actions__in=self.actions.all()).distinct()
-    
+
     def get_props(self):
         return Prop.objects.filter(actions__in=self.actions.all()).distinct()   
+
     def get_voices(self):
         return Voice.objects.filter(actions_voice__in=self.actions.all()).distinct()
-
 
     def get_elements(self):
         """
@@ -322,27 +338,14 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
         Creates a new Render object for this scene based on the story's render type
         and populates it with RenderItems for each action in the scene.
         """
-        from django.apps import apps
-        Render = apps.get_model('scene', 'Render')
-        RenderItem = apps.get_model('scene', 'RenderItem')
-
+        
         render = Render.objects.create(
             scene=self,
-            story=self.story,
             name=f"Render for {self.name or self.id}",
             render_type=self.story.render_type if self.story else 'animatic'
         )
-
-        for i, action in enumerate(self.actions.all().order_by('order')):
-            RenderItem.objects.create(
-                render=render,
-                scene=self,
-                action=action,
-                order=i,
-                audio=action.audio_voice,
-                video=action.video,
-                image=action.image_comic or action.image
-            )
+        render.refresh_render()
+        
         return render
 
     class Meta:
@@ -416,7 +419,6 @@ class Prop(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, Mod
         parts = super().get_contents(generate_self=generate_self, preset=preset)
         if self.story and self.story.style and generate_self:
             parts.extend(self.story.style.get_contents())
-            parts.extend(Prompt.prompt_for_model(self))
         return parts
 
 class Voice(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, ModelDisplayMixin):
@@ -439,7 +441,7 @@ class Voice(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
 
     
     def __str__(self):
-        return "{}".format(self.name)   
+        return "{}".format(self.name)
     
     def get_prompt_header(self):
         return f"# AUDIO PROFILE: {self.name}/n/n"
@@ -480,7 +482,6 @@ class Character(models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
 
     def get_contents(self, generate_self=True, preset=None):
         parts = super().get_contents(generate_self=generate_self, preset=preset)
-        parts.extend(Prompt.prompt_for_model(self))
         if self.story and self.story.style and generate_self:
             parts.extend(self.story.style.get_contents(generate_self=False))
         return  parts # reverse to have the character prompt last so it is more important
@@ -516,7 +517,6 @@ class Background(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolde
         parts = super().get_contents(generate_self=generate_self, preset=preset)
         if self.story and self.story.style and generate_self and not preset == self.PRESET_REFINE:
             parts.extend(self.story.style.get_contents())
-            parts.extend(Prompt.prompt_for_model(self))
         return parts
 
     class Meta:
@@ -710,8 +710,6 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
             out = self.prompt
         elif preset == self.PRESET_COMIC:
             out = self.prompt_comic 
-            if self.text is not None:
-                out = f"{out} use text if not provided: {self.text}" 
         elif preset == self.PRESET_REFINE:
             return self.prompt_refine
         return out
@@ -749,9 +747,9 @@ class Render(RenderTypeMixin, models.Model, TaskHolder, ModelDisplayMixin):
     ]
 
     name = models.CharField(_("name"), max_length=200, default="")
-    scene = models.ForeignKey(Scene, verbose_name=_("scene"), related_name='renders', on_delete=models.CASCADE)
+    scene = models.ForeignKey(Scene, verbose_name=_("scene"), related_name='renders', null=True, blank=True, on_delete=models.CASCADE)
     video = FilerFileField(verbose_name=_("video"), null=True, blank=True, on_delete=models.SET_NULL, related_name='render_videos')
-    story = models.ForeignKey(Story, verbose_name=_("story"), related_name='renders', on_delete=models.CASCADE)
+    story = models.ForeignKey(Story, verbose_name=_("story"), related_name='renders', null=True, blank=True, on_delete=models.CASCADE)
     render_type = models.CharField(
         _("render type"),
         max_length=50,
@@ -792,8 +790,7 @@ class Render(RenderTypeMixin, models.Model, TaskHolder, ModelDisplayMixin):
 
         actions = []
         if self.story:
-            for scene in self.story.scenes.all().order_by('order'):
-                actions.extend(list(scene.actions.all().order_by('order')))
+            actions = list(Action.objects.filter(scene__story=self.story).order_by("order"))
         elif self.scene:
             actions = list(self.scene.actions.all().order_by('order'))
 

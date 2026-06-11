@@ -152,8 +152,35 @@ UNFOLD = {
             "default-dark": "var(--color-base-300)",  # text-base-300
             "important-light": "var(--color-base-700)",  # text-base-900
             "important-dark": "var(--color-base-300)",  # text-base-100
+        },
+        "base": {
+            "50": "oklch(98.5% .002 247.839)",
+            "100": "oklch(96.7% .003 264.542)",
+            "200": "oklch(92.8% .006 264.531)",
+            "300": "oklch(87.2% .01 258.338)",
+            "400": "oklch(70.7% .022 261.325)",
+            "500": "oklch(55.1% .027 264.364)",
+            "600": "oklch(44.6% .03 256.802)",
+            "700": "oklch(37.3% .034 259.733)",
+            "800": "oklch(27.8% .033 256.848)",
+            "900": "oklch(21% .034 264.665)",
+            "950": "oklch(13% .028 261.692)",
+        },
+        "primary": {
+            "50": "oklch(97.7% .014 308.299)",
+            "100": "oklch(94.6% .033 307.174)",
+            "200": "oklch(90.2% .063 306.703)",
+            "300": "oklch(82.7% .119 306.383)",
+            "400": "oklch(71.4% .203 305.504)",
+            "500": "oklch(62.7% .265 303.9)",
+            "600": "oklch(55.8% .288 302.321)",
+            "700": "oklch(49.6% .265 301.924)",
+            "800": "oklch(43.8% .218 303.724)",
+            "900": "oklch(38.1% .176 304.987)",
+            "950": "oklch(29.1% .149 302.717)",
         },  
     },
+     
     "SIDEBAR": {
         "show_all_applications": True,
         "show_user": True,                 # Ensure user profile is visible at the bottom
@@ -378,7 +405,9 @@ TASK_TYPE_REFINE_IMAGE = 'refine_image'
 TASK_TYPE_GENERATE_VIDEO = 'generate_video'
 TASK_TYPE_GENERATE_VIDEO_FIRST_LAST = 'generate_video_first_last'
 TASK_TYPE_GENERATE_COMIC = 'generate_comic'
-TASK_TYPE_GENERATE_SCENE_VIDEO = 'generate_scene_video'
+TASK_TYPE_VIDEO_RENDER = 'video_render'
+TASK_TYPE_GENERATE_SCENE = 'generate_scene_video'
+
 TASK_TYPE_GENERATE_VOICE = 'generate_voice'
 TASK_TYPE_GENERATE_TEXT = 'generate_text'
 TASK_TYPE_GENERATE_SCENE = 'generate_scene'
@@ -397,7 +426,7 @@ TASK_DELEGATES = {
     TASK_TYPE_GENERATE_VIDEO: 'scene.tasks.TaskGenerateVideo',
     TASK_TYPE_GENERATE_VIDEO_FIRST_LAST: 'scene.tasks.TaskGenerateVideoFirstLast',
     TASK_TYPE_GENERATE_COMIC: 'scene.tasks.TaskGenerateComic',
-    TASK_TYPE_GENERATE_SCENE_VIDEO: 'scene.tasks.VideoRender',
+    TASK_TYPE_VIDEO_RENDER: 'scene.tasks.VideoRender',
     TASK_TYPE_GENERATE_VOICE: 'scene.tasks.TaskGenerateVoice',
     TASK_TYPE_GENERATE_TEXT: 'scene.tasks.TaskGenerateText',
     TASK_TYPE_GENERATE_SCENE: 'scene.tasks.TaskGenerateScene',
@@ -414,7 +443,7 @@ TASK_TYPE_CHOICES = (
     (TASK_TYPE_GENERATE_VIDEO, _("Generate Video")),
     (TASK_TYPE_GENERATE_VIDEO_FIRST_LAST, _("Video First Last")),
     (TASK_TYPE_GENERATE_COMIC, _("Generate Comic")),
-    (TASK_TYPE_GENERATE_SCENE_VIDEO, _("Generate Scene Video")),
+    (TASK_TYPE_VIDEO_RENDER, _("Render Video")),
     (TASK_TYPE_GENERATE_VOICE, _("Generate Voice")),
     (TASK_TYPE_GENERATE_TEXT, _("Generate Text")),
     (TASK_TYPE_GENERATE_SCENE, _("Generate Scene")),
@@ -423,6 +452,8 @@ TASK_TYPE_CHOICES = (
     (TASK_TYPE_EXTRACT_SCENE, _("Extract Scene")),
     (TASK_TYPE_SYNC_EXPORT, _("Sync Export")),
     (TASK_TYPE_SYNC_IMPORT, _("Sync Import")),
+    (TASK_TYPE_GENERATE_SCENE, _("Generate Scene Video")),
+
 )
 
 

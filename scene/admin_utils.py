@@ -1,13 +1,47 @@
 import json
+from django.db import models
 from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import path, reverse
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin
-
+from .utils import render_image_markup
 from task.models import Task
 from .serializers import get_generic_serializer
+
+def handle_ajax_field_save(obj, field_name, value):
+    """Centralized logic for saving a field via AJAX, handling Filer fields and Booleans."""
+    from filer.fields.image import FilerImageField
+    from filer.fields.file import FilerFileField
+    from filer.models.imagemodels import Image as FilerImage
+    from filer.models.filemodels import File as FilerFile
+    from urllib.parse import urlparse
+
+    field = obj._meta.get_field(field_name)
+    
+    if isinstance(field, (models.BooleanField, models.NullBooleanField)):
+        if str(value).lower() in ['true', 'on']: value = True
+        elif str(value).lower() in ['false', 'off']: value = False
+        else: value = None
+    elif isinstance(field, (FilerImageField, FilerFileField)) and isinstance(value, str):
+        clean_path = value.split("?")[0]
+        if settings.MEDIA_URL and clean_path.startswith(settings.MEDIA_URL):
+            clean_path = clean_path[len(settings.MEDIA_URL):]
+        elif "://" in clean_path:
+            clean_path = urlparse(clean_path).path
+            if settings.MEDIA_URL and clean_path.startswith(settings.MEDIA_URL):
+                clean_path = clean_path[len(settings.MEDIA_URL):]
+
+        filer_model = FilerImage if isinstance(field, FilerImageField) else FilerFile
+        filer_instance = filer_model.objects.filter(file=clean_path).first()
+        if filer_instance:
+            value = filer_instance
+        else:
+            raise ValueError(f"Filer object not found for path: {clean_path}")
+
+    setattr(obj, field.get_attname(), value if value != "" else None)
+    obj.save()
 
 
 class AjaxTaskModelAdmin(ModelAdmin):
@@ -84,13 +118,7 @@ class AjaxTaskModelAdmin(ModelAdmin):
         """Updates model fields from POST data, handling Booleans and Foreign Keys."""
         for field in obj._meta.fields:
             if field.name in request.POST:
-                val = request.POST.get(field.name)
-                if val == 'on': val = True
-                elif val == 'off': val = False
-                
-                # Use get_attname to handle ForeignKeys via their ID field (e.g., 'story_id')
-                setattr(obj, field.get_attname(), val if val != "" else None)
-        obj.save()
+                handle_ajax_field_save(obj, field.name, request.POST.get(field.name))
 
     def ajax_update_view(self, request, object_id):
         """Standard entry point for AJAX updates: saves fields then triggers tasks."""
@@ -98,7 +126,8 @@ class AjaxTaskModelAdmin(ModelAdmin):
         target_field = request.POST.get('target_field')
         self.save_ajax_fields(obj, request)
         self.trigger_ajax_task(request, obj, target_field)
-        return JsonResponse({'status': 'success'})
+        # Return refreshed data immediately
+        return self.get_last_tasks(request, object_id)
 
     def trigger_ajax_task(self, request, obj, target_field):
         """Hook for triggering specific background tasks based on the updated field."""
@@ -167,16 +196,11 @@ class AdminLinker:
                 if callable(img):
                     img = img()
 
-                if not img or not hasattr(img, "url"):
-                    return "-"
-
+                url = img.url if img and hasattr(img, "url") else ""
                 max_h = getattr(obj, "MAX_IMAGE_HEIGHT", 80)
-                return format_html(
-                    '<a href="{0}" download class="block">'
-                    '<img src="{0}" style="max-height: {1}px;" class="rounded-md border border-gray-200 dark:border-gray-700 shadow-sm" />'
-                    '</a>',
-                    img.url, max_h
-                )
+                model_label = f"{obj._meta.app_label}.{obj._meta.model_name}"
+                label = related_field.replace("_", " ").title()
+                return render_image_markup(url, model_label, obj.pk, related_field, max_h, label)
 
             dynamic_image.short_description = related_field.replace("_", " ").title()
             return dynamic_image

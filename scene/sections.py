@@ -14,6 +14,7 @@ from django.template.loader import render_to_string
 from unfold.utils import display_for_field
 from unfold.sections import BaseSection, TemplateSection
 
+from .admin_utils import render_image_markup
 from scene.models import Author
 
 class TableSection(BaseSection):
@@ -179,7 +180,7 @@ class SceneSection(TableSection):
     collapsible = False
     related_name = 'scenes'
 
-class SceneRenderSection(TemplateSection):
+class RenderSection(TemplateSection):
     template_name = "sections/scene_renders.html"
     key = 'renders'
 
@@ -194,9 +195,11 @@ class SceneBaseCardsSection(TemplateSection):
     key = None
     title = None
     item_method = None
+    collapsible = True
 
     def get_context_data(self, request, instance):
         items = []
+        # Load items immediately for initial render
         if self.item_method and hasattr(instance, self.item_method):
             items = getattr(instance, self.item_method)()
 
@@ -204,7 +207,8 @@ class SceneBaseCardsSection(TemplateSection):
             "title": self.title,
             "items": items,
             "instance": instance,
-            "section_key": self.key
+            "section_key": self.key,
+            "collapsible": self.collapsible,
         }
 
 class SceneCharactersSection(SceneBaseCardsSection):
@@ -271,7 +275,8 @@ class MessageHistorySection(TableSection):
 
     def output_result(self, obj):
         if obj.output_image:
-            return format_html('<img src="{}" class="h-20 w-auto rounded border border-base-200 dark:border-base-700 shadow-sm" />', obj.output_image.url)
+            model_label = f"{obj._meta.app_label}.{obj._meta.model_name}"
+            return render_image_markup(obj.output_image.url, model_label, obj.pk, 'output_image', 80, _("Output Image"))
         
         if obj.output_file:
             ext = os.path.splitext(obj.output_file.name)[1].lower()

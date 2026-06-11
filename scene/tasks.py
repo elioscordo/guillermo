@@ -6,7 +6,6 @@ import random
 from django.utils.text import slugify
 import os 
 from django.conf import settings
-from filer.models.imagemodels import Image as FilerImage
 import io
 import zipfile
 import tempfile
@@ -15,7 +14,6 @@ from .resources import (
     StoryResource, CharacterResource, BackgroundResource, 
     PropResource, SceneResource, ActionResource
 )
-from filer.models.filemodels import File as FilerFile
 
 class TaskGenerateImage:
     
@@ -100,6 +98,7 @@ class VideoRender:
     def process(self):
         item = self.task.subject
 
+        from filer.models.imagemodels import Image as FilerImage
         clips = []
         first = None
 
@@ -304,6 +303,7 @@ class TaskSyncExport:
         sync_item = self.task.subject
         sync = sync_item.sync
         story = sync.story
+        from filer.models.filemodels import File as FilerFile
 
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:

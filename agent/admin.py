@@ -15,9 +15,6 @@ from unfold.admin import ModelAdmin
 
 from django.contrib import admin
 from unfold.admin import ModelAdmin
-from import_export import resources
-from import_export.admin import ImportExportModelAdmin
-from unfold.contrib.import_export.forms import ExportForm, ImportForm, SelectableFieldsExportForm
 
 
 admin.site.unregister(User)
@@ -71,32 +68,11 @@ class AgentAdmin(ModelAdmin,):
     list_display = ('name', 'output_type', 'schema')
     list_display_links = ('name',)
 
-class GoogleVoiceResource(resources.ModelResource):
-    class Meta:
-        model = GoogleVoice
-        fields = ('id', 'name', 'description')
-        export_order = ('id', 'name', 'description')
-
-class PromptResource(resources.ModelResource):
-    class Meta:
-        model = Prompt
-        fields = ('id', 'name', 'prompt', 'category')
-        export_order = ('id', 'name', 'prompt', 'category')
-
-class AgentResource(resources.ModelResource):
-    class Meta:
-        model = Agent
-        fields = ('id', 'name', 'output_type', 'schema')
-        export_order = ('id', 'name', 'output_type', 'schema')
-
 @admin.register(GoogleVoice)
-class GoogleVoiceAdmin(AdminActionsMixin, ModelAdmin, ImportExportModelAdmin):
+class GoogleVoiceAdmin(AdminActionsMixin, ModelAdmin):
     list_display = ('id', 'name', 'description')
     list_display_links = ('name', 'description')
     actions = ['clone']
-    import_form_class = ImportForm
-    export_form_class = ExportForm
-    resource_classes = [GoogleVoiceResource]
     search_fields = ("name",)
 
 

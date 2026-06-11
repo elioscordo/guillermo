@@ -15,7 +15,7 @@ from .models import ActionOrganizer, Character, Scene, Action, Background, Scene
 from .admin_utils import AjaxTaskModelAdmin, AdminLinker
 from django.utils.translation import gettext_lazy as _
 from django.utils.html import format_html
-from .sections import AuthorSection, SceneSection, SceneCharactersSection, SceneLocationsSection, ScenePropsSection, SceneRenderSection, MessageHistorySection
+from .sections import AuthorSection, SceneSection, SceneCharactersSection, SceneLocationsSection, ScenePropsSection, RenderSection, MessageHistorySection
 from .mixins import ACTION_FIELDSETS, ELEMENT_FIELDSETS, SceneFilterMixin, StaffReadOnlyMixin, StoryFilterMixin, ViewYourOwnMixin, PromptPreviewMixin, AdminActionsMixin
 from unfold.sections import TableSection, TemplateSection, render_to_string
 from rangefilter.filters import NumericRangeFilter
@@ -24,16 +24,7 @@ from django.shortcuts import get_object_or_404
 from django.utils.text import slugify 
 DEFAULT_IMAGE_AGENT_NAME = "DIGA"
 from django.apps import apps
-from import_export.admin import ImportExportModelAdmin as UnfoldImportExportModelAdmin
-from .resources import (
-    StoryResource, 
-    SceneResource, 
-    ActionResource, 
-    CharacterResource, 
-    BackgroundResource, 
-    PropResource
-)
-from .serializers import get_generic_serializer
+from .admin_utils import handle_ajax_field_save
 from django.utils.safestring import mark_safe
 import markdown
 from django.contrib.auth.models import User
@@ -58,7 +49,7 @@ class AjaxSectionAdminMixin:
         model_label = request.POST.get("_model_label")
         object_id = request.POST.get("_id")
         field_name = request.POST.get("_field")
-        value = request.POST.get("_value")
+        value = request.POST.get("_value") or ""
 
         try:
             model = apps.get_model(model_label)
@@ -68,13 +59,26 @@ class AjaxSectionAdminMixin:
             if not hasattr(obj, field_name):
                 return JsonResponse({"error": f"Invalid field: {field_name}"}, status=400)
 
-            # Handle boolean conversion for checkboxes/switches if needed
-            if value.lower() in ['true', 'on']: value = True
-            elif value.lower() in ['false', 'off']: value = False
+            handle_ajax_field_save(obj, field_name, value)
 
-            setattr(obj, field_name, value)
-            obj.save()
-            return JsonResponse({"status": "success"})
+            # Return refresh data for immediate UI updates
+            refresh_data = {}
+            refresh_keys = [field_name]
+            # Convention: if an image field is updated, also try to refresh the 'pic' display helper
+            if hasattr(obj, 'pic'):
+                refresh_keys.append('pic')
+            
+            for k in refresh_keys:
+                attr = getattr(obj, k, None)
+                if callable(attr):
+                    refresh_data[k] = str(attr())
+                else:
+                    refresh_data[k] = str(attr) if attr is not None else ""
+
+            return JsonResponse({
+                "status": "success",
+                "refresh": refresh_data
+            })
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
 
@@ -115,7 +119,7 @@ class AuthorInline(StackedInline):
     autocomplete_fields = ['user']
 
 @admin.register(Story)
-class StoryAdmin(StoryFilterMixin, AdminActionsMixin, AdminLinker, AjaxTaskModelAdmin):
+class StoryAdmin(AjaxSectionAdminMixin, StoryFilterMixin, AdminActionsMixin, AdminLinker, AjaxTaskModelAdmin):
     inlines = [AuthorInline]
     autocomplete_fields = ['group']
     search_fields = ['name']
@@ -126,10 +130,11 @@ class StoryAdmin(StoryFilterMixin, AdminActionsMixin, AdminLinker, AjaxTaskModel
         SceneCharactersSection,
         SceneLocationsSection,
         ScenePropsSection,
+        RenderSection,
         MessageHistorySection,
     ]
     list_display = ['__str__', 'items', 'image_intro', 'add_scene', 'last_tasks']
-    actions = ['clone', 'add_me_as_author']
+    actions = ['clone', 'add_me_as_author', 'generate_render', 'refresh_render']
 
     fieldsets = (
         ("Write",{
@@ -160,12 +165,21 @@ class StoryAdmin(StoryFilterMixin, AdminActionsMixin, AdminLinker, AjaxTaskModel
 
     def refresh_section_view(self, request, object_id, section_key):
         instance = get_object_or_404(Story, pk=object_id)
-        attr_name = 'backgrounds' if section_key == 'locations' else section_key
-        items = getattr(instance, attr_name).all().order_by('name')
-        html = render_to_string("sections/scene_cards_items.html", {
-            "items": items,
-        })
-        return JsonResponse({"html": html})
+        if section_key == 'renders':
+            renders = instance.renders.all()
+            html = render_to_string("sections/scene_renders_items.html", {
+                "renders": renders,
+                "is_loaded": True,
+            })
+            return JsonResponse({"html": html})
+        else:
+            attr_name = 'backgrounds' if section_key == 'locations' else section_key
+            items = getattr(instance, attr_name).all().order_by('name')
+            html = render_to_string("sections/scene_cards_items.html", {
+                "items": items,
+                "is_loaded": True,
+            })
+            return JsonResponse({"html": html})
 
     def add_scene(self, obj):
         author = Author.objects.filter(user=self.request.user, story=obj).first()
@@ -191,18 +205,16 @@ class StoryAdmin(StoryFilterMixin, AdminActionsMixin, AdminLinker, AjaxTaskModel
 
 
 @admin.register(Scene)
-class SceneAdmin(StoryFilterMixin, AdminActionsMixin, AdminLinker, AjaxTaskModelAdmin):
+class SceneAdmin(AjaxSectionAdminMixin, StoryFilterMixin, AdminActionsMixin, AdminLinker, AjaxTaskModelAdmin):
     search_fields = ['name']
     ajax_shift_fields = ['prompt']
     list_refresh = ['items']
-    list_sections = [SceneCharactersSection, SceneLocationsSection, ScenePropsSection, SceneRenderSection, MessageHistorySection]
-
-    list_display = ['name', 'items', 'prompt', 'prompt_refine', 'last_tasks']
+    list_display = ['__str__', 'items', 'prompt', 'prompt_refine', 'last_tasks']
     list_editable = ['prompt', 'prompt_refine']
-    list_display_links = ('name',)
     autocomplete_fields = ['story', 'author']
     actions = ['clone','extract_scene',  'generate_scene_elements', 'generate_scene_actions', 'generate_render', 'refresh_render']
     list_filter = ['story', 'id']
+    
     fieldsets = (
         ("Write",{
             "classes": ["tab"],
@@ -217,6 +229,7 @@ class SceneAdmin(StoryFilterMixin, AdminActionsMixin, AdminLinker, AjaxTaskModel
             "fields": ["name", "author", "story"],
         })
     )
+    list_sections = [SceneCharactersSection, SceneLocationsSection, ScenePropsSection, RenderSection, MessageHistorySection]
 
     def get_urls(self):
         return [
@@ -231,11 +244,13 @@ class SceneAdmin(StoryFilterMixin, AdminActionsMixin, AdminLinker, AjaxTaskModel
             renders = instance.renders.all()
             html = render_to_string("sections/scene_renders_items.html", {
                 "renders": renders,
+                "is_loaded": True,
             })
         else:
             items = instance.get_elements().get(section_key, [])
             html = render_to_string("sections/scene_cards_items.html", {
                 "items": items,
+                "is_loaded": True,
             })
         return JsonResponse({"html": html})
 
@@ -271,8 +286,7 @@ class StoryProfileAdmin(ViewYourOwnMixin, StaffReadOnlyMixin, ModelAdmin):
     
 
 @admin.register(Character)
-class CharacterAdmin(StoryFilterMixin, AdminActionsMixin, PromptPreviewMixin, AjaxTaskModelAdmin, UnfoldImportExportModelAdmin):
-    resource_classes = [CharacterResource]
+class CharacterAdmin(AjaxSectionAdminMixin, StoryFilterMixin, AdminActionsMixin, PromptPreviewMixin, AjaxTaskModelAdmin):
     list_display = ('name', 'pic', 'prompt', 'prompt_refine', 'last_tasks')
     list_refresh = ['pic']
     list_editable = ('prompt', 'prompt_refine')
@@ -285,8 +299,7 @@ class CharacterAdmin(StoryFilterMixin, AdminActionsMixin, PromptPreviewMixin, Aj
     list_sections = [PromptPreviewSection, MessageHistorySection]
 
 @admin.register(Background)
-class BackgroundAdmin(StoryFilterMixin, AdminActionsMixin, PromptPreviewMixin, AjaxTaskModelAdmin, UnfoldImportExportModelAdmin):
-    resource_classes = [BackgroundResource]
+class BackgroundAdmin(AjaxSectionAdminMixin, StoryFilterMixin, AdminActionsMixin, PromptPreviewMixin, AjaxTaskModelAdmin):
     list_display = ('name', 'pic', 'prompt', 'prompt_refine', 'last_tasks')
     list_refresh = ['pic']
     list_editable = ('prompt','prompt_refine')
@@ -300,8 +313,7 @@ class BackgroundAdmin(StoryFilterMixin, AdminActionsMixin, PromptPreviewMixin, A
 
 
 @admin.register(Prop)
-class PropAdmin(StoryFilterMixin, AdminActionsMixin, PromptPreviewMixin, AjaxTaskModelAdmin, UnfoldImportExportModelAdmin):
-    resource_classes = [PropResource]
+class PropAdmin(AjaxSectionAdminMixin, StoryFilterMixin, AdminActionsMixin, PromptPreviewMixin, AjaxTaskModelAdmin):
     search_fields = ['name']
     list_refresh = ['pic']
     list_display = ('name', 'pic', 'prompt','prompt_refine', 'last_tasks')
@@ -338,8 +350,8 @@ class NudgeAdmin(AdminActionsMixin, ModelAdmin):
     )
 
 @admin.register(Action)
-class ActionAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxTaskModelAdmin):
-    ajax_shift_fields = ['prompt', 'prompt_refine']
+class ActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxTaskModelAdmin):
+    ajax_shift_fields = ['prompt', 'prompt_refine']    
     list_display = ('get_name', 'items', 'pic', 'prompt','prompt_refine', 'last_tasks')
     list_refresh = ['pic']
     list_editable = ( 'prompt', 'prompt_refine')
@@ -347,14 +359,14 @@ class ActionAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxT
     ordering_field = "order"
     hide_ordering_field = True
     list_display_links = ('get_name',)
-    autocomplete_fields = ['actor', 'props', 'cast', 'background', 'consistent_with', 'scene']
+    autocomplete_fields = ['actor', 'props', 'cast', 'background', 'consistent_with', 'scene', 'voice']
     search_fields = ['get_name']
     actions = ['clone', 'default_generate_image', 'default_refine_image']
     fieldsets = ACTION_FIELDSETS
     list_sections = [PromptPreviewSection, MessageHistorySection]
 
 @admin.register(VideoAction)
-class VideoActionAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxTaskModelAdmin):
+class VideoActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxTaskModelAdmin):
     list_display = ('name', 'items', 'pic', 'prompt_video', 'video_player','last_tasks')
     list_editable = ['prompt_video']
     list_filter = ["scene__story", "scene", "id"]
@@ -374,14 +386,14 @@ class ActionOrganizerAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMix
     list_sections = [PromptPreviewSection]
 
 @admin.register(SceneOrganizer)
-class SceneOrganizerAdmin(AdminActionsMixin, AdminLinker, SceneFilterMixin, ModelAdmin):
+class SceneOrganizerAdmin(AjaxSectionAdminMixin, AdminActionsMixin, AdminLinker, SceneFilterMixin, ModelAdmin):
     list_display = ('id', 'name', 'image_intro', 'link_actions', 'story')
     list_editable = ['name',  'story']
     list_filter = ["story"]
     search_fields = ['name']
 
 @admin.register(ComicAction)
-class ComicActionAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxTaskModelAdmin):
+class ComicActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxTaskModelAdmin):
     ajax_shift_fields = ['prompt_comic']
     list_display = ('name', 'items', 'pic', 'pic_comic', 'prompt_comic', 'last_tasks')
     list_editable = ['prompt_comic']
@@ -395,9 +407,8 @@ class ComicActionAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, 
 
 
 @admin.register(Voice)
-class VoiceAdmin(AdminActionsMixin,AdminLinker, AjaxTaskModelAdmin):
-    list_display = ('name', 'prompt', 'google_voice', 'sample_text', 'link_story' , 'voice_player', 'last_tasks')
-    list_display_links = ('name',)
+class VoiceAdmin(AjaxSectionAdminMixin, AdminActionsMixin,AdminLinker, AjaxTaskModelAdmin):
+    list_display = ('__str__', 'prompt', 'google_voice', 'sample_text', 'link_story' , 'voice_player', 'last_tasks')
     list_editable = ['prompt', 'sample_text']
     list_refresh = ['voice_player']    
     actions = ['generate_voice']
@@ -405,7 +416,8 @@ class VoiceAdmin(AdminActionsMixin,AdminLinker, AjaxTaskModelAdmin):
         'story',
         'global_default'
     )
-
+    search_fields= ['name']
+    
     def trigger_ajax_task(self, request, obj, target_field):
         if target_field in ['prompt', 'sample_text']:
             if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user) is None:
@@ -413,7 +425,7 @@ class VoiceAdmin(AdminActionsMixin,AdminLinker, AjaxTaskModelAdmin):
 
 
 @admin.register(VoiceAction)
-class VoiceActionAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxTaskModelAdmin):
+class VoiceActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxTaskModelAdmin):
     list_display = ('name', 'items', 'pic', 'prompt_voice','text',  'voice', 'voice_player', 'last_tasks')
     list_editable = ['prompt_voice', 'voice', 'text']
     list_filter = ["scene__story", "scene", "id"]
@@ -430,7 +442,7 @@ class RenderItemAdmin(ModelAdmin):
     list_editable = ('order', 'params', 'config')
 
 @admin.register(Render)
-class RenderAdmin(AdminActionsMixin, ModelAdmin):
+class RenderAdmin(AjaxSectionAdminMixin, AdminActionsMixin, ModelAdmin):
     list_display = ('name', 'scene', 'render_type', 'video_player', 'video_download', 'last_tasks')
     list_display_links = ('name',)
     actions = ['refresh_scene_video']
@@ -451,7 +463,7 @@ class SyncAdmin(ModelAdmin):
     search_fields = ['story__name']
 
 @admin.register(SyncItem)
-class SyncItemAdmin(AjaxTaskModelAdmin):
+class SyncItemAdmin(AjaxSectionAdminMixin, AjaxTaskModelAdmin):
     list_display = ('id', 'sync', 'type', 'zip_file', 'last_tasks')
     list_filter = ('type', 'sync__story')
     autocomplete_fields = ['sync']

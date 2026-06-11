@@ -2,12 +2,12 @@
 
 {% if count > 0 %}
     <el-dropdown class="inline-block">
-        <button class="cursor-pointer inline-flex items-center gap-1.5 rounded-md bg-primary-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 transition-colors">
+        <button class="cursor-pointer inline-flex items-center gap-1.5 rounded-md bg-base-100 dark:bg-base-800 border border-base-200 dark:border-base-700 px-2.5 py-1.5 text-xs font-semibold text-font-secondary-light dark:text-font-secondary-dark shadow-sm hover:bg-base-200 dark:hover:bg-base-700 transition-colors">
             <span class="material-symbols-outlined text-[16px]">category</span>
             {{ count }}
         </button>
 
-        <el-menu anchor="bottom start" popover class="w-44 origin-top-left rounded-lg bg-white dark:bg-base-900 shadow-xl border border-base-200 dark:border-base-800 p-1.5 transition transition-discrete data-closed:scale-95 data-closed:opacity-0">
+        <el-menu anchor="bottom start" popover class="w-44 origin-top-left rounded-lg bg-white dark:bg-base-800 shadow-xl border border-base-200 dark:border-base-700 p-1.5 transition transition-discrete data-closed:scale-95 data-closed:opacity-0">
             <div class="flex flex-col gap-0.5">
               {% if instance.story %}
                 <a href="/admin/scene/story/?id__exact={{ instance.story.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item border-b border-base-100 dark:border-base-800 mb-0.5 pb-2">
@@ -29,35 +29,30 @@
                     <span>{% trans "Locations" %}</span>
                     <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ locations.count }}</span>
                 </a>
-                {% if instance.story.is_film or instance.story.is_animatic  %}
-                <a href="/admin/scene/voice/?id__in={{ voices_ids }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
+                <a href="/admin/scene/voice/?id__in={{ voice_ids }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Voice" %}</span>
                     <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ voices.count }}</span>
                 </a>
-                {% endif %}
                 <a href="/admin/scene/action/?id__in={{ action_ids }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Image Actions" %}</span>
                     <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions.count }}</span>
                 </a>
-                {% if instance.story.is_comic %}
+                <a href="/admin/scene/actionorganizer/?id__in={{ action_ids }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
+                    <span>{% trans "Action Organizer" %}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions.count }}</span>
+                </a>
                 <a href="/admin/scene/comicaction/?id__in={{ action_ids }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Comic Actions" %}</span>
                     <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions.count }}</span>
                 </a>
-                {% endif %}
-
-                {% if instance.story.is_film %}
                 <a href="/admin/scene/videoaction/?id__in={{ action_ids }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Video Actions" %}</span>
                     <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions.count }}</span>
                 </a>
-                {% endif %}
-                {% if instance.story.is_film or instance.story.is_animatic  %}
                 <a href="/admin/scene/voiceaction/?id__in={{ action_ids }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Voice Actions" %}</span>
                     <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions.count }}</span>
                 </a>
-                {% endif %}
             </div>
         </el-menu>
     </el-dropdown>

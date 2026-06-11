@@ -1,35 +1,28 @@
 {% load i18n %}
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-    {% for item in items %}
-        <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 group">
-            <div class="aspect-video relative bg-base-100 dark:bg-base-950 overflow-hidden">
-                {% if item.image %}
-                    <img src="{{ item.image.url }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="{{ item.name }}">
-                {% else %}
-                    <div class="absolute inset-0 flex items-center justify-center text-font-tertiary-light dark:text-font-tertiary-dark">
-                        <span class="material-symbols-outlined text-5xl">image</span>
-                    </div>
-                {% endif %}
-            </div>
-
-            <div class="p-4">
-                <div class="flex justify-between items-start gap-2 mb-2">
-                    <h4 class="text-sm font-semibold text-font-important-light dark:text-font-important-dark truncate" title="{{ item.name }}">
-                        {{ item.name }}
-                    </h4>
-                    <a href="#" 
-                       class="text-primary-600 hover:text-primary-500 dark:text-primary-400 text-xs font-bold uppercase tracking-tight">
-                        {% trans "Edit" %}
-                    </a>
-                </div>
-                {% if item.prompt %}
-                    <p class="text-xs text-font-secondary-light dark:text-font-secondary-dark line-clamp-2 leading-relaxed italic">
-                        {{ item.prompt }}
-                    </p>
-                {% endif %}
+{% for item in items %}
+    <div class="group flex flex-col rounded-xl border border-base-200 dark:border-base-800 bg-white dark:bg-base-800 hover:shadow-xl transition-all duration-300">
+        <div class="relative w-full aspect-square flex items-center justify-center bg-base-50/50 dark:bg-base-900/40 rounded-t-xl p-4">
+            <div class="transition-transform duration-500 group-hover:scale-105">
+                {{ item.pic }}
             </div>
         </div>
-    {% empty %}
-        <p class="text-xs text-font-secondary-light dark:text-font-secondary-dark italic col-span-full">{% trans "No items found." %}</p>
-    {% endfor %}
-</div>
+
+        <div class="p-4 min-w-0">
+            <div class="flex justify-between items-start gap-2 mb-1">
+                <p class="text-sm font-bold text-font-important-light dark:text-font-important-dark truncate" title="{{ item.name }}">
+                    {{ item.name }}
+                </p>
+                <a href="{% url 'admin:scene_'|add:item.model_name|add:'_change' item.id %}" class="text-primary-600 hover:text-primary-500 dark:text-primary-400 text-[10px] font-bold uppercase tracking-wider">
+                    {% trans "Edit" %}
+                </a>
+            </div>
+            {% if item.prompt %}
+                <p class="text-[11px] leading-relaxed text-font-secondary-light dark:text-font-secondary-dark line-clamp-2 opacity-80 italic">
+                    {{ item.prompt }}
+                </p>
+            {% endif %}
+        </div>
+    </div>
+{% empty %}
+    <p class="text-xs text-font-secondary-light dark:text-font-secondary-dark italic col-span-full py-8 text-center">{% trans "No items found." %}</p>
+{% endfor %}

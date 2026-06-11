@@ -72,16 +72,7 @@ const pollStatus = () => {
                         });
                     }
 
-                    if (data.refresh) {
-                        Object.keys(data.refresh).forEach(key => {
-                            const fieldEl = row.querySelector(`.field-${key}`);
-                            console.log(`Refreshing field '${key}' with new content.`);
-                            if (fieldEl) {
-                                fieldEl.innerHTML = data.refresh[key];
-                            }
-                        });
-                        addInputHints();
-                    }
+                    applyRefreshData(row, data.refresh);
 
                     
                     // 3. Toggle row inputs based on new status
@@ -141,16 +132,36 @@ document.addEventListener('keydown', function(e) {
                 body: formData
             })
             .then(response => {
-                if (response.ok) {
+                return response.json();
+            })
+            .then(data => {
+                if (data.status === "success") {
+                    // Immediate UI update from the direct response
+                    applyRefreshData(row, data.refresh);
+                    
                     const dropdowns = row.querySelector('.inline-block[id^="task-"]');
-                    dropdowns.setAttribute('data-status', '1');
-                    monitoredObjectIds.add(objectId);
-                    startPolling();
+                    if (dropdowns) {
+                        dropdowns.setAttribute('data-status', '1');
+                        monitoredObjectIds.add(objectId);
+                        startPolling();
+                    }
                 }
             });
         }
     }
 });
+
+const applyRefreshData = (container, refreshData) => {
+    if (!refreshData) return;
+    Object.keys(refreshData).forEach(key => {
+        const fieldEl = container.querySelector(`.field-${key}`);
+        if (fieldEl) {
+            console.log(`[AdminAjax] Refreshing field '${key}' content`);
+            fieldEl.innerHTML = refreshData[key];
+        }
+    });
+    addInputHints();
+};
 
 // Handle Prompt Preview Presets
 document.addEventListener('change', function(e) {
@@ -174,6 +185,145 @@ document.addEventListener('change', function(e) {
     }
 });
 
+// Image Dropdown Menu Logic
+document.addEventListener('click', function(e) {
+    const container = e.target.closest('.image-menu-container');
+    const existingMenu = document.querySelector('.image-dropdown-menu');
+
+    // Close existing menu if clicking outside
+    if (existingMenu && !existingMenu.contains(e.target)) {
+        existingMenu.remove();
+    }
+
+    // Allow the menu to trigger on both actual images and our new placeholders
+    const isImageTrigger = e.target.tagName === 'IMG' || e.target.closest('.image-placeholder');
+
+    if (!container || !isImageTrigger) {
+        document.querySelectorAll('.image-dropdown-menu').forEach(m => m.remove());
+        return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    document.querySelectorAll('.image-dropdown-menu').forEach(m => m.remove());
+
+    const menu = document.createElement('div');
+    // Appending to body and using absolute positioning to avoid clipping by table row overflow
+    menu.className = 'image-dropdown-menu absolute z-[999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-xl py-1 text-xs min-w-[160px] overflow-hidden';
+    
+    const rect = e.target.getBoundingClientRect();
+    menu.style.top = (rect.top + window.scrollY) + 'px';
+    menu.style.left = (rect.left + window.scrollX) + 'px';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors';
+    copyBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">content_copy</span> <span>Copy URL</span>';
+    copyBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        navigator.clipboard.writeText(container.dataset.url).then(() => {
+            const span = copyBtn.querySelector('span:last-child');
+            span.textContent = "Copied!";
+            setTimeout(() => menu.remove(), 800);
+        });
+    };
+
+    const pasteBtn = document.createElement('button');
+    pasteBtn.className = 'w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors';
+    pasteBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">content_paste</span> <span>Paste URL</span>';
+    pasteBtn.onclick = (ev) => {
+        ev.stopPropagation();
+
+        const handleUrl = (url) => {
+            const trimmed = url ? url.trim() : "";
+            if (trimmed && (trimmed.match(/^https?:\/\/.+/i) || trimmed.startsWith('/media/'))) {
+                updateImageField(container, trimmed);
+            } else if (url) {
+                console.warn("[AdminAjax] Invalid URL format - must start with http/https or /media/");
+                alert("Invalid URL format. It must start with http://, https:// or /media/");
+            }
+            menu.remove();
+        };
+
+        const showPromptFallback = (defaultVal = "") => {
+            const newUrl = prompt("Enter Image URL to replace this item:", defaultVal);
+            console.log("[AdminAjax] URL entered via prompt:", newUrl);
+            handleUrl(newUrl);
+        };
+
+        if (navigator.clipboard && navigator.clipboard.readText) {
+            navigator.clipboard.readText().then(clipText => {
+                const text = clipText ? clipText.trim() : "";
+                // If it looks like a valid external URL, auto-paste it.
+                // If it contains /media/ or isn't a URL, trigger the manual prompt.
+                if (text.match(/^https?:\/\/.+/i) && !text.includes('/media/')) {
+                    console.log("[AdminAjax] Auto-pasting URL from clipboard:", text);
+                    handleUrl(text);
+                } else {
+                    showPromptFallback(text.includes('/media/') ? '' : text);
+                }
+            }).catch(() => showPromptFallback());
+        } else {
+            showPromptFallback();
+        }
+    };
+
+    menu.appendChild(copyBtn);
+    menu.appendChild(pasteBtn);
+    document.body.appendChild(menu);
+});
+
+function updateImageField(container, url) {
+    console.log("[AdminAjax] updateImageField triggered:", {
+        model: container.dataset.model,
+        id: container.dataset.id,
+        field: container.dataset.field,
+        url: url
+    });
+
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (!csrfInput) {
+        console.error("[AdminAjax] CSRF token not found in page.");
+        alert("Error: CSRF token missing.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('_model_label', container.dataset.model);
+    formData.append('_id', container.dataset.id);
+    formData.append('_field', container.dataset.field);
+    formData.append('_value', url);
+
+    const endpoint = window.location.pathname.split('/').slice(0, 4).join('/') + '/ajax-section-update/';
+    console.log("[AdminAjax] Target endpoint:", endpoint);
+    
+    fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfInput.value,
+        },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'success') {
+            console.log("[AdminAjax] Image update successful");
+            const row = container.closest('tr');
+            if (row && data.refresh) {
+                applyRefreshData(row, data.refresh);
+            } else if (data.refresh && data.refresh[container.dataset.field]) {
+                container.outerHTML = data.refresh[container.dataset.field];
+            } else {
+                location.reload(); 
+            }
+        } else {
+            alert("Error: " + (data.error || "Failed to update image"));
+            console.log(data.error)
+        }
+    })
+    .catch(err => alert("Communication error: " + err));
+}
+
 const addInputHints = () => {
     const shiftFields = window.ajaxShiftFields || [];
     document.querySelectorAll('textarea[name^="form-"], input[name^="form-"][type="text"]').forEach(input => {
@@ -186,6 +336,35 @@ const addInputHints = () => {
         hint.textContent = isShift ? "⚡ Shift + Enter to save" : "⏎ Enter to save";
         input.after(hint);
     });
+};
+
+/**
+ * Refreshes a specific collapsible section (Characters, Props, Renders, etc.)
+ */
+window.refreshSection = (objectId, sectionKey) => {
+    const container = document.getElementById(`section-content-${sectionKey}-${objectId}`);
+    if (!container) {
+        console.warn(`[AdminAjax] Container not found for section: ${sectionKey} (ID: ${objectId})`);
+        return;
+    }
+
+    container.classList.add('opacity-40', 'pointer-events-none');
+    
+    // Construct URL based on current admin path (works for /admin/scene/story/ or /admin/scene/scene/)
+    const baseUrl = window.location.pathname.split('/').slice(0, 4).join('/');
+    const url = `${baseUrl}/refresh-section/${objectId}/${sectionKey}/`;
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.html) {
+                container.innerHTML = data.html;
+            }
+        })
+        .catch(error => console.error(`[AdminAjax] Error refreshing section ${sectionKey}:`, error))
+        .finally(() => {
+            container.classList.remove('opacity-40', 'pointer-events-none');
+        });
 };
 
 // Fetch configuration from the server

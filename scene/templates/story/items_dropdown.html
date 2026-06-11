@@ -2,12 +2,12 @@
 
 {% if count > 0 %}
     <el-dropdown class="inline-block" x-data="{ open: false }" @open="open = true" @close="open = false" :class="{ 'z-50': open }">
-        <button class="cursor-pointer inline-flex items-center gap-1.5 rounded-md bg-primary-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 transition-colors">
+        <button class="cursor-pointer inline-flex items-center gap-1.5 rounded-md bg-base-100 dark:bg-base-800 border border-base-200 dark:border-base-700 px-2.5 py-1.5 text-xs font-semibold text-font-secondary-light dark:text-font-secondary-dark shadow-sm hover:bg-base-200 dark:hover:bg-base-700 transition-colors">
             <span class="material-symbols-outlined text-[16px]">category</span>
             {{ count }}
         </button>
 
-        <el-menu anchor="bottom start" popover class="w-44 origin-top-left rounded-lg bg-white dark:bg-base-900 shadow-xl border border-base-200 dark:border-base-800 p-1.5 transition transition-discrete data-closed:scale-95 data-closed:opacity-0">
+        <el-menu anchor="bottom start" popover class="w-44 origin-top-left rounded-lg bg-white dark:bg-base-800 shadow-xl border border-base-200 dark:border-base-700 p-1.5 transition transition-discrete data-closed:scale-95 data-closed:opacity-0">
             <div class="flex flex-col gap-0.5">
                 <a href="/admin/scene/scene/?story__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Scenes" %}</span>
