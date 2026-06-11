@@ -677,11 +677,8 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
             contents['image_last'] = types.Image.from_file(location=self.image_last.path) if self.image_last else None
         elif preset == self.PRESET_VOICE:
             contents = {}
-            out = self.prompt_voice
-            if self.text is not None:
-                out = f"{out} text to speak: {self.text}"
             contents = self.voice.get_contents(generate_self=False, preset=Voice.PRESET_VOICE)
-            contents["prompt"] += out
+            contents["prompt"] += self.prompt_voice
         else:
             # preset refine is handled in the mixin
             contents = super().get_contents(generate_self=generate_self, preset=preset)

@@ -1,7 +1,7 @@
 {% load i18n %}
 
 {% for render in renders %}
-    <div class="flex flex-col border border-base-200 dark:border-base-800 rounded-lg overflow-hidden bg-white dark:bg-base-800 transition-all hover:shadow-md">
+    <div class="flex flex-col border border-base-200 dark:border-base-800 rounded-lg overflow-hidden bg-white dark:bg-base-800 transition-all hover:shadow-md gallery-card-wrapper" data-id="{{ render.id }}">
         <div class="px-3 py-2 border-b border-base-200 dark:border-base-800 flex justify-between items-center gap-2 bg-white/50 dark:bg-base-900/50">
             <span class="text-[10px] font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400">
                 {{ render.get_render_type_display }}
@@ -23,12 +23,6 @@
         </div>
 
         <div class="p-3 mt-auto flex items-center justify-between border-t border-base-200 dark:border-base-800 bg-white/30 dark:bg-base-950/20">
-            <div class="flex flex-col gap-1">
-                <div class="scale-90 origin-left">
-                    {{ render.last_tasks|safe }}
-                </div>
-            </div>
-            
             {% if render.video %}
                 {{ render.video_download|safe }}
             {% endif %}

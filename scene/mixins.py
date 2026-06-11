@@ -11,6 +11,7 @@ from django.utils.html import strip_tags
 from django.contrib.auth.models import Group, Permission, User
 from django.conf import settings
 import secrets
+import secrets
 import string
 from django.http import JsonResponse
 from django.apps import apps
@@ -142,13 +143,20 @@ class ModelDisplayMixin:
     def voice_player(self):
         audio_voice = getattr(self, 'audio_voice', None)
         if audio_voice:
-            return format_html('''
-        <audio controls>
-            <source src="{}" type="audio/mpeg">
-        </audio>
-        ''', audio_voice.url)
+            uid = secrets.token_hex(4)
+            audio_id = f"audio_{self.pk}_{uid}"
+            return format_html(
+                '<div class="flex items-center justify-center">'
+                '<audio id="{0}" src="{1}" preload="none" onended="this.nextElementSibling.querySelector(\'span\').textContent=\'play_circle\'"></audio>'
+                '<button type="button" class="p-0 border-none bg-transparent cursor-pointer text-primary-600 hover:text-primary-500 transition-all flex items-center justify-center active:scale-95"'
+                ' onclick="const a=document.getElementById(\'{0}\'); if(a.paused){{ a.play(); this.querySelector(\'span\').textContent=\'pause_circle\'; }}else{{ a.pause(); this.querySelector(\'span\').textContent=\'play_circle\'; }}">'
+                '<span class="material-symbols-outlined text-[32px]">play_circle</span>'
+                '</button>'
+                '</div>',
+                audio_id, audio_voice.url
+            )
         return _("No contents")
-    voice_player.short_description = _("Voice Player")
+    voice_player.short_description = _("Play")
 
 class SceneFilterMixin:
     # anything that has a scene foreign key can use this mixin to filter by the user's current scene

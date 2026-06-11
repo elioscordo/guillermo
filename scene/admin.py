@@ -409,8 +409,9 @@ class ComicActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMi
 @admin.register(Voice)
 class VoiceAdmin(AjaxSectionAdminMixin, AdminActionsMixin,AdminLinker, AjaxTaskModelAdmin):
     list_display = ('__str__', 'prompt', 'google_voice', 'sample_text', 'link_story' , 'voice_player', 'last_tasks')
-    list_editable = ['prompt', 'sample_text']
+    list_editable = ['prompt']
     list_refresh = ['voice_player']    
+    
     actions = ['generate_voice']
     list_filter = (
         'story',
@@ -426,10 +427,11 @@ class VoiceAdmin(AjaxSectionAdminMixin, AdminActionsMixin,AdminLinker, AjaxTaskM
 
 @admin.register(VoiceAction)
 class VoiceActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxTaskModelAdmin):
-    list_display = ('name', 'items', 'pic', 'prompt_voice','text',  'voice', 'voice_player', 'last_tasks')
-    list_editable = ['prompt_voice', 'voice', 'text']
+    list_display = ('name', 'items', 'pic', 'prompt_voice','voice', 'voice_player', 'last_tasks')
+    list_editable = ['prompt_voice', 'voice' ]
     list_filter = ["scene__story", "scene", "id"]
     list_display_links = ('name',)
+    autocomplete_fields = ['actor', 'props', 'cast', 'background', 'consistent_with', 'scene', 'voice']
     list_refresh = ['voice_player']
     search_fields = ['name']
     actions = ['generate_voice']

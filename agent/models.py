@@ -208,7 +208,6 @@ class Agent(models.Model):
         if user and hasattr(user, 'agent_profile') and user.agent_profile.google_api_key:
             api_key = user.agent_profile.google_api_key.api_key
             genai_client = genai.Client(
-                vertexai=True,
                 api_key=api_key
             )
             return genai_client

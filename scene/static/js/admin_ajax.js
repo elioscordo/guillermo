@@ -2,7 +2,22 @@ let pollingTimer = null;
 let pollIteration = 0;
 const monitoredObjectIds = new Set();
 
+/**
+ * Resolves the admin base URL. If a model label (app.model) is provided,
+ * it tries to construct the specific admin path for that model.
+ */
+const getAdminBaseUrl = (modelLabel = null) => {
+    if (modelLabel && modelLabel.includes('.')) {
+        const [app, model] = modelLabel.split('.');
+        // Returns /admin/app/model
+        return `${window.location.origin}/admin/${app}/${model}`;
+    }
+    // Default to the current page's admin path (e.g., /admin/scene/scene)
+    return window.location.pathname.split('/').slice(0, 4).join('/');
+};
+
 const updateRowState = (row, status) => {
+        if (!row) return;
         // Define which statuses lock the row
         const isLocked = ["0", "1"].includes(status);
         // Find all inputs in the row except the dropdown itself
@@ -21,35 +36,44 @@ const updateRowState = (row, status) => {
     };
 
 const startPolling = () => {
+    console.log("[AdminAjax] startPolling called. monitoredObjectIds size:", monitoredObjectIds.size);
     pollIteration = 0; // Reset counter whenever a new task is added to trigger fast polling
     if (!pollingTimer) {
+        console.log("[AdminAjax] Starting new polling timer.");
         pollingTimer = setTimeout(pollStatus, 1000);
     }
 };
 
 const pollStatus = () => {
+    console.log("[AdminAjax] pollStatus execution triggered. Iteration:", pollIteration);
     if (monitoredObjectIds.size === 0) {
+        console.log("[AdminAjax] No more objects to monitor. Clearing timer.");
         pollingTimer = null;
-        console.log("No more objects to monitor.");
         return;
     }
-        console.log(`Polling for updates on object IDs: ${Array.from(monitoredObjectIds).join(', ')}`);
+
+        console.log(`[AdminAjax] Active Monitoring Set: ${Array.from(monitoredObjectIds).join(', ')}`);
         monitoredObjectIds.forEach(objectId => {
             const el = document.getElementById(`task-${objectId}`);
             if (!el) {
+                console.warn(`[AdminAjax] Container #task-${objectId} not found in DOM. Removing from queue.`);
                 monitoredObjectIds.delete(objectId);
                 return;
             }
-            const row = el.closest('tr');
+            
+            const row = el.closest('tr') || el.closest('.gallery-card-wrapper');
+            const modelLabel = el.getAttribute('data-model');
+            const url = `${getAdminBaseUrl(modelLabel)}/ajax-last-tasks/${objectId}/`;
         
-            fetch(`ajax-last-tasks/${objectId}/`)
+            fetch(url)
                 .then(response => response.json())
                 .then(data => {
-                    // 1. Update the HTML of the dropdown container
+                    console.log(`[AdminAjax] Received update for ID ${objectId}:`, data);
                     
+                    // 1. Update the HTML of the dropdown container
                     el.outerHTML = data.html;
-                    console.log(`received update for object ID ${objectId}`, data );
-                    // Re-fetch the element as the reference 'el' is now detached from the DOM`
+
+                    // Re-fetch the element to ensure it still has data-status for subsequent loops
                     const updatedEl = document.getElementById(`task-${objectId}`);
                     if (updatedEl) {
                         updatedEl.setAttribute('data-status', String(data.status));
@@ -58,12 +82,14 @@ const pollStatus = () => {
                     // Remove from monitoring if terminal status reached (specifically 4 as requested)
                     // We also check for any status that isn't pending (0 or 1) to avoid infinite polling on errors
                     if (data.status == "4" || (data.status != "0" && data.status != "1")) {
+                        console.log(`[AdminAjax] Terminal status [${data.status}] reached for ID ${objectId}. Stopping polling for this item.`);
                         monitoredObjectIds.delete(objectId);
                     }
                     
                     // 2. If task succeeded, update row content with serialized data
-                    if (data.object) {
+                    if (row && data.object) {
                         // Update editable inputs in the row
+                        console.log(`[AdminAjax] Syncing model fields for row ID ${objectId}`);
                         Object.keys(data.object).forEach(key => {
                             const input = row.querySelector(`[name$="-${key}"]`);
                             if (input && input.value !== String(data.object[key])) {
@@ -72,16 +98,22 @@ const pollStatus = () => {
                         });
                     }
 
-                    applyRefreshData(row, data.refresh);
+                    applyRefreshData(row, data.refresh, objectId);
 
                     
                     // 3. Toggle row inputs based on new status
-                    updateRowState(row, String(data.status));
+                    if (row) {
+                        updateRowState(row, String(data.status));
+                    }
+                })
+                .catch(err => {
+                    console.error(`[AdminAjax] Fetch error for object ID ${objectId} at ${url}:`, err);
                 });
         });
 
         // Calculate next delay: 1s for the first 3 polls, then 5s
         const delay = pollIteration < 3 ? 1000 : 5000;
+        console.log(`[AdminAjax] Next poll scheduled in ${delay}ms`);
         pollIteration++;
         pollingTimer = setTimeout(pollStatus, delay);
     };
@@ -106,10 +138,13 @@ document.addEventListener('keydown', function(e) {
         if (shouldTrigger) {
             e.preventDefault();
             const row = input.closest('tr');
-            const idInput = row.querySelector('input.action-select');
+            const idInput = row ? row.querySelector('input.action-select') : null;
             if (!idInput) return;
+
             const objectId = idInput.value;
-            updateRowState(row, "0");
+            if (row) {
+                updateRowState(row, "0");
+            }
 
             const targetField = input.name.split('-').slice(-1)[0];
             const formData = new URLSearchParams();
@@ -123,7 +158,7 @@ document.addEventListener('keydown', function(e) {
             });
             formData.append('target_field', targetField);
 
-            fetch(`ajax-update/${objectId}/`, {
+            fetch(`${getAdminBaseUrl()}/ajax-update/${objectId}/`, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
@@ -135,26 +170,39 @@ document.addEventListener('keydown', function(e) {
                 return response.json();
             })
             .then(data => {
-                if (data.status === "success") {
-                    // Immediate UI update from the direct response
-                    applyRefreshData(row, data.refresh);
+                console.log(data)
+                if (data.status === 1) {
+
+                    // Immediate UI update
+                    applyRefreshData(row, data.refresh, objectId);
                     
-                    const dropdowns = row.querySelector('.inline-block[id^="task-"]');
+                    // Update task column HTML so the dropdown appears and polling can start
+                    const taskCell = row ? row.querySelector('.field-last_tasks') : document.querySelector(`.field-last_tasks[data-id="${objectId}"]`);
+                    if (taskCell && data.html) {
+                        taskCell.innerHTML = data.html;
+                    }
+                    
+                    const dropdowns = document.getElementById(`task-${objectId}`);
                     if (dropdowns) {
                         dropdowns.setAttribute('data-status', '1');
                         monitoredObjectIds.add(objectId);
                         startPolling();
                     }
+                    
                 }
             });
         }
     }
 });
 
-const applyRefreshData = (container, refreshData) => {
+const applyRefreshData = (container, refreshData, objectId) => {
     if (!refreshData) return;
+    
     Object.keys(refreshData).forEach(key => {
-        const fieldEl = container.querySelector(`.field-${key}`);
+        // Try to find the field scoped to this specific object ID
+        const selector = `.field-${key}[data-id="${objectId}"], [data-id="${objectId}"] .field-${key}, .field-${key}`;
+        const fieldEl = container ? container.querySelector(`.field-${key}`) : document.querySelector(selector);
+        
         if (fieldEl) {
             console.log(`[AdminAjax] Refreshing field '${key}' content`);
             fieldEl.innerHTML = refreshData[key];
@@ -294,7 +342,7 @@ function updateImageField(container, url) {
     formData.append('_field', container.dataset.field);
     formData.append('_value', url);
 
-    const endpoint = window.location.pathname.split('/').slice(0, 4).join('/') + '/ajax-section-update/';
+    const endpoint = getAdminBaseUrl() + '/ajax-section-update/';
     console.log("[AdminAjax] Target endpoint:", endpoint);
     
     fetch(endpoint, {
@@ -369,7 +417,7 @@ window.refreshSection = (objectId, sectionKey) => {
 
 // Fetch configuration from the server
 const fetchConfig = () => {
-    return fetch('ajax-config/')
+    return fetch(`${getAdminBaseUrl()}/ajax-config/`)
         .then(response => {
             if (!response.ok) throw new Error("Config fetch failed");
             return response.json();
@@ -386,15 +434,14 @@ const fetchConfig = () => {
 const initTaskMonitoring = () => {
     fetchConfig();
     document.querySelectorAll('[id^="task-"]').forEach(el => {
+        const row = el.closest('tr');
+        if (!row) return; // Only monitor tasks within changelist table rows
+
         const status = el.getAttribute('data-status');
         if (["0", "1"].includes(status)) {
             const objectId = el.id.replace('task-', '');
             monitoredObjectIds.add(objectId);
-            
-            const row = el.closest('tr');
-            if (row) {
-                updateRowState(row, status);
-            }
+            updateRowState(row, status);
         }
     });
     if (monitoredObjectIds.size > 0) {

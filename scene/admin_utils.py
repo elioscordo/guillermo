@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from django.urls import path, reverse
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin
+from django.utils.safestring import mark_safe
 from .utils import render_image_markup
 from task.models import Task
 from .serializers import get_generic_serializer
@@ -106,8 +107,17 @@ class AjaxTaskModelAdmin(ModelAdmin):
             except Exception:
                 continue
 
+        # Ensure the HTML is wrapped in the expected JS container ID
+        html_content = obj.last_tasks()
+        wrapped_html = format_html(
+            '<div id="task-{0}" data-status="{1}" class="inline-block task-polling-wrapper" data-model="{2}">{3}</div>',
+            obj.pk, status if status is not None else "", 
+            f"{obj._meta.app_label}.{obj._meta.model_name}",
+            mark_safe(html_content)
+        )
+
         response_data = {
-            'html': obj.last_tasks(),
+            'html': wrapped_html,
             'status': status,#
             'object': serializer_class(obj).data,
             'refresh': refresh_data

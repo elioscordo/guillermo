@@ -1,6 +1,6 @@
 {% load i18n %}
 {% for item in items %}
-    <div class="group flex flex-col rounded-xl border border-base-200 dark:border-base-800 bg-white dark:bg-base-800 hover:shadow-xl transition-all duration-300">
+    <div class="group flex flex-col rounded-xl border border-base-200 dark:border-base-800 bg-white dark:bg-base-800 hover:shadow-xl transition-all duration-300 gallery-card-wrapper" data-id="{{ item.id }}">
         <div class="relative w-full aspect-square flex items-center justify-center bg-base-50/50 dark:bg-base-900/40 rounded-t-xl p-4">
             <div class="transition-transform duration-500 group-hover:scale-105">
                 {{ item.pic }}
