@@ -404,26 +404,6 @@ class Agent(models.Model):
                         data = schema_class.model_validate_json(response.text)
                         out = data.sync_model(obj) if hasattr(data, "sync_model") else data
 
-        # Prepare serializable history data
-        if isinstance(contents, list):
-            # Store strings and representations of objects (ignoring raw binary/PIL data)
-            input_history = [str(c) for c in contents if not hasattr(c, 'tobytes')]
-        elif isinstance(contents, dict):
-            input_history = {k: str(v) for k, v in contents.items()}
-        else:
-            input_history = str(contents)
-
-        Message.objects.create(
-            content_object=obj,
-            agent=self,
-            user=user, # Add the user here
-            input_data=input_history,
-            output_text=out if self.output_type == self.OUTPUT_TYPE_TEXT else "",
-            output_image=out if self.output_type == self.OUTPUT_TYPE_IMAGE else None,
-            output_file=out if self.output_type in [self.OUTPUT_TYPE_VIDEO, self.OUTPUT_TYPE_VOICE] else None,
-            target_field=target_field or ""
-        )
-
         return out
 
 
@@ -477,3 +457,16 @@ class Message(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+    def create_message(cls, content_object, agent=None, user=None, input_data=None, output_text="", output_image=None, output_file=None, target_field=""):
+        message = cls.objects.create(
+            content_object=content_object,
+            agent=agent,
+            user=user,
+            input_data=input_data or [],
+            output_text=output_text,
+            output_image=output_image,
+            output_file=output_file,
+            target_field=target_field
+        )
+        return message
