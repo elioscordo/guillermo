@@ -25,7 +25,7 @@ You MUST format your entire response using the following Markdown structure. Do 
 * Name: <Shot name>
 ** Prompt: <define the location name and anchor point to uniquely identify the background, the prompt should include: the shot (wide, close) and the cast visible and their gesture and expression >
 ** Text: <The text to be spoken in case of animatic or to appear in the comic in case it is a comic. Only the text do not add anything else.>
-** Voice Prompt : <voice directions, express emotion and pace. Like anxious, happy>
+** Voice Prompt : <voice directions and script to be fed to gemini tts, express emotion and pace. Like <anxious>, <happy> use a lot o pauses like <pause> and add the script correcting typos>
 ** Voice Name: <the name of the voice existing or new. In many case there is <voice name>:<text> like voiceover: "the martians">
 ** Comic: <if requested or present. if a speech bubble it is requested add more details on how to render the text. if it is a caption only review the text in the caption and leave caption(<text>)>
 ** Video: <if requested, check and improve the video direction >

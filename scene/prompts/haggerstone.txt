@@ -1,0 +1,115 @@
+# Shots
+* Name: Opening_Montage
+** Prompt: Wide shot, Haggerstone neighborhood, hazy golden hour light hitting vintage vinyl records stacked on a shelf, a fixed-gear bike leaning against a brick wall.
+** Text: The City of London has its ancient Roman walls and historic treaties. Haggerstone, conversely, has an impenetrable fortress of vintage vinyl, fixed-gear bicycles, and sheer, undeniable culture.
+** Voice Prompt: <narrator style>, <authoritative yet gritty like a pulp fiction narrator>, <pause> The City of London has its ancient Roman walls and historic treaties. <pause> Haggerstone, conversely, <pause> has an impenetrable fortress of vintage vinyl, fixed-gear bicycles, <pause> and sheer, undeniable culture.
+** Voice Name: Algenib
+** Comic: Caption("The impenetrable fortress of Haggerstone.")
+** Video: Slow pan across the artifacts of urban culture.
+** Location: Haggerstone_Streets (AV: Street_View)
+
+* Name: The_Plotting_Room
+** Prompt: Close shot, Eliano Maschione and Simon Ortega de la Vega sitting at a cluttered desk in 91 Laburnum Street, glowing laptop screens on their faces, intense expressions.
+** Text: If the Square Mile could be its own sovereign entity, why couldn't Haggerstone declare independence?
+** Voice Prompt: <intense>, <conspiratorial>, <pause> If the Square Mile could be its own sovereign entity just because some Romans stacked bricks two millennia ago, <pause> why couldn't Haggerstone declare independence?
+** Voice Name: Algenib
+** Comic: Two speech bubbles overlapping, gritty filter.
+** Video: Tight zoom on their focused eyes, flickering neon light from the canal outside.
+** Location: 91_Laburnum_Street (AV: Desk_View)
+
+* Name: Tarantino_Dialogue_1
+** Prompt: Close up, Eliano sipping a Mezcal Negroni, looking unimpressed.
+** Text: You're talking about micro-states. I'm talking about the structural integrity of this drink.
+** Voice Prompt: <dry>, <sarcastic>, <pause> You're talking about borders, Simon. <pause> I'm just trying to figure out why the bartender put a dehydrated orange on this instead of a fresh slice. <pause> It's an insult to the citrus gods.
+** Voice Name: Algenib
+** Comic: Speech bubble with a jagged tail indicating annoyance.
+** Video: Handheld camera shake, focus pulling from the drink to Eliano's face.
+** Location: 91_Laburnum_Street (AV: Desk_View)
+
+* Name: Tarantino_Dialogue_2
+** Prompt: Medium shot, Simon leaning forward, aggressive hand gestures.
+** Text: It's not about the citrus, Eliano! It's about the principle!
+** Voice Prompt: <high-energy>, <frustrated>, <pause> It's not about the fruit, you pretentious Italian! <pause> It's about the principle! <pause> If we don't declare now, the property developers will turn our favorite record shop into a juice cleanse clinic by Tuesday.
+** Voice Name: Algenib
+** Comic: Bold, oversized text in a speech bubble: "JUICE CLEANSE CLINIC?!"
+** Video: Quick cuts between Simon's intense face and a stack of vinyl records.
+** Location: 91_Laburnum_Street (AV: Desk_View)
+
+* Name: The_Revolution_Stage
+** Prompt: Wide shot, Eliano and Simon on a wooden crate stage in Haggerstone Park, hipsters cheering, Netil360 sunset background.
+** Text: The battle for Haggerstone was about to begin.
+** Voice Prompt: <dramatic>, <ominous>, <pause> The battle for Haggerstone was about to begin.
+** Voice Name: Algenib
+** Comic: Dynamic action lines, crowd cheering bubbles.
+** Video: Low angle tracking shot of the stage, camera moving towards the park perimeter.
+** Location: Haggerstone_Park (AV: Stage_View)
+
+* Name: The_Shadows_Approach
+** Prompt: Wide shot, park perimeter, silhouettes of men in expensive suits holding umbrellas despite the clear sky.
+** Text: They were already watching.
+** Voice Prompt: <whispery>, <tense>, <pause> They were already watching. <pause> Men in suits that cost more than my entire record collection.
+** Voice Name: Algenib
+** Comic: Caption("The suits arrive.")
+** Video: Parallax effect showing the suits moving in synchronized steps.
+** Location: Haggerstone_Park (AV: Stage_View)
+
+* Name: The_Standoff
+** Prompt: Close up, Eliano staring down a man in a charcoal suit.
+** Text: You're trespassing on sovereign Haggerstone soil, friend.
+** Voice Prompt: <calm>, <dangerous>, <pause> I wouldn't step any closer if I were you, buddy. <pause> This is sovereign soil. <pause> And you're wearing socks with loafers. <pause> That's a crime in itself.
+** Voice Name: Algenib
+** Comic: Speech bubble with a "POW" effect.
+** Video: Camera orbits the two men, focus on the contrast of styles.
+** Location: Haggerstone_Park (AV: Stage_View)
+
+* Name: The_Escape
+** Prompt: Wide shot, Simon and Eliano running through narrow Haggerstone streets, bikes in tow.
+** Text: Run, you idiot!
+** Voice Prompt: <panicked>, <fast>, <pause> Run, you idiot! <pause> Run like you've got a landlord chasing you!
+** Voice Name: Algenib
+** Comic: Motion blur lines and sound effect text "WHOOSH".
+** Video: Tracking shot running alongside them, camera shaky and chaotic.
+** Location: Haggerstone_Streets (AV: Street_View)
+
+* Name: The_Hideout
+** Prompt: Close shot, the two of them breathing heavily in a dark, cramped room.
+** Text: We live to fight another day. And... I think I kept the Negroni.
+** Voice Prompt: <exhausted>, <triumphant>, <pause> We live to fight another day. <pause> And... <pause> I think I kept the Negroni.
+** Voice Name: Algenib
+** Comic: Speech bubble: "Did you save the drink?"
+** Video: Flickering light, shadows playing on their sweat-beaded faces.
+** Location: 91_Laburnum_Street (AV: Desk_View)
+
+# Locations 
+  * Name: Haggerstone_Streets
+  * Prompt: Narrow urban streets, Victorian brickwork, overgrown ivy, vintage storefronts, warm amber street lighting.
+      Anchor points:
+      ** Street_View (Camera looks down the cobblestone path towards the canal)
+  * Name: 91_Laburnum_Street
+  * Prompt: Industrial chic, exposed brick, soundproof foam on walls, stacks of vinyl records, canal-side windows.
+      Anchor points:
+      ** Desk_View (Camera looks over the shoulder of the duo towards the window)
+  * Name: Haggerstone_Park
+  * Prompt: Expansive urban park, manicured grass, scattered yoga mats, football goalposts, modern Netil360 tower visible in distance.
+      Anchor points:
+      ** Stage_View (Camera looks from the crowd perspective up at the makeshift stage)
+
+# Cast
+  * Name: Eliano_Maschione
+  * Prompt: Italian, 30s, sharp features, wearing a minimalist hoodie, intense and focused look.
+  * Name: Simon_Ortega_de_la_Vega
+  * Prompt: Latino, 30s, glasses, tech-startup chic, wearing a blazer over a band tee, idealistic expression.
+
+# Props
+  * Name: Mezcal_Negroni
+  * Prompt: A clear glass with a dark red liquid, orange peel garnish, sweating with condensation, cinematic lighting.
+  * Name: Vintage_Vinyl
+  * Prompt: Worn paper sleeve with retro typography, classic rock aesthetic.
+
+# Voices 
+  * Name: Algenib
+  * Google Voice: Algenib
+  * Prompt:  
+    #Style: Gritty, narrative, cinematic, deep-voiced storytelling.
+    #Pace: Deliberate, punctuated with heavy pauses for dramatic tension.
+    #Accent: Neutral-International English, reminiscent of a crime drama narrator.
