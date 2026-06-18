@@ -65,21 +65,27 @@ class GetContentsMixin:
 
     def generate_text(self, agent=None, user=None):
         if agent is None:
-            agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_TEXT).first()
+            agent = self.get_agent(Agent.OUTPUT_TYPE_TEXT)
         out = agent.generate(self, preset=self.PRESET_REFINE_PROMPT, user=user, target_field="prompt")
         if out is not None:
             self.prompt = out
             self.save()
         return out
 
+    def get_agent(self, output_type):
+        agent = Agent.objects.filter(output_type=output_type).first()
+        if agent is None:
+            raise ValueError(f"No agent configured for output type: {output_type}")
+        return agent
+
     def generate_image(self, user=None):
-        agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_IMAGE).first()
+        agent = self.get_agent(Agent.OUTPUT_TYPE_IMAGE)
         self.image = agent.generate(self, preset=self.PRESET_IMAGE, user=user, target_field="image")
         self.save()
         return self.image
     
     def refine_image(self, save=True, user=None):
-        image_agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_IMAGE).first()
+        image_agent = self.get_agent(Agent.OUTPUT_TYPE_IMAGE)
         out = image_agent.generate(self, preset=self.PRESET_REFINE, user=user, target_field="image")
         if save and out:
             self.image = out
@@ -87,13 +93,13 @@ class GetContentsMixin:
         return out
     
     def generate_video(self, preset, user=None):
-        agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_VIDEO).first()
+        agent = self.get_agent(Agent.OUTPUT_TYPE_VIDEO)
         self.video = agent.generate(self, preset=preset, user=user, target_field="video")
         self.save()
         return self.video
 
     def generate_voice(self, preset, user=None, target_field="audio_voice"):
-        agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_VOICE).first()
+        agent = self.get_agent(Agent.OUTPUT_TYPE_VOICE)
         out = agent.generate(self, preset=preset, user=user, target_field=target_field)
         setattr(self, target_field, out)
         self.save()
@@ -105,7 +111,7 @@ class GetContentsMixin:
         return out
 
     def refine_image(self, save=True, user=None):
-        image_agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_IMAGE).first()
+        image_agent = self.get_agent(Agent.OUTPUT_TYPE_IMAGE)
         out = image_agent.generate(self, preset=self.PRESET_REFINE, user=user, target_field="image")
         if save and out:
             self.image = out
@@ -113,8 +119,7 @@ class GetContentsMixin:
         return out
     
     def refine_prompt(self, save=True, user=None, agent=None):
-        if agent is None:
-            text_agent = Agent.objects.filter(output_type=Agent.OUTPUT_TYPE_TEXT).first()
+        text_agent = agent or self.get_agent(Agent.OUTPUT_TYPE_TEXT)
         out = text_agent.generate(self, preset=self.PRESET_REFINE_PROMPT, user=user, target_field="prompt")
         if save and out:
             self.image = out
@@ -206,9 +211,11 @@ class Agent(models.Model):
 
     def get_genai_client(self, user):
         if user and hasattr(user, 'agent_profile') and user.agent_profile.google_api_key:
+            from google.genai import types
             api_key = user.agent_profile.google_api_key.api_key
             genai_client = genai.Client(
-                api_key=api_key
+                api_key=api_key,
+                http_options=types.HttpOptions(timeout=settings.GENAI_REQUEST_TIMEOUT_MS)
             )
             return genai_client
         else:
@@ -355,54 +362,52 @@ class Agent(models.Model):
     
     def generate(self, obj, preset=None, user=None, target_field=None):
         from google.genai import types
-        # Placeholder for agent generation logic
         config = None
         out = None
-        # video has  a different config and response handling so handle it separately
+
         if self.output_type == self.OUTPUT_TYPE_VIDEO:
-            out = self.generate_video(preset, obj, user=user)
+            return self.generate_video(preset, obj, user=user)
         if self.output_type == self.OUTPUT_TYPE_VOICE:
-            out = self.generate_voice(preset, obj, user=user)
-        else:
-            contents = obj.get_contents(generate_self=True, preset=preset)
-            if self.output_type == self.OUTPUT_TYPE_STRUCTURED:
-                schema_class = self.get_schema_class()
-                config = types.GenerateContentConfig(
-                    system_instruction=self.get_instructions(user=user, preset=preset, obj=obj),
-                    response_mime_type="application/json" if schema_class else None,
-                    response_schema=schema_class,
-                    temperature=0.1,
+            return self.generate_voice(preset, obj, user=user)
+
+        contents = obj.get_contents(generate_self=True, preset=preset)
+        if self.output_type == self.OUTPUT_TYPE_STRUCTURED:
+            schema_class = self.get_schema_class()
+            config = types.GenerateContentConfig(
+                system_instruction=self.get_instructions(user=user, preset=preset, obj=obj),
+                response_mime_type="application/json" if schema_class else None,
+                response_schema=schema_class,
+                temperature=0.1,
+            )
+        elif self.output_type == self.OUTPUT_TYPE_IMAGE:
+            instructions = self.get_instructions(user=user, preset=preset, obj=obj)
+            contents.extend(instructions)
+            config = types.GenerateContentConfig(
+                image_config=types.ImageConfig(
+                    aspect_ratio="9:16",
                 )
+            )
+        elif self.output_type == self.OUTPUT_TYPE_TEXT:
+            config = types.GenerateContentConfig(
+                system_instruction=self.get_instructions(user=user, preset=preset, obj=obj)
+            )
+
+        with self.get_genai_client(user) as client:
+            response = client.models.generate_content(
+                model=self.agent_model.name,
+                contents=contents,
+                config=config
+            )
+            self.save_usage(user, response, obj=obj, preset=preset)
+            if self.output_type == self.OUTPUT_TYPE_TEXT:
+                out = self.extract_text(response, obj)
             elif self.output_type == self.OUTPUT_TYPE_IMAGE:
-                instructions = self.get_instructions(user=user, preset=preset, obj=obj)
-                contents.extend(instructions)
-                config = types.GenerateContentConfig(
-                    image_config=types.ImageConfig(
-                        aspect_ratio="9:16",
-                    )
-                )
-            elif self.output_type in self.OUTPUT_TYPE_TEXT:
-                config = types.GenerateContentConfig(
-                    system_instruction= self.get_instructions(user=user, preset=preset, obj=obj)
-                )
-        
-            with self.get_genai_client(user) as client:
-                response = client.models.generate_content(
-                    model=self.agent_model.name,
-                    contents=contents,
-                    config=config
-                )
-                out = None
-                self.save_usage(user, response, obj=obj, preset=preset)
-                if self.output_type == self.OUTPUT_TYPE_TEXT:
-                    out =  self.extract_text(response, obj)
-                elif self.output_type == self.OUTPUT_TYPE_IMAGE:
-                    out = self.save_image(response, obj)
-                elif self.output_type == self.OUTPUT_TYPE_STRUCTURED:
-                    schema_class = self.get_schema_class()
-                    if schema_class:
-                        data = schema_class.model_validate_json(response.text)
-                        out = data.sync_model(obj) if hasattr(data, "sync_model") else data
+                out = self.save_image(response, obj)
+            elif self.output_type == self.OUTPUT_TYPE_STRUCTURED:
+                schema_class = self.get_schema_class()
+                if schema_class:
+                    data = schema_class.model_validate_json(response.text)
+                    out = data.sync_model(obj) if hasattr(data, "sync_model") else data
 
         return out
 

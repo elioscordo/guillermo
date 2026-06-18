@@ -1,12 +1,19 @@
 from celery import shared_task
+from celery.exceptions import SoftTimeLimitExceeded
 from django.conf import settings
 from .models import Task
 import importlib
+import traceback
 
 
 @shared_task
 def process_task(task_id):
-    task = Task.objects.get(id=task_id)
+    try:
+        task = Task.objects.get(id=task_id)
+    except Task.DoesNotExist:
+        print(f"Skipping missing task {task_id}")
+        return
+
     print(f"Processing task {task.id} ")
     if task.has_pending_previous():
         task.set_status(Task.TASK_STATUS_HOLDING)
@@ -21,8 +28,18 @@ def process_task(task_id):
             task.set_status(Task.TASK_STATUS_STARTED)
             delegate.process()
             task.set_status(Task.TASK_STATUS_SUCCESS)
+        except SoftTimeLimitExceeded as e:
+            task.log(
+                f"Task timed out after {settings.CELERY_TASK_SOFT_TIME_LIMIT} seconds.\n"
+                f"The work was stopped by Celery before it could finish.\n\n"
+                f"{traceback.format_exc()}"
+            )
+            task.set_status(Task.TASK_STATUS_ERROR)
         except Exception as e:
-            task.log(str(e))
+            task.log(
+                f"Task failed with {e.__class__.__name__}: {e}\n\n"
+                f"{traceback.format_exc()}"
+            )
             task.set_status(Task.TASK_STATUS_ERROR)
         for next_task in task.next_tasks.all():
             if next_task.is_processable() \
