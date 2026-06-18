@@ -213,3 +213,5 @@ db.sqlite3
 staticfiles/
 db-old.sqlite3
 *.sqlite3
+# MoviePy temporary render files
+temp-audio*.m4a
