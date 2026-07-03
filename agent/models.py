@@ -389,7 +389,6 @@ class Agent(models.Model):
                 response_mime_type="application/json" if schema_class else None,
                 response_schema=schema_class,
                 temperature=0.1,
-                
             )
         elif self.output_type == self.OUTPUT_TYPE_IMAGE:
             instructions = self.get_instructions(user=user, preset=preset, obj=obj)

@@ -442,7 +442,7 @@ TASK_DELEGATES = {
     TASK_TYPE_GENERATE_SCENE_ELEMENTS: 'scene.tasks.batch.TaskGenerateSceneElements',
     TASK_TYPE_GENERATE_SCENE_ACTIONS: 'scene.tasks.batch.TaskGenerateSceneActions',
 
-    TASK_TYPE_EXTRACT_SCENE: 'scene.tasks.TaskExtractScene',
+    TASK_TYPE_EXTRACT_SCENE: 'scene.tasks.tasks.TaskExtractScene',
     # sync
     TASK_TYPE_SYNC_EXPORT: 'scene.tasks.sync.TaskSyncExport',
     TASK_TYPE_SYNC_IMPORT: 'scene.tasks.sync.TaskSyncImport',
