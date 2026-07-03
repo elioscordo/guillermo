@@ -316,10 +316,82 @@ document.addEventListener('click', function(e) {
         }
     };
 
+    const downloadBtn = document.createElement('button');
+    downloadBtn.className = 'w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors';
+    downloadBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">download</span> <span>Download Original</span>';
+    downloadBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        const imageUrl = container.dataset.url;
+        if (imageUrl) {
+            const link = document.createElement('a');
+            link.href = imageUrl;
+            link.download = imageUrl.substring(imageUrl.lastIndexOf('/') + 1); // Suggest filename
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        menu.remove();
+    };
+
+    const zoomBtn = document.createElement('button');
+    zoomBtn.className = 'w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors';
+    zoomBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">zoom_in</span> <span>Zoom</span>';
+    zoomBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        const imageUrl = container.dataset.url;
+        if (imageUrl) {
+            openZoomPopup(imageUrl);
+        }
+        menu.remove();
+    };
+
     menu.appendChild(copyBtn);
     menu.appendChild(pasteBtn);
+    menu.appendChild(downloadBtn);
+    menu.appendChild(zoomBtn);
     document.body.appendChild(menu);
 });
+
+// New function for zoom popup
+function openZoomPopup(imageUrl) {
+    const overlay = document.createElement('div');
+    overlay.className = 'image-zoom-overlay';
+
+    const content = document.createElement('div');
+    content.className = 'image-zoom-content';
+
+    const img = document.createElement('img');
+    img.src = imageUrl;
+    img.alt = 'Zoomed Image';
+    img.className = 'max-w-full max-h-full object-contain'; // Responsive image
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'image-zoom-close-btn';
+    closeBtn.innerHTML = '<span class="material-symbols-outlined text-3xl">close</span>';
+    closeBtn.onclick = () => {
+        document.body.removeChild(overlay);
+    };
+
+    content.appendChild(img);
+    content.appendChild(closeBtn);
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
+
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            document.body.removeChild(overlay);
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            document.body.removeChild(overlay);
+            document.removeEventListener('keydown', handleEscape);
+        }
+    });
+}
 
 function updateImageField(container, url) {
     console.log("[AdminAjax] updateImageField triggered:", {
