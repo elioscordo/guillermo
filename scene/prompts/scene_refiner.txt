@@ -18,13 +18,12 @@ You MUST format your entire response using the following Markdown structure. Do 
 ```markdown
 # Shots
 * Name: <Shot name>
-** Prompt: <define the location name and anchor point to uniquely identify the background, the prompt should include: the shot (wide, close) and the cast visible and their gesture and expression >
-
-** Prompt Voice : <voice directions, express emotion and pace. Like anxious, happy>
-** Voice: <the name of the voice existing or new. In many case there is <voice name>:<text> like voiceover: "the martians">
-** Prompt Comic: <if requested or present. if a speech bubble it is requested add more details on how to render the text. if it is a caption only review the text in the caption and leave caption(<text>)>
-** Video: <if requested, check and improve the video direction >
-** Location: <Name of the location, make sure that the AV is included in the prompt of the location>
+  ** Prompt: <define the location name and anchor point to uniquely identify the background, the prompt should include: the shot (wide, close) and the cast visible and their gesture and expression >
+  ** Prompt Voice : <the script to be spoken by the voice with directions in <> like <anxious> or <happy> >
+  ** Voice: <match the name with the selected existing or crated voice>
+  ** Prompt Comic: <if requested or present. if a speech bubble it is requested add more details on how to render the text. if it is a caption only review the text in the caption and leave caption(<text>)>
+  ** Video: <if requested, check and improve the video direction >
+  ** Location: <Name of the location, make sure that the AV is included in the prompt of the location>
 
 # Locations 
   * Name: <Location name>

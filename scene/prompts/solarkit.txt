@@ -1,0 +1,75 @@
+#scene
+
+Name: Scene One — Chassis and Scooter Front End
+
+Props
+
+Name: Bare Delta Chassis
+image prompt:
+Technical product render of a delta utility vehicle chassis constructed from silver anodized 4040 aluminum T-slot extrusions forming a trapezoidal passenger area tapering toward a single front steering neck mount. Reinforced aluminum gussets secure all joints with visible M8 fasteners. The chassis includes lower mounting rails for battery installation and rear drivetrain supports. No steering components, wheels, suspension, brakes, electronics, canopy supports or solar panel installed. White seamless background. Orthographic 3/4 perspective.
+
+Name: Steering Chassis
+image prompt:
+Technical product render of the delta chassis with a complete scooter front assembly installed. A telescopic scooter fork with integrated steering neck bearings supports a 14-inch scooter wheel fitted with a utility tire and hydraulic disc brake. Motorcycle-style handlebars with thumb throttle, dual brake controls, reverse switch and voltmeter display are mounted to the fork. Rear drivetrain, battery, electronics enclosure, canopy supports and solar panel are not installed. White seamless background. Orthographic 3/4 perspective.
+
+#shots
+
+Name: Assemble Main Chassis
+image prompt:
+Render the silver anodized 4040 aluminum extrusions aligned in the final delta chassis arrangement. Display aluminum gussets and M8 hardware positioned in exploded assembly view adjacent to each joint. Display a metric Allen key set beside the highlighted hardware as a tool indicator. Also display the completed Bare Delta Chassis as the assembled result.
+voice prompt:
+Begin by assembling the main delta chassis using the supplied aluminum profiles, gussets and fasteners. Align the structure carefully before fully tightening all connections.
+comic prompt:
+caption Assemble the reinforced delta chassis.
+
+Name: Install Steering NeckO Mount
+image prompt:
+Render Bare Delta Chassis. Display the scooter steering neck mount aligned above its front mounting points in exploded assembly position. Display the metric Allen key set and open-end wrench set adjacent to the mounting hardware as tool indicators. Show the steering neck mount fully secured to the chassis.
+voice prompt:
+Install the scooter steering neck mount at the front of the chassis. This component provides the foundation for the entire steering system.
+comic prompt: caption Install the steering neck support.
+
+Name: Install Scooter Fork
+image prompt:
+Render the chassis with the steering neck mount installed. Display the complete telescopic scooter fork aligned beneath the steering neck in exploded assembly position. Display the open-end wrench set adjacent to the steering fasteners as a tool indicator. Show the scooter fork fully installed.
+voice prompt:
+Insert the scooter fork into the steering neck and secure the steering bearings according to specification.
+comic prompt:
+
+caption Install the scooter front fork.
+
+Name: Install Front Wheel
+image prompt:
+Render the chassis with the scooter fork installed. Display the 14-inch scooter wheel aligned between the fork dropouts in exploded assembly position. Display the axle hardware and open-end wrench set adjacent to the installation points as tool indicators. Show the front wheel fully installed.
+voice prompt:
+Mount the front scooter wheel and secure the axle hardware. Verify that the wheel rotates freely.
+comic prompt:
+
+caption Install the front wheel assembly.
+
+Name: Install Hydraulic Front Brake
+image prompt:
+Render the chassis with scooter fork and front wheel installed. Display the hydraulic brake caliper aligned with the front rotor in exploded assembly position. Display the metric Allen key set adjacent to the caliper mounting hardware as a tool indicator. Show the hydraulic brake fully installed.
+voice prompt:
+Install the hydraulic front brake and ensure proper alignment between the caliper and brake rotor.
+comic prompt:
+
+caption Install the hydraulic front brake.
+
+Name: Install Handlebar Controls
+image prompt:
+Render the chassis with front steering and braking assemblies completed. Display the motorcycle-style handlebar assembly equipped with thumb throttle, dual brake controls, reverse switch and voltmeter aligned with the upper fork clamp in exploded assembly position. Display the metric Allen key set adjacent to the clamp hardware as a tool indicator. Also display the completed Steering Chassis as the assembled result.
+voice prompt:
+Mount the handlebar controls and position them for comfortable operation. Final adjustments can be performed during commissioning.
+comic prompt:
+
+caption Install the handlebar control system.
+
+Name: Steering Chassis Reveal
+image prompt:
+Render Steering Chassis exactly as defined. Present the completed front rolling chassis as a clean technical product render on a white seamless background with all installed assemblies clearly visible.
+voice prompt:
+The steering chassis is now complete. The next stage transforms this structure into a powered utility vehicle.
+comic prompt:
+
+caption Scene complete. Steering chassis ready.

@@ -2,6 +2,13 @@ from pydantic import BaseModel
 from .models import Scene, Action, Character, Prop, Background, Voice
 from typing import List, Optional
 
+
+class Parameters(BaseModel):
+    buffer_in: Optional[float] = None
+    buffer_out: Optional[float] = None
+    duration: Optional[int] = None
+    iterations: Optional[int] = None
+
 class VoiceSchema(BaseModel):
     name: str
     prompt: str
@@ -30,6 +37,8 @@ class ActionSchema(BaseModel):
     props: List[str]
     background: str
     voice: str
+    parameters: Optional[Parameters] = None
+    shot_type: Optional[str] = None
 
 
 class SceneSchema(BaseModel):
@@ -115,8 +124,10 @@ class SceneSchema(BaseModel):
                         'prompt_comic': shot_data.prompt_comic,
                         'prompt_video': shot_data.prompt_video,
                         'prompt_voice': shot_data.prompt_voice,
+                        'parameters': shot_data.parameters.model_dump() if shot_data.parameters else None,
                         'voice': voice_obj,
                         'background': bg_obj,
+                        'shot_type': shot_data.shot_type
                     }
                 )
                 if shot_data.cast:

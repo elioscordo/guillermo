@@ -55,7 +55,7 @@ class AgentModelAdmin(ModelAdmin):
 
 @admin.register(Prompt)
 class PromptAdmin(ModelAdmin):
-    list_display = ('id', 'name', 'prompt', 'category')
+    list_display = ('id', 'name', 'prompt', 'is_global', 'category')
     list_filter = ('category', 'content_types')
     list_editable = ('name', 'prompt', 'category')
     list_display_links = ('id',)

@@ -2,6 +2,7 @@
 <el-dropdown class="inline-block">
     <button class="cursor-pointer inline-flex items-center gap-1.5 rounded-md bg-base-100 dark:bg-base-800 border border-base-200 dark:border-base-700 px-2.5 py-1.5 text-xs font-semibold text-font-secondary-light dark:text-font-secondary-dark shadow-sm hover:bg-base-200 dark:hover:bg-base-700 transition-colors">
         <span class="material-symbols-outlined text-[18px]">more_vert</span>
+        
         {% if instance.model_name == 'voiceaction' %}
             {% trans "Voice" %}
         {% elif instance.model_name == 'videoaction' %}
@@ -21,7 +22,13 @@
                     <span class="material-symbols-outlined text-[16px]">arrow_upward</span>
                 </span>
             </a>
-
+            <a> <b>Type:</b> {{instance.shot_type}}  </a>
+            <a href="#" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
+                <span>{{instance.get_type}}</span>
+            </a>
+            <a href="#" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
+                <span>{{instance.get_parameters}}</span>
+            </a>
             <a href="{% url 'admin:scene_action_changelist' %}?id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                 <span>{% trans "Image Shot" %}</span>
                 <span class="flex items-center justify-center font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded">

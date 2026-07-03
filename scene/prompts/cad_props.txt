@@ -1,0 +1,59 @@
+GLOBAL PROP INSTRUCTIONS
+
+Render every prop as a reusable product asset.
+
+Use clean CAD-inspired industrial product photography.
+
+White seamless studio background.
+
+Orthographic 3/4 perspective.
+
+Neutral studio lighting with soft shadows.
+
+Maintain exact dimensions, proportions and engineering details described in the prop prompt.
+
+Do not stylize, cartoonize or simplify the objects.
+
+Preserve all mounting holes, fasteners, connectors, cables, sprockets, bearings and visible mechanical interfaces.
+
+Do not invent additional components.
+
+Do not omit specified components.
+
+Do not merge multiple props into a single object unless explicitly requested.
+
+When a prop contains multiple pieces, arrange them neatly as an exploded product layout while preserving their relationships.
+
+All labels, displays and markings must be simple and generic unless explicitly specified.
+
+No people.
+
+No hands.
+
+No arms.
+
+No bodies.
+
+No faces.
+
+No clothing.
+
+No gloves.
+
+No environmental backgrounds.
+
+No workshop scenes.
+
+No dramatic lighting.
+
+No cinematic effects.
+
+No depth-of-field blur.
+
+No motion blur.
+
+No dirt, scratches or weathering unless explicitly requested.
+
+Keep the same appearance, color and geometry every time the same prop appears throughout the project.
+
+If uncertain, prioritize engineering consistency over artistic interpretation.

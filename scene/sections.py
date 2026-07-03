@@ -209,7 +209,28 @@ class SceneBaseCardsSection(TemplateSection):
             "instance": instance,
             "section_key": self.key,
             "collapsible": self.collapsible,
+            "is_loaded": True,
         }
+
+
+class MarkDownSection(TemplateSection):
+    template_name = "sections/markdown_section.html"
+    field_name = "prompt"
+    title = "Script"
+    key = "script"
+
+    def get_context_data(self, request, instance) -> dict:
+        content = getattr(instance, self.field_name, "") or ""
+        html_content = mark_safe(markdown.markdown(content))
+
+        return {
+            "title": self.title,
+            "instance": instance,
+            "section_key": self.key,
+            "html_content": html_content,
+            "is_loaded": True,
+        }
+
 
 class SceneCharactersSection(SceneBaseCardsSection):
     key = 'characters'

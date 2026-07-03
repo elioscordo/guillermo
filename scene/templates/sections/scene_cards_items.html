@@ -12,7 +12,7 @@
                 <p class="text-sm font-bold text-font-important-light dark:text-font-important-dark truncate" title="{{ item.name }}">
                     {{ item.name }}
                 </p>
-                <a href="{% url 'admin:scene_'|add:item.model_name|add:'_change' item.id %}" class="text-primary-600 hover:text-primary-500 dark:text-primary-400 text-[10px] font-bold uppercase tracking-wider">
+                <a href="{% url 'admin:scene_'|add:item.model_name|add:'_changelist' %}?id__exact={{ item.id }}" class="text-primary-600 hover:text-primary-500 dark:text-primary-400 text-[10px] font-bold uppercase tracking-wider">
                     {% trans "Edit" %}
                 </a>
             </div>

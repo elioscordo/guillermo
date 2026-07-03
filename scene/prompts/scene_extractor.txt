@@ -48,6 +48,13 @@ Your output must strictly match this structural schema layout:
         "props": ["String Name", "or 'none'"],
         "location": "String Name",
         "voice": "String Name"
+        "shot_type": "voice | video | video_loop | silent | comic" 
+        "parameters": {
+            "buffer_in": <number>,
+            "buffer_out": <number>,
+            "duration": <number>,
+            "iterations": <number>
+        }
       }
     ],
     "elements": {

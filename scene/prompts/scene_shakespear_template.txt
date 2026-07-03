@@ -1,0 +1,7 @@
+---
+DYNAMIC RUN CONFIGURATION (USER INPUT):
+- Source Text to Process: [Insert Original Act/Scene Text Here]
+- Target Shot Count: [Insert Integer, e.g., 40]
+- Target Aesthetic: [Insert Style, e.g., Standard Premium Graphic Novel. Avoid any specific "Guy Ritchie" stylistic references, quick cuts, or hyper-stylized modern crime-comedy framing.]
+- Lighting & Environment Design: [Insert Environment, e.g., A stunning tropical island featuring vivid, high-fidelity visuals, turquoise waters, and dramatic, gorgeous volumetric lighting (golden hour, sun flares, glowing mists).]
+- Language Level: [Insert Constraint, e.g., Simplify spoken text for non-native English speakers. Replace archaic wording with clear, modern equivalents while preserving the high emotional and dramatic payload.]

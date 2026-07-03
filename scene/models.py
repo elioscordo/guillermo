@@ -219,10 +219,14 @@ class Scene(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, Mo
     order = models.PositiveIntegerField(_("order"), default=0, db_index=True)
     story = models.ForeignKey('Story', verbose_name=_("story"), related_name='scenes', null=True, blank=True, on_delete=models.CASCADE)
     author = models.ForeignKey('Author', verbose_name=_("author"), related_name='scenes', on_delete=models.CASCADE, null=True, blank=True)
-    
+    instructions = models.ManyToManyField('agent.Prompt', verbose_name=_("instructions"), null=True, blank=True)
+
     def __str__(self):
         return "{}".format(self.name if self.name else f"Scene{self.id} of {self.story}")
     
+    def get_instructions(self, preset):
+        return self.instructions.filter(category=preset)
+
     def get_contents(self, generate_self=True, preset=None):
         parts = []
         if not generate_self:
@@ -424,7 +428,7 @@ class Prop(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, Mod
     def get_contents(self, generate_self=True, preset=None):
         parts = super().get_contents(generate_self=generate_self, preset=preset)
         if self.story and self.story.style and generate_self:
-            parts.extend(self.story.style.get_contents())
+            parts.extend(self.story.style.get_contents(generate_self=False))
         return parts
 
 class Voice(AfterSaveActionMixin, models.Model, TaskHolder, GetContentsMixin, ModelDisplayMixin):
@@ -586,10 +590,28 @@ class StoryProfile(models.Model):
         return story
 
 class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
+    
     IS_INTRO_CHOICES = [
         ('scene', _('Scene Intro')),
         ('story', _('Story Intro'))
     ]
+    SHOT_TYPE_SILENT = 'silent'
+    SHOT_TYPE_VOICE = 'voice'
+    SHOT_TYPE_VIDEO = 'video'
+    SHOT_TYPE_COMIC = 'comic'
+    SHOT_TYPE_VIDEO_LOOP = 'video_loop'
+
+    RENDER_TYPE_GRAPHIC_NOVEL = 'comic'
+    RENDER_TYPE_ANIMATIC = 'animatic'
+
+    SHOT_TYPE_CHOICES = [
+        (SHOT_TYPE_SILENT, _('Silent')),
+        (SHOT_TYPE_VOICE, _('Voice')),
+        (SHOT_TYPE_VIDEO, _('Video')),
+        (SHOT_TYPE_COMIC, _('Comic')),
+        (SHOT_TYPE_VIDEO_LOOP, _('Video Loop')),
+    ]
+
     name = models.CharField(_("name"), max_length=200, default="Action")
     scene = models.ForeignKey(Scene, verbose_name=_("scene"), related_name='actions', on_delete=models.CASCADE)
     is_intro = models.SlugField(_("is intro"), choices=IS_INTRO_CHOICES, null=True, blank=True)
@@ -618,13 +640,15 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
     audio_voice = FilerFileField(verbose_name=_("audio voice"), null=True, blank=True, on_delete=models.SET_NULL, related_name='actions_audio')
     prompt_voice = models.TextField(_("prompt voice"), null=True, blank=True)
     text = models.TextField(_("text"), null=True, blank=True)
-    
+    parameters = models.JSONField(_("configuration"), null=True, blank=True)
+    shot_type = models.CharField(_("shot type"), max_length=20, choices=SHOT_TYPE_CHOICES, null=True, blank=True)
+
     def __str__(self):
         return self.get_name()
     
     def get_name(self):
         return self.name if self.name else f"#{self.id} of{self.scene.name}"
-
+        
     def items(self):
         """Renders the explore dropdown for the action."""
         return render_to_string("scene/action_items_dropdown.html", {"instance": self, "scene": self.scene})

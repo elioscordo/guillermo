@@ -27,7 +27,8 @@ def process_task(task_id):
         try:
             task.set_status(Task.TASK_STATUS_STARTED)
             delegate.process()
-            task.set_status(Task.TASK_STATUS_SUCCESS)
+            if task.status == Task.TASK_STATUS_STARTED:
+                task.set_status(Task.TASK_STATUS_SUCCESS)
         except SoftTimeLimitExceeded as e:
             task.log(
                 f"Task timed out after {settings.CELERY_TASK_SOFT_TIME_LIMIT} seconds.\n"

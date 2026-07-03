@@ -26,6 +26,7 @@ class Task(models.Model):
         TASK_STATUS_HOLDING,
         TASK_STATUS_ERROR
     ]
+    
     TASK_STATUS_CHOICES = (
         (TASK_STATUS_PENDING, "Pending"),
         (TASK_STATUS_STARTED, "Started"),
@@ -158,6 +159,7 @@ class Task(models.Model):
             owner=None,
             obj=None,
             thr=None,
+            payload=None,
             process=True):
         if settings.USE_TASK_QUEUE:
             return  Task.createTask(
@@ -167,6 +169,7 @@ class Task(models.Model):
                 owner=owner,
                 obj=obj,
                 thr=thr,
+                payload=payload,
                 process=process
             )
         return None
@@ -179,6 +182,7 @@ class Task(models.Model):
             owner=None,
             obj=None,
             thr=None,
+            payload=None,
             process=True
     ):
         task = Task.objects.create(
@@ -187,6 +191,7 @@ class Task(models.Model):
            obj=obj,
            thr=thr,
            owner=owner,
+           payload=payload
         )
         if next:
             if hasattr(next, '__iter__') and not isinstance(next, (str, bytes)):

@@ -150,19 +150,25 @@ class Prompt(models.Model):
         (GetContentsMixin.PRESET_CHARACTER, _("Character")),
         (GetContentsMixin.PRESET_REFINE_PROMPT, _("Refine Prompt")),
         (GetContentsMixin.PRESET_SCENE, _("Sync Scene")),
-        
     )
+    
     name= models.CharField(_("name"), max_length=100, default="name")
     prompt = models.TextField(null=True, blank=True)
     category = models.CharField(max_length=100, default="general", choices=CHOICES)
     content_types = models.ManyToManyField(ContentType, blank=True)
+    is_global = models.BooleanField(_("is global"), default=False)
+    order = models.IntegerField(_("order"), default=0)
+
 
     @classmethod
     def instructions(cls, preset, obj):
-        from_preset =  [item.prompt for item in cls.objects.filter(category=preset) ]
+        from_preset =  [item.prompt for item in cls.objects.filter(category=preset, is_global=True) ]
         content_type = ContentType.objects.get_for_model(obj.__class__)
-        from_content = [item.prompt for item in cls.objects.filter(content_types=content_type)]
+        from_content = [item.prompt for item in cls.objects.filter(content_types=content_type, is_global=True)]
         out = from_preset + from_content
+        if hasattr(obj, 'get_instructions') and obj.get_instructions:
+            obj_instrs = [item.prompt for item in obj.get_instructions(preset)]
+            out.extend(obj_instrs)
         return out
 
     @classmethod
@@ -212,14 +218,19 @@ class Agent(models.Model):
     def get_genai_client(self, user):
         if user and hasattr(user, 'agent_profile') and user.agent_profile.google_api_key:
             from google.genai import types
-            api_key = user.agent_profile.google_api_key.api_key
-            genai_client = genai.Client(
-                api_key=api_key,
-                http_options=types.HttpOptions(timeout=settings.GENAI_REQUEST_TIMEOUT_MS)
-            )
-            return genai_client
+            google_api_key = user.agent_profile.google_api_key
+            
+            client_kwargs = {
+                'api_key': google_api_key.api_key,
+                'http_options': types.HttpOptions(timeout=settings.GENAI_REQUEST_TIMEOUT_MS)
+            }
+
+            if google_api_key.vertex:
+                client_kwargs['vertexai'] = True
+
+            return genai.Client(**client_kwargs)
         else:
-            raise Exception("User does not have an API key configured. Please set up your API key in your profile settings.")
+            raise ValueError("User does not have an API key configured. Please set up your API key in your profile settings.")
 
     def save_usage(self, user, response, obj=None, preset=None):
         usage = response.usage_metadata
@@ -378,6 +389,7 @@ class Agent(models.Model):
                 response_mime_type="application/json" if schema_class else None,
                 response_schema=schema_class,
                 temperature=0.1,
+                
             )
         elif self.output_type == self.OUTPUT_TYPE_IMAGE:
             instructions = self.get_instructions(user=user, preset=preset, obj=obj)
@@ -429,7 +441,8 @@ class GoogleApiKey(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_("user"), related_name='api_keys', on_delete=models.CASCADE)
     name = models.CharField(_("name"), unique=True, max_length=255, null=True, blank=True)
     api_key = models.TextField(_("api key"), null=True, blank=True)
-         
+    vertex = models.BooleanField(_("vertex"), default=False)
+    
     def __str__(self):
         return "{}-{}".format(self.name, self.user.username)
 

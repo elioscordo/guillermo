@@ -409,6 +409,7 @@ GENAI_REQUEST_TIMEOUT_MS = int(os.getenv("GENAI_REQUEST_TIMEOUT_MS", "300000"))
 TASK_TYPE_GENERATE_IMAGE = 'generate_image'
 TASK_TYPE_REFINE_IMAGE = 'refine_image'
 TASK_TYPE_GENERATE_VIDEO = 'generate_video'
+TASK_TYPE_GENERATE_VIDEO_MULTIMODAL = 'generate_video_multimodal'
 TASK_TYPE_GENERATE_VIDEO_FIRST_LAST = 'generate_video_first_last'
 TASK_TYPE_GENERATE_COMIC = 'generate_comic'
 TASK_TYPE_VIDEO_RENDER = 'video_render'
@@ -427,20 +428,27 @@ TASK_TYPE_SYNC_IMPORT = 'sync_import'
 
 
 TASK_DELEGATES = {
-    TASK_TYPE_GENERATE_IMAGE: 'scene.tasks.TaskGenerateImage',
-    TASK_TYPE_REFINE_IMAGE: 'scene.tasks.TaskRefineImage',
-    TASK_TYPE_GENERATE_VIDEO: 'scene.tasks.TaskGenerateVideo',
-    TASK_TYPE_GENERATE_VIDEO_FIRST_LAST: 'scene.tasks.TaskGenerateVideoFirstLast',
-    TASK_TYPE_GENERATE_COMIC: 'scene.tasks.TaskGenerateComic',
-    TASK_TYPE_VIDEO_RENDER: 'scene.tasks.VideoRender',
-    TASK_TYPE_GENERATE_VOICE: 'scene.tasks.TaskGenerateVoice',
-    TASK_TYPE_GENERATE_TEXT: 'scene.tasks.TaskGenerateText',
-    TASK_TYPE_GENERATE_SCENE: 'scene.tasks.TaskGenerateScene',
-    TASK_TYPE_GENERATE_SCENE_ELEMENTS: 'scene.tasks.TaskGenerateSceneElements',
-    TASK_TYPE_GENERATE_SCENE_ACTIONS: 'scene.tasks.TaskGenerateSceneActions',
+    # generate
+    TASK_TYPE_GENERATE_IMAGE: 'scene.tasks.tasks.TaskGenerateImage',
+    TASK_TYPE_REFINE_IMAGE: 'scene.tasks.tasks.TaskRefineImage',
+    TASK_TYPE_GENERATE_VIDEO: 'scene.tasks.tasks.TaskGenerateVideo',
+    TASK_TYPE_GENERATE_VIDEO_MULTIMODAL: 'scene.tasks.tasks.TaskGenerateVideoMultimodal',
+    TASK_TYPE_GENERATE_VIDEO_FIRST_LAST: 'scene.tasks.tasks.TaskGenerateVideoFirstLast',
+    TASK_TYPE_GENERATE_COMIC: 'scene.tasks.tasks.TaskGenerateComic',
+    TASK_TYPE_GENERATE_VOICE: 'scene.tasks.tasks.TaskGenerateVoice',
+    TASK_TYPE_GENERATE_TEXT: 'scene.tasks.tasks.TaskGenerateText',
+    TASK_TYPE_GENERATE_SCENE: 'scene.tasks.tasks.TaskGenerateScene',
+
+    TASK_TYPE_GENERATE_SCENE_ELEMENTS: 'scene.tasks.batch.TaskGenerateSceneElements',
+    TASK_TYPE_GENERATE_SCENE_ACTIONS: 'scene.tasks.batch.TaskGenerateSceneActions',
+
     TASK_TYPE_EXTRACT_SCENE: 'scene.tasks.TaskExtractScene',
-    TASK_TYPE_SYNC_EXPORT: 'scene.tasks.TaskSyncExport',
-    TASK_TYPE_SYNC_IMPORT: 'scene.tasks.TaskSyncImport',
+    # sync
+    TASK_TYPE_SYNC_EXPORT: 'scene.tasks.sync.TaskSyncExport',
+    TASK_TYPE_SYNC_IMPORT: 'scene.tasks.sync.TaskSyncImport',
+    # render
+    TASK_TYPE_VIDEO_RENDER: 'scene.tasks.render.VideoRender',
+    
 }
 IMPORT_EXPORT_TMP_STORAGE_CLASS = 'import_export.tmp_storages.MediaStorage'
 TASK_TYPE_CHOICES = (
@@ -448,6 +456,7 @@ TASK_TYPE_CHOICES = (
     (TASK_TYPE_REFINE_IMAGE, _("Refine Image")),
     (TASK_TYPE_GENERATE_VIDEO, _("Generate Video")),
     (TASK_TYPE_GENERATE_VIDEO_FIRST_LAST, _("Video First Last")),
+    (TASK_TYPE_GENERATE_VIDEO_MULTIMODAL, _("Video Multimodal")),
     (TASK_TYPE_GENERATE_COMIC, _("Generate Comic")),
     (TASK_TYPE_VIDEO_RENDER, _("Render Video")),
     (TASK_TYPE_GENERATE_VOICE, _("Generate Voice")),

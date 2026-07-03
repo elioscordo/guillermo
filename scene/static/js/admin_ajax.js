@@ -390,14 +390,15 @@ const addInputHints = () => {
  * Refreshes a specific collapsible section (Characters, Props, Renders, etc.)
  */
 window.refreshSection = (objectId, sectionKey) => {
-    const container = document.getElementById(`section-content-${sectionKey}-${objectId}`);
+    console.log(`[AdminAjax] Refreshing section: ${sectionKey} for object ID: ${objectId}`);
+    const container = document.getElementById(`section-content-${sectionKey}-${objectId}`); 
     if (!container) {
         console.warn(`[AdminAjax] Container not found for section: ${sectionKey} (ID: ${objectId})`);
         return;
     }
-
+    const oldContent = container.innerHTML 
     container.classList.add('opacity-40', 'pointer-events-none');
-    
+    container.innerHTML = `<div class="flex justify-center items-center h-full"><span class="material-symbols-outlined animate-spin text-4xl">autorenew</span></div>`;
     // Construct URL based on current admin path (works for /admin/scene/story/ or /admin/scene/scene/)
     const baseUrl = window.location.pathname.split('/').slice(0, 4).join('/');
     const url = `${baseUrl}/refresh-section/${objectId}/${sectionKey}/`;
@@ -409,9 +410,13 @@ window.refreshSection = (objectId, sectionKey) => {
                 container.innerHTML = data.html;
             }
         })
-        .catch(error => console.error(`[AdminAjax] Error refreshing section ${sectionKey}:`, error))
+        .catch(error => {
+            console.error(`[AdminAjax] Error refreshing section ${sectionKey}:`, error)
+            container.innerHTML = oldContent; // Restore old content on error
+        })
         .finally(() => {
             container.classList.remove('opacity-40', 'pointer-events-none');
+            
         });
 };
 
