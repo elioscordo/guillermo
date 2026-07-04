@@ -5,6 +5,7 @@ from agent.models import GetContentsMixin
 from django.utils.text import slugify
 from django.conf import settings
 from django.core.files.base import ContentFile
+import random
 
 class VideoRender:
     def __init__(self, task):
