@@ -1,7 +1,7 @@
 from moviepy import ImageClip, VideoFileClip, AudioFileClip, concatenate_videoclips
 from moviepy.video.fx import Resize
 
-class VideoRender2:
+class VideoRender:
     def __init__(self, task):
         self.task = task
     def process(self):
@@ -79,7 +79,7 @@ class VideoRender2:
             item.save()
 
 
-class VideoRender:
+class VideoRender2:
     def __init__(self, task):
         self.task = task
 

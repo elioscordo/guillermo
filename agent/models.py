@@ -227,6 +227,8 @@ class Agent(models.Model):
 
             if google_api_key.vertex:
                 client_kwargs['vertexai'] = True
+                if google_api_key.project:
+                    client_kwargs['project_id'] = google_api_key.project
 
             return genai.Client(**client_kwargs)
         else:
@@ -441,7 +443,8 @@ class GoogleApiKey(models.Model):
     name = models.CharField(_("name"), unique=True, max_length=255, null=True, blank=True)
     api_key = models.TextField(_("api key"), null=True, blank=True)
     vertex = models.BooleanField(_("vertex"), default=False)
-    
+    project = models.CharField(_("project"), max_length=255, null=True, blank=True)
+
     def __str__(self):
         return "{}-{}".format(self.name, self.user.username)
 

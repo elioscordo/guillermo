@@ -598,7 +598,8 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
     SHOT_TYPE_SILENT = 'silent'
     SHOT_TYPE_VOICE = 'voice'
     SHOT_TYPE_VIDEO = 'video'
-    SHOT_TYPE_COMIC = 'comic'
+    SHOT_TYPE_COMIC = '' \
+    ''
     SHOT_TYPE_VIDEO_LOOP = 'video_loop'
 
     RENDER_TYPE_GRAPHIC_NOVEL = 'comic'

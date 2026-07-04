@@ -12,14 +12,14 @@
 # Shots
 * Name: Shot_[N]
   * Shot Type: [voice | video | video_loop]
-  * Prompt: [High-fidelity scene description in which appear the cast the location with camera details and the props]
+  * Prompt: [High-fidelity image prompt. Composition structure: [Camera Angle & Lens Focal Length] + [Location Perspective Context] + [Cast positioning within 3D depth planes, physical orientation to camera, interacting with Props] + [Directional lighting, matching cast highlights, and cast contact shadows mapped to the location environment]]  
   * Prompt Voice: [Parenthetical emotion + spoken text — omit if no speech]
   * Voice: [Cast Name | "Narrator" — omit if no voice]
   * Cast: [Name(s) separated by '|' — omit if no cast]
   * Props: [Name(s) separated by '|' — omit if no props]
-  * Prompt Comic: [caption(...) for Shot_01, landmarks, and final shot — omit otherwise]
+  * Prompt Comic: [Depending of the shot type]
   * Video: [Camera/environment movement — omit if Shot Type is voice]
-  * Location: [Must match a Location Name]
+  * Location: [Must match a Location Name. Share locations]
   * Parameters:
     * Buffer In: [Float — voice only]
     * Buffer Out: [Float — voice only]
@@ -47,6 +47,11 @@ Wide/establishing shots with ambient motion. Requires `Prompt`, `Video`, `Iterat
 Shot can be the in the first shots serves as a title, or if requested to introduce narrative elements  Requires `Prompt`, `Prompt Comic`, `Prompt Voice` `Buffer In`, `Buffer Out`
 **Cost = 2 coin.**
 
+### `comic`
+Static no voice and video image for comic books. Requires `Prompt`  and `Prompt Comic` with the text and the speech bubble directioning. If all comic shots are required omit the voice sections
+**Cost = 1 coin.**
+
+
 # Locations
 * Name: [Unique_Location_ID]
   * Prompt:
@@ -64,6 +69,8 @@ Shot can be the in the first shots serves as a title, or if requested to introdu
     #Features:
     #Clothing:
     #Core Look:
+    #Context
+    
 
 # Props
 * Name: [Prop_Name]
