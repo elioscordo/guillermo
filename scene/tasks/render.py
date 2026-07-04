@@ -1,5 +1,10 @@
 from moviepy import ImageClip, VideoFileClip, AudioFileClip, concatenate_videoclips
 from moviepy.video.fx import Resize
+from task.models import Task
+from agent.models import GetContentsMixin
+from django.utils.text import slugify
+from django.conf import settings
+from django.core.files.base import ContentFile
 
 class VideoRender:
     def __init__(self, task):
