@@ -1,19 +1,22 @@
-from moviepy import ImageClip, VideoFileClip, AudioFileClip, concatenate_videoclips
-from moviepy.video.fx import Resize
-from task.models import Task
-from agent.models import GetContentsMixin
-from django.utils.text import slugify
+import os
+import random
+
 from django.conf import settings
 from django.core.files.base import ContentFile
-import random
+from django.utils.text import slugify
+from filer.models.filemodels import File as FilerFile
+from moviepy.editor import (AudioFileClip, ImageClip, VideoFileClip,
+                            concatenate_videoclips)
+from moviepy.video.fx.resize import resize as Resize
+
+from agent.models import GetContentsMixin
+from task.models import Task
 
 class VideoRender:
     def __init__(self, task):
         self.task = task
     def process(self):
         item = self.task.subject
-
-        from filer.models.imagemodels import Image as FilerImage
         clips = []
         first = None
 
@@ -76,7 +79,7 @@ class VideoRender:
 
             final_clip.write_videofile(filepath_abs, fps=24, codec='libx264',
                      audio_codec='aac', temp_audiofile='temp-audio.m4a', remove_temp=True)
-            out = FilerImage.objects.create(
+            out = FilerFile.objects.create(
                 original_filename=name,
                 file=filepath_relative,
                 name=name
@@ -91,9 +94,7 @@ class VideoRender2:
 
     def process(self):
         item = self.task.subject
-
-        from filer.models.imagemodels import Image as FilerImage
-        from scene.models import Action
+        from scene.models import Action # Keep local to avoid circular dependency
         clips = []
         first = None
 
@@ -224,7 +225,7 @@ class VideoRender2:
                 filepath_abs, fps=24, codec='libx264',
                 audio_codec='aac', temp_audiofile='temp-audio.m4a', remove_temp=True
             )
-            out = FilerImage.objects.create(
+            out = FilerFile.objects.create(
                 original_filename=name,
                 file=filepath_relative,
                 name=name
