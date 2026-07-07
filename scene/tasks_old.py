@@ -104,7 +104,7 @@ class TaskGenerateScene:
         item.generate_scene(user=self.task.owner)
         item.save()
 
-class TaskGenerateSceneElements:
+class TaskGenerateElements:
     """
     Iterates through all actions of a scene and triggers image generation 
     for any missing background (location), character (cast/actor), or prop,
@@ -149,7 +149,7 @@ class TaskGenerateSceneElements:
                     owner=self.task.owner
                 )
 
-class TaskGenerateSceneActions:
+class TaskGenerateShots:
     """
     Generates images for all actions in a scene using the Google GenAI Batch API.
     Packs all missing background, character, prop, and action panel image generation requests

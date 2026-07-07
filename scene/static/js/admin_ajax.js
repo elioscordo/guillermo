@@ -142,10 +142,6 @@ document.addEventListener('keydown', function(e) {
             if (!idInput) return;
 
             const objectId = idInput.value;
-            if (row) {
-                updateRowState(row, "0");
-            }
-
             const targetField = input.name.split('-').slice(-1)[0];
             const formData = new URLSearchParams();
 
@@ -172,6 +168,11 @@ document.addEventListener('keydown', function(e) {
             .then(data => {
                 console.log(data)
                 if (data.status === 1) {
+                    // A task was created, so now we lock the row.
+                    if (row) {
+                        updateRowState(row, "1"); // Use status 1 (Pending)
+                    }
+
 
                     // Immediate UI update
                     applyRefreshData(row, data.refresh, objectId);
@@ -187,6 +188,11 @@ document.addEventListener('keydown', function(e) {
                         dropdowns.setAttribute('data-status', '1');
                         monitoredObjectIds.add(objectId);
                         startPolling();
+                    }
+                } else {
+                    // No task was created, so ensure the row is not locked.
+                    if (row) {
+                        updateRowState(row, null); // Pass null to unlock
                     }
                     
                 }

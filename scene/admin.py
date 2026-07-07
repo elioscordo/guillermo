@@ -243,7 +243,7 @@ class SceneAdmin(AjaxSectionAdminMixin, StoryFilterMixin, AdminActionsMixin, Adm
                  self.admin_site.admin_view(self.refresh_section_view), 
                  name='scene_refresh_section'),
         ] + super().get_urls()
-
+    
     def refresh_section_view(self, request, object_id, section_key):
         instance = get_object_or_404(Scene, pk=object_id)
         if section_key == 'renders':
@@ -281,10 +281,15 @@ class SceneAdmin(AjaxSectionAdminMixin, StoryFilterMixin, AdminActionsMixin, Adm
         super().save_model(request, obj, form, change)
 
     def trigger_ajax_task(self, request, obj, target_field):
-        if target_field == 'prompt_refine':
+        if target_field == 'prompt':
+            # When the main prompt is saved via AJAX, do nothing.
+            pass
+        elif target_field == 'prompt_refine':
             agent = obj.story.get_mentor()
             if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_TEXT, thr=agent, owner=request.user) is None:
                 obj.generate_text(request.user, agent)
+        else:
+            super().trigger_ajax_task(request, obj, target_field)
 
 
 @admin.register(StoryGroup)

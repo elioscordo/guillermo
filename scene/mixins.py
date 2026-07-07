@@ -404,14 +404,14 @@ class AdminActionsMixin:
                 obj.generate_voice(obj.PRESET_VOICE, user=request.user)
             self.message_user(request, "voice generated for item ID {}.".format(obj.id))
 
-    @admin.action(description="Generate Elements Images (step 2)")
+    @admin.action(description="Generate Elements (step 2)")
     def generate_scene_elements(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_SCENE_ELEMENTS, owner=request.user) is None:
                 pass
             self.message_user(request, "Generation task for elements started for scene: {}.".format(obj.name))
 
-    @admin.action(description="Generate Actions Images (step 3)")
+    @admin.action(description="Generate Shots (step 3)")
     def generate_scene_actions(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_SCENE_ACTIONS, owner=request.user) is None:

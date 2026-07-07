@@ -439,8 +439,8 @@ TASK_DELEGATES = {
     TASK_TYPE_GENERATE_TEXT: 'scene.tasks.tasks.TaskGenerateText',
     TASK_TYPE_GENERATE_SCENE: 'scene.tasks.tasks.TaskGenerateScene',
 
-    TASK_TYPE_GENERATE_SCENE_ELEMENTS: 'scene.tasks.batch.TaskGenerateSceneElements',
-    TASK_TYPE_GENERATE_SCENE_ACTIONS: 'scene.tasks.batch.TaskGenerateSceneActions',
+    TASK_TYPE_GENERATE_SCENE_ELEMENTS: 'scene.tasks.tasks.TaskGenerateElements',
+    TASK_TYPE_GENERATE_SCENE_ACTIONS: 'scene.tasks.tasks.TaskGenerateShots',
 
     TASK_TYPE_EXTRACT_SCENE: 'scene.tasks.tasks.TaskExtractScene',
     # sync
@@ -462,8 +462,8 @@ TASK_TYPE_CHOICES = (
     (TASK_TYPE_GENERATE_VOICE, _("Generate Voice")),
     (TASK_TYPE_GENERATE_TEXT, _("Generate Text")),
     (TASK_TYPE_GENERATE_SCENE, _("Generate Scene")),
-    (TASK_TYPE_GENERATE_SCENE_ELEMENTS, _("Generate Scene Elements")),
-    (TASK_TYPE_GENERATE_SCENE_ACTIONS, _("Generate Scene Actions")),
+    (TASK_TYPE_GENERATE_SCENE_ELEMENTS, _("Generate Elements")),
+    (TASK_TYPE_GENERATE_SCENE_ACTIONS, _("Generate Shots")),
     (TASK_TYPE_EXTRACT_SCENE, _("Extract Scene")),
     (TASK_TYPE_SYNC_EXPORT, _("Sync Export")),
     (TASK_TYPE_SYNC_IMPORT, _("Sync Import")),
@@ -472,7 +472,7 @@ TASK_TYPE_CHOICES = (
 )
 
 TASK_RETRY_EXCEPTIONS = [
-    "ClientError: 429 RESOURCE_EXHAUSTED",
+    'RESOURCE_EXHAUSTED',
 ]
 
 # --- Configuración de archivos estáticos ---

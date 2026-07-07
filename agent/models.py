@@ -314,6 +314,10 @@ class Agent(models.Model):
                 ),
             )
         )
+        if not response.candidates:
+            finish_reason = getattr(response, 'prompt_feedback', 'No candidates returned, reason unknown.')
+            raise ValueError(f"Voice generation failed. The API returned no candidates. Reason: {finish_reason}")
+
         data = response.candidates[0].content.parts[0].inline_data.data
         self.save_usage(user, response, obj=prompt_obj, preset=preset)
         name = f"voice_{slugify(prompt_obj.__class__.__name__)}_{slugify(prompt_obj.name)}_{slugify(self.name)}_{random.randint(1000,9999)}.wav"

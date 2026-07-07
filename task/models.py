@@ -107,7 +107,7 @@ class Task(models.Model):
     
     retry_attempts = models.PositiveIntegerField(default=0)
     retry_max_attempts = models.PositiveIntegerField(default=3)
-    retry_countdown = models.PositiveIntegerField(default=4) # in seconds
+    retry_countdown = models.PositiveIntegerField(default=2) # in seconds
 
     class Meta:
         ordering = ['-modified', 'status']
@@ -138,9 +138,9 @@ class Task(models.Model):
         not_success = ~Q(status=self.TASK_STATUS_SUCCESS)
         return self.previous_tasks.filter(not_success).exists()
 
-    def process(self):
+    def process(self, countdown=0):
         from .tasks import process_task
-        process_task.apply_async(kwargs={'task_id': self.id})
+        process_task.apply_async(kwargs={'task_id': self.id}, countdown=countdown)
 
     def get_queue(self):
         queue = self.QUEUE_NORMAL

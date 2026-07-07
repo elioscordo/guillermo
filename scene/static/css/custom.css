@@ -242,13 +242,22 @@ video {
     display: list-item !important;
 }
 
-.markdown li p {
+.markdown li > p {
     display: inline !important; /* Prevents awkward breaks in bulleted items */
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 .dark .markdown {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Ensure all text within markdown in dark mode is light */
+    color: #e5e7eb !important;
+}
+
+/* Force text color for prose content in dark mode */
+.dark .prose {
+    color: #d1d5db; /* gray-300 */
 }
 
 /* Slideshow (Swiper) Custom Styles */
