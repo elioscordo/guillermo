@@ -598,8 +598,7 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
     SHOT_TYPE_SILENT = 'silent'
     SHOT_TYPE_VOICE = 'voice'
     SHOT_TYPE_VIDEO = 'video'
-    SHOT_TYPE_COMIC = '' \
-    ''
+    SHOT_TYPE_COMIC = 'comic'
     SHOT_TYPE_VIDEO_LOOP = 'video_loop'
 
     RENDER_TYPE_GRAPHIC_NOVEL = 'comic'
@@ -699,7 +698,7 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
 
     def get_contents(self, generate_self=True, preset=None):
         from google.genai import types
-        if preset == self.PRESET_VIDEO:
+        if preset == self.PRESET_VIDEO or preset == self.PRESET_OMNI_VIDEO:
             contents = {}
             contents['prompt'] = self.prompt_video
             contents['image'] = types.Image.from_file(location=self.image.path)

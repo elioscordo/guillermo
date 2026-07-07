@@ -4,7 +4,7 @@ from django.conf import settings
 from .models import Task
 import importlib
 import traceback
-
+import random
 
 @shared_task
 def process_task(task_id):
@@ -38,10 +38,20 @@ def process_task(task_id):
             task.set_status(Task.TASK_STATUS_ERROR)
         except Exception as e:
             task.log(
-                f"Task failed with {e.__class__.__name__}: {e}\n\n"
+                f"Task failed with {e.__class__.__name__}: {e}\n"
                 f"{traceback.format_exc()}"
             )
             task.set_status(Task.TASK_STATUS_ERROR)
+            if task.retry_attempts < task.retry_max_attempts and e.__class__.__name__ in settings.TASK_RETRY_EXCEPTIONS:
+                task.retry_attempts += 1
+                countdown = task.retry_countdown
+                task.retry_countdown = task.retry_countdown * 2 - random.randint(0, task.retry_countdown)
+                task.log(f"Attempt {task.retry_attempts}/{task.retry_max_attempts}. Retrying in {countdown} seconds.")
+                task.save(update_fields=['retry_attempts', 'retry_countdown'])
+                process_task.apply_async(kwargs={'task_id': task.id}, countdown=countdown)                
+                return # Stop further processing for this run
+            
+
         for next_task in task.next_tasks.all():
             if next_task.is_processable() \
                 and not next_task.has_pending_previous():

@@ -507,9 +507,46 @@ const fetchConfig = () => {
         .catch(err => console.error("[AdminAjax] Could not load config:", err));
 };
 
+const scrollToIdFromHash = () => {
+    const hash = window.location.hash;
+     console.log(`[AdminAjax] Detected hash for scrolling: ${hash}`);
+    if (!hash.startsWith('#id=')) return;
+    console.log(`[AdminAjax] Detected hash for scrolling: ${hash}`);
+    const targetId = hash.substring(4);
+    if (!targetId) return;
+
+    // The selector for the checkbox in each row which holds the object ID
+    const selector = `input.action-select[value="${targetId}"]`;
+    const input = document.querySelector(selector);
+
+    if (input) {
+        // The row is the `<tr>` with class `data-row`
+        const row = input.closest('tr.data-row');
+        if (row) {
+            console.log(`[AdminAjax] Scrolling to row with ID: ${targetId}`);
+            
+            // Scroll the row into the center of the viewport
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Add a temporary highlight effect
+            row.style.transition = 'background-color 0.5s ease-in-out';
+            const highlightColor = document.documentElement.classList.contains('dark') 
+                ? 'rgba(var(--color-primary-500-rgb), 0.2)' 
+                : 'rgba(var(--color-primary-300-rgb), 0.4)';
+            
+            row.style.backgroundColor = highlightColor;
+
+            // Remove the highlight after a couple of seconds
+            setTimeout(() => {
+                row.style.backgroundColor = '';
+            }, 2500);
+        }
+    }
+     console.log(`[AdminAjax] Finished hash for scrolling: ${hash} ${input}`);
+};
+
 // Initialize monitoring for any tasks already in progress on page load
 const initTaskMonitoring = () => {
-    fetchConfig();
     document.querySelectorAll('[id^="task-"]').forEach(el => {
         const row = el.closest('tr');
         if (!row) return; // Only monitor tasks within changelist table rows
@@ -524,6 +561,8 @@ const initTaskMonitoring = () => {
     if (monitoredObjectIds.size > 0) {
         startPolling();
     }
+    fetchConfig();
+    scrollToIdFromHash();
 };
 
 if (document.readyState === 'loading') {

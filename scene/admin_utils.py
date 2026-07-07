@@ -152,7 +152,7 @@ class AjaxTaskModelAdmin(ModelAdmin):
                 obj.generate_comic(user=request.user)
         elif target_field == 'prompt_video':
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VIDEO, owner=request.user) is None:
-                obj.generate_video(obj.PRESET_VIDEO, user=request.user)
+                obj.generate_omni_video(obj.TASK_TYPE_GENERATE_VIDEO, user=request.user)
         elif target_field == 'prompt_voice':
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user) is None:
                 obj.generate_voice(obj.PRESET_VOICE, user=request.user)
@@ -189,8 +189,8 @@ class AdminLinker:
                 else:
                     # This is a single instance (e.g., a ForeignKey)
                     model = linked_object._meta.model
-                    url = reverse(f"admin:{model._meta.app_label}_{model._meta.model_name}_change", args=[linked_object.pk])
-                    return format_html('<a href="{0}" class="text-primary-600 font-medium hover:underline">{1}</a>', url, str(linked_object))
+                    url = reverse(f"admin:{model._meta.app_label}_{model._meta.model_name}_changelist")
+                    return format_html('<a href="{0}?id__exact={1}" class="text-primary-600 font-medium hover:underline">{2}</a>', url, linked_object.pk, str(linked_object))
 
             dynamic_link.short_description = related_field.replace("_", " ").title()
             return dynamic_link

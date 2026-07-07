@@ -386,7 +386,7 @@ class VideoActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMi
     list_display_links = ('name',)
     list_refresh = ['video_player']
     search_fields = ['name']
-    actions = ['generate_video', 'generate_video_first_last']
+    actions = ['generate_video', 'generate_video_first_last', 'generate_omni_video']
     fieldsets = ACTION_FIELDSETS
 
 

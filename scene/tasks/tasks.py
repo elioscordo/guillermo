@@ -36,6 +36,14 @@ class TaskGenerateVideo:
         item = self.task.subject
         item.generate_video(GetContentsMixin.PRESET_VIDEO, user=self.task.owner)
 
+class TaskGenerateOmniVideo:
+    def __init__(self, task):
+        self.task = task
+    def process(self):
+        item = self.task.subject
+        item.generate_image_omni_video(GetContentsMixin.PRESET_OMNI_VIDEO, user=self.task.owner)
+
+
 class TaskGenerateVoice:
     def __init__(self, task):
         self.task = task

@@ -4,6 +4,7 @@
 2. **Parameter Rigidity:** Every entry under `*** Parameters:` must sit on its own line using exactly three asterisks (`***`). Never flatten to a single line or comma-separated syntax.
 3. **Closed-Loop Validation:** Every identifier in `** Voice:`, `** Cast:`, or `** Props:` MUST have an exact string match in the global `# Locations`, `# Cast`, `# Props`, and `# Voices` dictionaries.
 4. **Omit None and Empty Fields:** Never write a field whose value would be `"None"` or `0` or `0.0`. Omit it entirely. Only write fields that carry real values.
+5. **Locations:** Treat locations as real-world places. Set up spatial granularity to provide visual consistency across shots without being redundant.
 
 ---
 
@@ -12,7 +13,7 @@
 # Shots
 * Name: Shot_[N]
   * Shot Type: [voice | video | video_loop]
-  * Prompt: [High-fidelity image prompt. Composition structure: [Camera Angle & Lens Focal Length] + [Location Perspective Context] + [Cast positioning within 3D depth planes, physical orientation to camera, interacting with Props] + [Directional lighting, matching cast highlights, and cast contact shadows mapped to the location environment]]  
+  * Prompt: [High-fidelity image prompt. Composition structure: [Camera Angle & Lens Focal Length] + [Location Perspective Context (do not add details about the location, only references)] + [Cast positioning within 3D depth planes, physical orientation to camera, interacting with Props] + [Directional lighting, matching cast highlights, and cast contact shadows mapped to the location environment]]  
   * Prompt Voice: [Parenthetical emotion + spoken text — omit if no speech]
   * Voice: [Cast Name | "Narrator" — omit if no voice]
   * Cast: [Name(s) separated by '|' — omit if no cast]
@@ -55,10 +56,11 @@ Static no voice and video image for comic books. Requires `Prompt`  and `Prompt 
 # Locations
 * Name: [Unique_Location_ID]
   * Prompt:
+    [The prompt will create an image used as a reference. Shots will treat the location as a real-world space, moving the camera within it.]
     #Environment:
         [describe the environment and its key features and details]
     #Visible Objects:
-        [describe the visible objects and their details]
+        [describe the visible objects and their details, they will be used as structural references to move the camera across shots]
     #Lighting:
         [describe the lighting and its details]
 
@@ -80,9 +82,7 @@ Static no voice and video image for comic books. Requires `Prompt`  and `Prompt 
 * Name: [Character_Name — must match Cast exactly]
   * Google Voice: [Voice ID]
   * Prompt:
-    #Style:
-    #Pace:
-    #Accent:
+      <Google Voices Audio Profile Here>
 
 # Change Log
 * [Timestamp — math audit: Total Shots / Motion Shots / Video Seconds / Coin Spend]

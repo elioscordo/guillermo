@@ -1,3 +1,5 @@
+import base64
+
 from google import genai
 import random
 import os
@@ -18,17 +20,29 @@ from filer.fields.file import FilerFileField
 from filer.models.imagemodels import Image as FilerImage
 from django.utils.text import slugify
 from easy_thumbnails.files import get_thumbnailer
-
+from google.auth.credentials import AnonymousCredentials
 from project.settings import TASK_TYPE_GENERATE_SCENE, TASK_TYPE_GENERATE_SCENE_ACTIONS, TASK_TYPE_GENERATE_TEXT, TASK_TYPE_GENERATE_VOICE
 from task.models import Task, TaskHolder
 from PIL import Image
 
+from google.auth.credentials import Credentials
 
+# Create a mock credential that satisfies all internal SDK token fetches
+class MockVertexCredentials(Credentials):
+    def __init__(self, project_id):
+        super().__init__()
+        self.project_id = project_id
+        self.token = "dummy-token-to-satisfy-sdk-parser"
+
+    def refresh(self, request):
+        # Prevent the SDK from crashing when it tries to refresh
+        self.token = "dummy-token-to-satisfy-sdk-parser"
 
 class GetContentsMixin:
     PRESET_IMAGE = "image"
     PRESET_REFINE = "refine"
     PRESET_VIDEO = "video_image"
+    PRESET_OMNI_VIDEO = "omni_video"
     PRESET_VIDEO_FIRST_LAST = "video_first_last"
     PRESET_COMIC = "comic"
     PRESET_VOICE = "voice"
@@ -77,6 +91,12 @@ class GetContentsMixin:
         if agent is None:
             raise ValueError(f"No agent configured for output type: {output_type}")
         return agent
+    
+    def get_agent_by_name(self, name):
+        agent = Agent.objects.filter(name=name).first()
+        if agent is None:
+            raise ValueError(f"No agent configured for name: {name}")   
+        return agent
 
     def generate_image(self, user=None):
         agent = self.get_agent(Agent.OUTPUT_TYPE_IMAGE)
@@ -98,6 +118,11 @@ class GetContentsMixin:
         self.save()
         return self.video
 
+    def generate_image_omni_video(self, preset, user=None, target_field="video"):
+        agent = self.get_agent(Agent.OUTPUT_TYPE_IMAGE_OMNI_VIDEO)
+        self.video = agent.generate(self, preset=preset, user=user, target_field="video")
+        pass
+
     def generate_voice(self, preset, user=None, target_field="audio_voice"):
         agent = self.get_agent(Agent.OUTPUT_TYPE_VOICE)
         out = agent.generate(self, preset=preset, user=user, target_field=target_field)
@@ -105,6 +130,7 @@ class GetContentsMixin:
         self.save()
         return getattr(self, target_field)
     
+
     def generate_scene(self, preset=PRESET_SCENE, user=None):
         agent = Agent.objects.filter(schema=settings.SCHEMA_SCENE).first()
         out = agent.generate(self, preset=preset, user=user, target_field="scene")
@@ -179,6 +205,7 @@ class Prompt(models.Model):
 
     def __str__(self):
         return "{}".format(self.name)
+
     
 class Agent(models.Model):
     OUTPUT_TYPE_IMAGE = "image"
@@ -187,11 +214,14 @@ class Agent(models.Model):
     
     OUTPUT_TYPE_STRUCTURED = "structured"
     OUTPUT_TYPE_VIDEO = "video"
+    OUTPUT_TYPE_IMAGE_OMNI_VIDEO = "image_omni_video"
 
     
     name = models.CharField(_("name"), max_length=100, default="name")
     instructions = models.ManyToManyField("Prompt", verbose_name=_("instructions"), related_name='agents', blank=True)
     agent_model = models.ForeignKey(AgentModel, verbose_name=_("agent model"), related_name='agents', on_delete=models.CASCADE)
+    agent_model_enterprise = models.ForeignKey(AgentModel, verbose_name=_("agent model"),blank=True, null=True,  related_name='enterprise_agents', on_delete=models.CASCADE)
+
     output_type = models.CharField(
         _("output type"),
         max_length=100,
@@ -201,6 +231,7 @@ class Agent(models.Model):
             (OUTPUT_TYPE_TEXT, _("Text")),
             (OUTPUT_TYPE_STRUCTURED, _("Structured")),
             (OUTPUT_TYPE_VIDEO, _("Video")),
+            (OUTPUT_TYPE_IMAGE_OMNI_VIDEO, _("Image Omni Video")),
             (OUTPUT_TYPE_VOICE, _("Voice")),
         ])
     )
@@ -211,6 +242,7 @@ class Agent(models.Model):
         null=True,
         choices=settings.AGENT_SCHEMA_CHOICES
     )
+
     def get_schema_class(self):
         schema_path = settings.AGENT_SCHEMAS.get(self.schema)
         return import_string(schema_path) if schema_path else None
@@ -219,23 +251,18 @@ class Agent(models.Model):
         if user and hasattr(user, 'agent_profile') and user.agent_profile.google_api_key:
             from google.genai import types
             google_api_key = user.agent_profile.google_api_key
-            
-            client_kwargs = {
-                'api_key': google_api_key.api_key,
-                'http_options': types.HttpOptions(timeout=settings.GENAI_REQUEST_TIMEOUT_MS)
-            }
-
-            if google_api_key.vertex:
-                client_kwargs['vertexai'] = True
-                if google_api_key.project:
-                    client_kwargs['project_id'] = google_api_key.project
-
-            return genai.Client(**client_kwargs)
+            if google_api_key.enterprise:
+                return genai.Client(api_key=google_api_key.api_key, vertexai=True, http_options=types.HttpOptions(timeout=settings.GENAI_REQUEST_TIMEOUT_MS))                
+            else:
+                return genai.Client(api_key=google_api_key.api_key, http_options=types.HttpOptions(timeout=settings.GENAI_REQUEST_TIMEOUT_MS))
         else:
             raise ValueError("User does not have an API key configured. Please set up your API key in your profile settings.")
 
     def save_usage(self, user, response, obj=None, preset=None):
-        usage = response.usage_metadata
+        usage = getattr(response, 'usage_metadata', None)
+        if not usage:
+            return
+
         usage_dict = {
             "prompt_token_count": usage.prompt_token_count,
             "candidates_token_count": usage.candidates_token_count,
@@ -299,6 +326,44 @@ class Agent(models.Model):
             name=name
         )
         return out
+    
+    def generate_image_omni_video(self, preset, prompt_obj, user=None):
+        contents = prompt_obj.get_contents(generate_self=True, preset=preset)
+        with self.get_genai_client(user) as client:
+            interaction = client.interactions.create(
+                model="gemini-omni-flash-preview",
+                input=[
+                     {
+                        "type": "image", 
+                        "data": contents["image"], 
+                        "mime_type": "image/png" # Use image/jpeg if using a .jpg file
+                    },
+                    {
+                        "type": "text", 
+                        "text": contents["prompt"]
+                    }
+                    ]
+                    
+            )
+            if interaction.output_video and interaction.output_video.data:
+                name = f"video_{slugify(prompt_obj.__class__.__name__)}_{slugify(prompt_obj.name)}_{slugify(self.name)}_{random.randint(1000,9999)}.mp4"
+                filepath_relative = f"agent_videos/{name}"
+                filepath_abs = os.path.join( settings.MEDIA_ROOT, filepath_relative)
+                 # The API payload returns base64 data; decode it back to native raw binary bytes
+                video_bytes = base64.b64decode(interaction.output_video.data)
+
+                # Save the binary data as an mp4 file
+                with open(filepath_abs, "wb") as video_file:
+                    video_file.write(video_bytes)
+                out = FilerImage.objects.create(
+                    original_filename=name,
+                    file=filepath_relative,
+                    name=name
+                )
+                return out
+            else:
+                return None
+        
 
     def generate_video(self, preset, prompt_obj, user=None, contents=None):
         # Check for errors if a video is not generated
@@ -378,6 +443,8 @@ class Agent(models.Model):
         config = None
         out = None
 
+        if self.output_type == self.OUTPUT_TYPE_IMAGE_OMNI_VIDEO:
+            return self.generate_image_omni_video(preset, obj, user=user)
         if self.output_type == self.OUTPUT_TYPE_VIDEO:
             return self.generate_video(preset, obj, user=user)
         if self.output_type == self.OUTPUT_TYPE_VOICE:
@@ -442,7 +509,7 @@ class GoogleApiKey(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name=_("user"), related_name='api_keys', on_delete=models.CASCADE)
     name = models.CharField(_("name"), unique=True, max_length=255, null=True, blank=True)
     api_key = models.TextField(_("api key"), null=True, blank=True)
-    vertex = models.BooleanField(_("vertex"), default=False)
+    enterprise = models.BooleanField(_("enterprise"), default=False)
     project = models.CharField(_("project"), max_length=255, null=True, blank=True)
 
     def __str__(self):

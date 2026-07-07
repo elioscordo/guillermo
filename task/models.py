@@ -91,7 +91,7 @@ class Task(models.Model):
     status = models.IntegerField(choices=TASK_STATUS_CHOICES, default=1)
     payload = models.JSONField(blank=True, null=True)
     task_type = models.SlugField(choices=settings.TASK_TYPE_CHOICES)
-
+    
     next_tasks = models.ManyToManyField(
         'self',
         blank=True,
@@ -104,6 +104,10 @@ class Task(models.Model):
         blank=True,
         on_delete=models.CASCADE
     )
+    
+    retry_attempts = models.PositiveIntegerField(default=0)
+    retry_max_attempts = models.PositiveIntegerField(default=3)
+    retry_countdown = models.PositiveIntegerField(default=4) # in seconds
 
     class Meta:
         ordering = ['-modified', 'status']

@@ -409,7 +409,7 @@ GENAI_REQUEST_TIMEOUT_MS = int(os.getenv("GENAI_REQUEST_TIMEOUT_MS", "300000"))
 TASK_TYPE_GENERATE_IMAGE = 'generate_image'
 TASK_TYPE_REFINE_IMAGE = 'refine_image'
 TASK_TYPE_GENERATE_VIDEO = 'generate_video'
-TASK_TYPE_GENERATE_VIDEO_MULTIMODAL = 'generate_video_multimodal'
+TASK_TYPE_GENERATE_OMNI_VIDEO = 'generate_video_multimodal'
 TASK_TYPE_GENERATE_VIDEO_FIRST_LAST = 'generate_video_first_last'
 TASK_TYPE_GENERATE_COMIC = 'generate_comic'
 TASK_TYPE_VIDEO_RENDER = 'video_render'
@@ -432,7 +432,7 @@ TASK_DELEGATES = {
     TASK_TYPE_GENERATE_IMAGE: 'scene.tasks.tasks.TaskGenerateImage',
     TASK_TYPE_REFINE_IMAGE: 'scene.tasks.tasks.TaskRefineImage',
     TASK_TYPE_GENERATE_VIDEO: 'scene.tasks.tasks.TaskGenerateVideo',
-    TASK_TYPE_GENERATE_VIDEO_MULTIMODAL: 'scene.tasks.tasks.TaskGenerateVideoMultimodal',
+    TASK_TYPE_GENERATE_OMNI_VIDEO: 'scene.tasks.tasks.TaskGenerateOmniVideo',
     TASK_TYPE_GENERATE_VIDEO_FIRST_LAST: 'scene.tasks.tasks.TaskGenerateVideoFirstLast',
     TASK_TYPE_GENERATE_COMIC: 'scene.tasks.tasks.TaskGenerateComic',
     TASK_TYPE_GENERATE_VOICE: 'scene.tasks.tasks.TaskGenerateVoice',
@@ -456,7 +456,7 @@ TASK_TYPE_CHOICES = (
     (TASK_TYPE_REFINE_IMAGE, _("Refine Image")),
     (TASK_TYPE_GENERATE_VIDEO, _("Generate Video")),
     (TASK_TYPE_GENERATE_VIDEO_FIRST_LAST, _("Video First Last")),
-    (TASK_TYPE_GENERATE_VIDEO_MULTIMODAL, _("Video Multimodal")),
+    (TASK_TYPE_GENERATE_OMNI_VIDEO, _("Video Multimodal")),
     (TASK_TYPE_GENERATE_COMIC, _("Generate Comic")),
     (TASK_TYPE_VIDEO_RENDER, _("Render Video")),
     (TASK_TYPE_GENERATE_VOICE, _("Generate Voice")),
@@ -471,7 +471,9 @@ TASK_TYPE_CHOICES = (
 
 )
 
-
+TASK_RETRY_EXCEPTIONS = [
+    "ClientError: 429 RESOURCE_EXHAUSTED",
+]
 
 # --- Configuración de archivos estáticos ---
 import os
