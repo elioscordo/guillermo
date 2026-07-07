@@ -1,0 +1,47 @@
+{% load i18n %}
+
+<div class="flex items-center justify-end gap-3">
+    <div class="inline-flex items-center gap-x-3">
+        {% if show_save %}
+            <button
+                type="submit"
+                name="_save"
+                class="
+                    {% if show_save_and_add_another or show_save_and_continue %}
+                        rounded-r-none
+                    {% endif %}
+                    button button-primary
+                "
+            >
+                {% trans 'Save' %}
+            </button>
+        {% endif %}
+
+        {% if show_save_and_add_another or show_save_and_continue %}
+            <div class="relative -ml-px" x-data="{ open: false }" @click.outside="open = false">
+                <button
+                    type="button"
+                    class="button button-primary rounded-l-none"
+                    @click="open = !open"
+                >
+                    <span class="material-symbols-outlined">arrow_drop_down</span>
+                </button>
+
+                <div x-show="open" x-cloak class="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white dark:bg-base-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none" role="menu" aria-orientation="vertical" aria-labelledby="menu-button" tabindex="-1">
+                    <div class="py-1" role="none">
+                        {% if show_save_and_continue %}
+                            <button type="submit" name="_continue" class="flex w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" role="menuitem" tabindex="-1">{% trans 'Save and continue editing' %}</button>
+                        {% endif %}
+                        {% if show_save_and_add_another %}
+                            <button type="submit" name="_addanother" class="flex w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" role="menuitem" tabindex="-1">{% trans 'Save and add another' %}</button>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    {% if show_delete_link and original.pk %}
+        <a href="delete/" class="text-sm font-medium text-red-600 hover:text-red-500 dark:text-red-500 dark:hover:text-red-400">
+            {% trans "Delete" %}
+        </a>
+    {% endif %}
+</div>
