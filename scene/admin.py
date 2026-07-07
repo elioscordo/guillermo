@@ -364,7 +364,7 @@ class NudgeAdmin(AdminActionsMixin, ModelAdmin):
     )
 
 @admin.register(Action)
-class ActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxTaskModelAdmin):
+class ActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
     ajax_shift_fields = ['prompt', 'prompt_refine']    
     list_display = ('get_name', 'items', 'pic', 'prompt','prompt_refine', 'last_tasks')
     list_refresh = ['pic']
@@ -379,7 +379,7 @@ class ActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, 
     fieldsets = ACTION_FIELDSETS
 
 @admin.register(VideoAction)
-class VideoActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxTaskModelAdmin):
+class VideoActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
     list_display = ('name', 'items', 'pic', 'prompt_video', 'video_player','last_tasks')
     list_editable = ['prompt_video']
     list_filter = ["scene__story", "scene", "id"]
@@ -391,7 +391,7 @@ class VideoActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMi
 
 
 @admin.register(ComicAction)
-class ComicActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxTaskModelAdmin):
+class ComicActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
     ajax_shift_fields = ['prompt_comic']
     list_display = ('name', 'items', 'pic', 'pic_comic', 'prompt_comic', 'last_tasks')
     list_editable = ['prompt_comic']
@@ -404,7 +404,7 @@ class ComicActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMi
 
 
 @admin.register(VoiceAction)
-class VoiceActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, AjaxTaskModelAdmin):
+class VoiceActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
     list_display = ('name', 'items', 'pic', 'prompt_voice','voice', 'voice_player', 'last_tasks')
     list_editable = ['prompt_voice', 'voice' ]
     list_filter = ["scene__story", "scene", "id"]
@@ -417,14 +417,14 @@ class VoiceActionAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMi
 
 
 @admin.register(ActionOrganizer)
-class ActionOrganizerAdmin(AdminActionsMixin, PromptPreviewMixin, SceneFilterMixin, ModelAdmin):
+class ActionOrganizerAdmin(AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, ModelAdmin):
     list_display = ('id', 'name', 'items', 'pic', 'scene', 'is_intro', 'order')
     list_editable = ['name', 'scene', 'is_intro', 'order']
     list_filter = ["scene__story", "scene"]
     search_fields = ['name']
 
 @admin.register(SceneOrganizer)
-class SceneOrganizerAdmin(AjaxSectionAdminMixin, AdminActionsMixin, AdminLinker, SceneFilterMixin, ModelAdmin):
+class SceneOrganizerAdmin(AjaxSectionAdminMixin, AdminActionsMixin, AdminLinker, StoryFilterMixin, ModelAdmin):
     list_display = ('id', 'name', 'image_intro', 'link_actions', 'story')
     list_editable = ['name',  'story']
     list_filter = ["story"]
@@ -432,7 +432,7 @@ class SceneOrganizerAdmin(AjaxSectionAdminMixin, AdminActionsMixin, AdminLinker,
 
 
 @admin.register(Voice)
-class VoiceAdmin(AjaxSectionAdminMixin, AdminActionsMixin,AdminLinker, AjaxTaskModelAdmin):
+class VoiceAdmin(AjaxSectionAdminMixin, AdminActionsMixin, AdminLinker, AjaxTaskModelAdmin):
     list_display = ('__str__', 'prompt', 'google_voice', 'sample_text', 'link_story' , 'voice_player', 'last_tasks')
     list_editable = ['prompt']
     list_refresh = ['voice_player']    

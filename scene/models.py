@@ -17,7 +17,15 @@ from PIL import Image
 def dashboard_callback(request, context):
     stories = []
     if request.user.is_authenticated:
-            stories =  Story.objects.filter(authors__user=request.user).distinct()
+        profile = getattr(request.user, 'story_profile', None)
+        if profile:
+            current_story = profile.get_current_story()
+            if current_story:
+                stories = Story.objects.filter(pk=current_story.pk)
+            else:
+                stories = Story.objects.filter(authors__user=request.user).distinct()
+        else:
+            stories = Story.objects.filter(authors__user=request.user).distinct()
     context.update({'stories': stories})
     return context
 
