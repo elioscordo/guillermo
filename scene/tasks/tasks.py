@@ -150,7 +150,7 @@ class TaskGenerateShots:
     def process(self):
         scene = self.task.subject
         element_tasks_buffer = {}  # key: (model_name, id)
-
+        countdown = 31
         for action in scene.actions.all().order_by('order'):
             # Elements required for this action
             elements = []
@@ -191,8 +191,10 @@ class TaskGenerateShots:
                     self.task.log(f"Queuing image generation for action: {action.get_name()}")
                     for dep_task in action_dependencies:
                         dep_task.next_tasks.add(action_task)
-                    action_task.process()
+                    action_task.process(countdown=countdown)
+                    countdown += countdown
 
         # Trigger processing for all element tasks in the buffer
         for e_task in element_tasks_buffer.values():
-            e_task.process()
+            e_task.process(countdown=countdown)
+            countdown= countdown+countdown
