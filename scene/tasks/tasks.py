@@ -153,9 +153,18 @@ class TaskGenerateShots:
     def process(self):
         scene = self.task.subject
         element_tasks_buffer = {}  # key: (model_name, id)
-        timestamp = timezone.now()
-        minute_offset = 1#
-        timestamp = timestamp + timedelta(minutes=minute_offset)
+        
+        # Find the latest scheduled task to queue new tasks after it.
+        latest_scheduled_task = Task.objects.filter(
+            status=Task.TASK_STATUS_SCHEDULED,
+            scheduled_at__isnull=False
+        ).order_by('-scheduled_at').first()
+
+        if latest_scheduled_task and latest_scheduled_task.scheduled_at > timezone.now():
+            timestamp = latest_scheduled_task.scheduled_at
+        else:
+            timestamp = timezone.now()
+
         action_tasks = []
         for action in scene.actions.all().order_by('order'):
             # Elements required for this action
@@ -199,10 +208,11 @@ class TaskGenerateShots:
                         dep_task.next_tasks.add(action_task)
                     action_tasks.append(action_task)
 
+        minute_offset = 1
         # Trigger processing for all element tasks in the buffer
         for e_task in element_tasks_buffer.values():
+            timestamp = timestamp + timedelta(minutes=minute_offset)
             e_task.process(timestamp=timestamp)
-            timestamp = timestamp + timedelta(minutes=minute_offset)
         for a_task in action_tasks:
-            a_task.process(timestamp=timestamp)
             timestamp = timestamp + timedelta(minutes=minute_offset)
+            a_task.process(timestamp=timestamp)

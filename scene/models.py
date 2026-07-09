@@ -820,7 +820,7 @@ class Render(RenderTypeMixin, models.Model, TaskHolder, ModelDisplayMixin):
         if self.render_type == self.RENDER_TYPE_FILM:
             item.video = action.video
         elif self.render_type == self.RENDER_TYPE_ANIMATIC:
-            item.image = action.image
+            item.image = action.image_comic or action.image  # Fallback to standard image if comic version isn't generated yet
             item.audio = action.audio_voice
         elif self.render_type == self.RENDER_TYPE_GRAPHIC_NOVEL:
             # Fallback to standard image if comic version isn't generated yet
