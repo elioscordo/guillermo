@@ -1,3 +1,4 @@
+import json
 from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -5,7 +6,8 @@ from django.utils.translation import gettext_lazy as _
 from django.db.models import Q
 from django.conf import settings
 from django.utils.safestring import mark_safe
-
+from django_celery_beat.models import ClockedSchedule, PeriodicTask
+from django_celery_beat.models import PeriodicTask, ClockedSchedule
 from django.template.loader import render_to_string
 
 def format_html(html):
@@ -20,11 +22,13 @@ class Task(models.Model):
     TASK_STATUS_HOLDING = 2
     TASK_STATUS_ERROR = 3
     TASK_STATUS_SUCCESS = 4
+    TASK_STATUS_SCHEDULED = 5
 
     TASK_STATUS_PROCESSABLE = [
         TASK_STATUS_PENDING,
         TASK_STATUS_HOLDING,
-        TASK_STATUS_ERROR
+        TASK_STATUS_ERROR,
+        TASK_STATUS_SCHEDULED,
     ]
     
     TASK_STATUS_CHOICES = (
@@ -32,7 +36,8 @@ class Task(models.Model):
         (TASK_STATUS_STARTED, "Started"),
         (TASK_STATUS_SUCCESS, "Success"),
         (TASK_STATUS_ERROR, "Error"),
-        (TASK_STATUS_HOLDING, "Holding")
+        (TASK_STATUS_HOLDING, "Holding"),
+        (TASK_STATUS_SCHEDULED, "Scheduled"),
     )
     
     TASK_STATUS_DICT = dict(TASK_STATUS_CHOICES)
@@ -40,9 +45,10 @@ class Task(models.Model):
     COLOR_DICT = {
         TASK_STATUS_STARTED: 'blue',
         TASK_STATUS_PENDING: 'orange',
-        TASK_STATUS_HOLDING: 'purple',
+        TASK_STATUS_HOLDING: 'lime',
         TASK_STATUS_SUCCESS: 'green',
         TASK_STATUS_ERROR: 'red',
+        TASK_STATUS_SCHEDULED: 'amber',
     }
     
     
@@ -107,7 +113,17 @@ class Task(models.Model):
     
     retry_attempts = models.PositiveIntegerField(default=0)
     retry_max_attempts = models.PositiveIntegerField(default=3)
-    retry_countdown = models.PositiveIntegerField(default=2) # in seconds
+    retry_countdown = models.PositiveIntegerField(default=3) # in seconds
+
+    scheduled_task = models.OneToOneField(
+        'django_celery_beat.PeriodicTask',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='custom_task',
+        help_text=_("Link to the scheduled task in Django Celery Beat.")
+    )
+    scheduled_at = models.DateTimeField(_("scheduled at"), null=True, blank=True)
 
     class Meta:
         ordering = ['-modified', 'status']
@@ -138,10 +154,31 @@ class Task(models.Model):
         not_success = ~Q(status=self.TASK_STATUS_SUCCESS)
         return self.previous_tasks.filter(not_success).exists()
 
-    def process(self, countdown=0):
+    def process(self, countdown=0, timestamp=None):
         from .tasks import process_task
         process_task.apply_async(kwargs={'task_id': self.id}, countdown=countdown)
+        if timestamp:
+            # Create a one-off schedule for the specified timestamp
+            schedule, _ = ClockedSchedule.objects.get_or_create(
+                clocked_time=timestamp
+            )
 
+            # Create a periodic task to run once at the scheduled time
+            periodic_task = PeriodicTask.objects.create(
+                name=f'task-{self.id}-scheduled-at-{timestamp.isoformat()}',
+                task='task.tasks.process_task',
+                args=json.dumps([self.id]),
+                clocked=schedule,
+                one_off=True,
+                enabled=True,
+            )
+
+            # Link the periodic task, set the status, and save
+            self.scheduled_task = periodic_task
+            self.scheduled_at = timestamp
+            self.set_status(self.TASK_STATUS_SCHEDULED)
+        else:
+            process_task.apply_async(kwargs={'task_id': self.id}, countdown=countdown)
     def get_queue(self):
         queue = self.QUEUE_NORMAL
         if self.task_type in self.QUEUE_DICT:

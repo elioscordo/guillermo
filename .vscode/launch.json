@@ -36,6 +36,23 @@
                 "-E"
             ]
         },
+                {
+            "name": "Python: Celery Beat",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "celery",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "-A",
+                "project.celery_app",
+                "beat",
+                "-l",
+                "info",
+                "-S",
+                "django"
+            ]
+        },
           {
             "name": "Migrate",
             "type": "debugpy",

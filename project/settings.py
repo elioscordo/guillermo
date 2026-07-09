@@ -58,7 +58,8 @@ INSTALLED_APPS = [
     'agent.apps.AgentConfig',
     'task',
     'import_export',
-    'unfold.contrib.import_export'    
+    'unfold.contrib.import_export',
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [

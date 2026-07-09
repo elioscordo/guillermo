@@ -1,3 +1,6 @@
+from datetime import timedelta
+from django.utils import timezone
+
 from task.models import Task
 from agent.models import GetContentsMixin
 from django.utils.text import slugify
@@ -150,7 +153,10 @@ class TaskGenerateShots:
     def process(self):
         scene = self.task.subject
         element_tasks_buffer = {}  # key: (model_name, id)
-        countdown = 31
+        timestamp = timezone.now()
+        minute_offset = 1#
+        timestamp = timestamp + timedelta(minutes=minute_offset)
+        action_tasks = []
         for action in scene.actions.all().order_by('order'):
             # Elements required for this action
             elements = []
@@ -191,10 +197,12 @@ class TaskGenerateShots:
                     self.task.log(f"Queuing image generation for action: {action.get_name()}")
                     for dep_task in action_dependencies:
                         dep_task.next_tasks.add(action_task)
-                    action_task.process(countdown=countdown)
-                    countdown += countdown
+                    action_tasks.append(action_task)
 
         # Trigger processing for all element tasks in the buffer
         for e_task in element_tasks_buffer.values():
-            e_task.process(countdown=countdown)
-            countdown= countdown+countdown
+            e_task.process(timestamp=timestamp)
+            timestamp = timestamp + timedelta(minutes=minute_offset)
+        for a_task in action_tasks:
+            a_task.process(timestamp=timestamp)
+            timestamp = timestamp + timedelta(minutes=minute_offset)

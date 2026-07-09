@@ -1,4 +1,5 @@
 from moviepy import ImageClip, VideoFileClip, AudioFileClip, concatenate_videoclips
+from moviepy.audio.fx.all import audio_normalize
 from moviepy.video.fx import Resize
 from task.models import Task
 from agent.models import GetContentsMixin
@@ -31,7 +32,7 @@ class VideoRender:
 
             elif item.render_type == item.RENDER_TYPE_ANIMATIC:
                 if render_item.image and render_item.audio:
-                    audio_clip = AudioFileClip(render_item.audio.path)
+                    audio_clip = AudioFileClip(render_item.audio.path).fx(audio_normalize).audio_fadein(0.01).audio_fadeout(0.01)
 
                     # Get margins from 'params' field (space separated "start_ms end_ms")
                     # Fallback to config or settings if params is empty
@@ -133,7 +134,7 @@ class VideoRender2:
                 buffer_in  = float(get_param('buffer_in',  0.2))
                 buffer_out = float(get_param('buffer_out', 0.3))
 
-                audio_clip = AudioFileClip(audio_src.path)
+                audio_clip = AudioFileClip(audio_src.path).fx(audio_normalize).audio_fadein(0.01).audio_fadeout(0.01)
                 duration   = audio_clip.duration + buffer_in + buffer_out
 
                 clip = ImageClip(image_src.path, duration=duration)
@@ -153,13 +154,14 @@ class VideoRender2:
                     )
                     continue
 
-                clip = VideoFileClip(video_src.path, audio=True)
+                clip = VideoFileClip(video_src.path, audio=True).fx(audio_normalize)
+
 
                 # mix in voice audio (replaces the original video track)
                 audio_src = action.audio_voice
                 if audio_src:
                     buffer_in  = float(get_param('buffer_in', 0.0))
-                    audio_clip = AudioFileClip(audio_src.path)
+                    audio_clip = AudioFileClip(audio_src.path).fx(audio_normalize).audio_fadein(0.01).audio_fadeout(0.01)
                     clip = clip.with_audio(audio_clip.with_start(buffer_in))
 
             # ----------------------------------------------------------------
@@ -185,7 +187,7 @@ class VideoRender2:
                 audio_src = action.audio_voice
                 if audio_src:
                     buffer_in  = float(get_param('buffer_in', 0.0))
-                    audio_clip = AudioFileClip(audio_src.path)
+                    audio_clip = AudioFileClip(audio_src.path).fx(audio_normalize).audio_fadein(0.01).audio_fadeout(0.01)
                     clip = clip.with_audio(audio_clip.with_start(buffer_in))
 
             # ----------------------------------------------------------------

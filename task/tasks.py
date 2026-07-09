@@ -42,7 +42,7 @@ def process_task(task_id):
                 f"{traceback.format_exc()}"
             )
             task.set_status(Task.TASK_STATUS_ERROR)
-            if task.retry_attempts < task.retry_max_attempts and e.status in settings.TASK_RETRY_EXCEPTIONS:
+            if task.retry_attempts < task.retry_max_attempts and hasattr(e, 'status') and e.status in settings.TASK_RETRY_EXCEPTIONS:
                 task.retry_attempts += 1
                 task.retry_countdown += task.retry_countdown + random.randint(0, 5) 
                 task.save(update_fields=['retry_attempts', 'retry_countdown'])

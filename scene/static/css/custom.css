@@ -346,3 +346,26 @@ video {
     background-color: var(--color-base-800) !important;
     border-color: var(--color-base-700) !important;
 }
+
+/* Custom Badge Colors for Amber and Lime */
+.bg-amber-600{
+    --tw-bg-opacity: 1;
+    --tw-text-opacity: 1;
+    background-color: rgb(252 211 77 / var(--tw-bg-opacity)); /* amber-300 */
+    color: rgb(180 83 9 / var(--tw-text-opacity)); /* amber-700 */
+    border-radius: 9999px;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.bg-lime-600 {
+    --tw-bg-opacity: 1;
+    --tw-text-opacity: 1;
+    background-color: rgb(190 242 100 / var(--tw-bg-opacity)); /* lime-300 */
+    color: rgb(77 124 15 / var(--tw-text-opacity)); /* lime-700 */
+    border-radius: 9999px;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
