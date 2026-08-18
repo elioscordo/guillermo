@@ -413,6 +413,38 @@ CELERY_WORKER_PREFETCH_MULTIPLIER = int(os.getenv("CELERY_WORKER_PREFETCH_MULTIP
 
 GENAI_REQUEST_TIMEOUT_MS = int(os.getenv("GENAI_REQUEST_TIMEOUT_MS", "300000"))
 
+# What one image generation costs, in whatever currency the deployment bills in. Used ONLY to put
+# a number on the confirmation screen before a batch is queued. Unset, zero or unparseable means
+# no figure is shown, which is deliberate: a wrong number on a spend confirmation is worse than no
+# number, because people act on it.
+#
+# Coerced to a float here because the consumer multiplies it by a count: a str would silently
+# repeat ("0.150.150.15") instead of multiplying, and only fail later in the format spec.
+# _spend_estimate coerces again at the use site, deliberately -- a deployment can override this
+# setting from anywhere, and the value is on the path that spends money.
+try:
+    IMAGE_GENERATION_COST = float(os.getenv("IMAGE_GENERATION_COST", "0") or 0)
+except ValueError:
+    IMAGE_GENERATION_COST = 0.0
+
+# A CUMULATIVE ceiling, in the same currency as IMAGE_GENERATION_COST. 0 disables it, which is
+# the default: a cap is a budget and this project cannot know yours. A per-batch confirmation
+# (see the generate actions) cannot see a habit -- ten confirmed batches of ten are a hundred
+# images nobody was asked about -- so this is the figure that survives being tired at 2am.
+# When set, it fails CLOSED: an unreadable ledger or an unpriced generation refuses the spend.
+try:
+    IMAGE_SPEND_CAP = float(os.getenv("IMAGE_SPEND_CAP", "0") or 0)
+except ValueError:
+    IMAGE_SPEND_CAP = 0.0
+
+# Images already generated when the cap was set, so the cap measures spending from that point.
+# Without it an instance with history is over its first budget the moment the budget is written.
+# `scene.spend.images_generated()` prints the current number to put here.
+try:
+    IMAGE_SPEND_BASELINE = int(os.getenv("IMAGE_SPEND_BASELINE", "0") or 0)
+except ValueError:
+    IMAGE_SPEND_BASELINE = 0
+
 
 
 TASK_TYPE_GENERATE_IMAGE = 'generate_image'
