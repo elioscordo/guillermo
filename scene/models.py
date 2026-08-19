@@ -371,7 +371,11 @@ class Scene(AfterSaveActionMixin, YAMLAssetsMixin, models.Model, TaskHolder, Get
 
     action = models.SlugField(_("action"), max_length=1024, choices=ACTION_CHOICES, null=True, blank=True)
 
-    order = models.PositiveIntegerField(_("order"), default=0, db_index=True)
+    # Nullable ON PURPOSE: with `default=0` there is no way to tell "the author did not say"
+    # from "the author said position 0", so a scene deliberately created at the front of a
+    # story was silently pushed to the end. NULL means unset and gets the next free
+    # position; an explicit 0 is kept.
+    order = models.PositiveIntegerField(_("order"), null=True, blank=True, db_index=True)
     story = models.ForeignKey('Story', verbose_name=_("story"), related_name='scenes', null=True, blank=True, on_delete=models.CASCADE)
     author = models.ForeignKey('Author', verbose_name=_("author"), related_name='scenes', on_delete=models.CASCADE, null=True, blank=True)
     instructions = models.ManyToManyField('agent.Prompt', verbose_name=_("instructions"), null=True, blank=True)
@@ -385,7 +389,33 @@ class Scene(AfterSaveActionMixin, YAMLAssetsMixin, models.Model, TaskHolder, Get
 
     def __str__(self):
         return "{}".format(self.name if self.name else f"Scene{self.id} of {self.story}")
-    
+
+    def save(self, *args, **kwargs):
+        """Give a brand-new scene the next free position in its story.
+
+        `order` decides the reading order of the whole story: `Meta.ordering` is `['order']`, and
+        a graphic-novel render pages the book by scene order then action order. But `order`
+        defaults to 0 and nothing in the codebase ever assigned it, so every scene created through
+        the admin arrived at position 0 - tied with scene one, resolved by whatever the database
+        felt like. On a 16-scene book that is a shuffled book with no visible cause.
+
+        Only applies to a scene being created, that has a story, and that has not been given a
+        position: an explicit `order=0` on an existing row is left exactly as it is, so this can
+        never renumber work someone has already arranged by hand.
+        """
+        # `not self.order` cannot distinguish "unset" from a deliberate 0, so creating a scene at
+        # position 0 - prepending one to the front of a story - silently became max+1. The add form
+        # shows an `order` box, so the author was watching their value be overridden.
+        # `_state.adding` alone is also not enough: `AdminActionsMixin.clone` sets `pk = None`,
+        # which does NOT set `_state.adding`, so a cloned scene skipped this entirely and kept
+        # colliding with its neighbour.
+        creating = self._state.adding or self.pk is None
+        if creating and self.story_id and self.order is None:
+            last = (Scene.objects.filter(story_id=self.story_id)
+                    .aggregate(models.Max("order"))["order__max"])
+            self.order = 0 if last is None else last + 1
+        return super().save(*args, **kwargs)
+
     def get_instructions(self, preset):
         return self.instructions.filter(category=preset)
 
@@ -843,6 +873,13 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
     audio_voice = FilerFileField(verbose_name=_("audio voice"), null=True, blank=True, on_delete=models.SET_NULL, related_name='actions_audio')
     prompt_voice = models.TextField(_("prompt voice"), null=True, blank=True)
     text = models.TextField(_("text"), null=True, blank=True)
+    # Lettering geometry for this panel: where the words go, not just what they are.
+    # The image model garbles long or exact text, so words are composited afterwards.
+    # Shape: {"elements": [{"type": "bubble"|"thought"|"caption"|..., "text": str,
+    #                       "box": [x, y, w, h], "tail": [x, y] | null}, ...]}
+    # Coordinates are FRACTIONS of the image (0..1), so a panel can be re-lettered at
+    # any resolution -- e.g. onto an upscaled plate for print -- without re-authoring.
+    lettering = models.JSONField(_("lettering"), null=True, blank=True)
     parameters = models.JSONField(_("configuration"), null=True, blank=True)
     shot_type = models.CharField(_("shot type"), max_length=20, choices=SHOT_TYPE_CHOICES, null=True, blank=True)
     history = HistoricalRecords()
@@ -864,6 +901,7 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
             "media_type": "video" if self.video else "image",
             "audio_url": self.audio_voice.url if self.audio_voice else None,
             "text": self.text,
+            "lettering": self.lettering,
             "name": self.get_name()
         }
 
