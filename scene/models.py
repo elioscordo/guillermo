@@ -460,7 +460,8 @@ class Scene(AfterSaveActionMixin, YAMLAssetsMixin, models.Model, TaskHolder, Get
                 self.PRESET_CREATE_PROMPT, 
                 self.PRESET_EDIT_PROMPT, 
                 self.PRESET_SYNC_SCENE,
-                self.PRESET_SYNC_ELEMENTS                
+                self.PRESET_SYNC_ELEMENTS,
+                self.PRESET_SYNC_SHOTS                
             ]:
             elements_yaml = self.story.get_elements_as_yaml()
             if elements_yaml: parts.append(elements_yaml)

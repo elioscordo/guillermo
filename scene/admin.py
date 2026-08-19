@@ -113,7 +113,7 @@ class StoryAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHisto
         RenderSection,
         PromptFormSection
     ]
-    list_display = ['__str__', 'items', 'image_intro', 'add_scene', 'last_tasks']
+    list_display = ['__str__', 'items', 'add_scene', 'last_tasks']
     actions = ['clone', 'add_me_as_author', 'generate_scene_elements','generate_render', 'refresh_render']
 
     fieldsets = (
@@ -391,17 +391,26 @@ class VoiceAdmin(PromptMarkdownMixin, SimpleHistoryAdmin, AdminActionsMixin, Adm
                 obj.generate_voice(obj.PRESET_VOICE, user=request.user)
 
 
-
 @admin.register(RenderItem)
 class RenderItemAdmin(ModelAdmin):
     list_display = ('id', 'video_player', 'pic', 'params', 'config', 'order', 'render')
     list_editable = ('order', 'params', 'config')
+    list_filter = ('render',)
 
 @admin.register(Render)
 class RenderAdmin(AjaxSectionAdminMixin, AdminActionsMixin, ModelAdmin):
-    list_display = ('name', 'scene', 'render_type', 'video_player', 'video_download', 'last_tasks')
+    list_display = ('name', 'scene', 'render_items_link', 'render_type', 'video_player', 'video_download', 'last_tasks')
     list_display_links = ('name',)
     actions = ['refresh_scene_video']
+
+    def render_items_link(self, obj):
+        count = obj.render_items.count()
+        url = reverse("admin:scene_renderitem_changelist") + f"?render__id__exact={obj.id}"
+        return format_html(
+            '<a href="{}" class="text-primary-600 font-medium hover:underline">Items ({})</a>',
+            url, count
+        )
+    render_items_link.short_description = _("Render Items")
 
 
 @admin.register(ContactRequest)
