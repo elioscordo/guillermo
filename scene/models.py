@@ -107,6 +107,8 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, YAMLAssetsMixin, models.Model
     PRESET_CREATE_ELEMENTS = "create_elements"
     PRESET_EDIT_ELEMENTS = "edit_elements"
     PRESET_SYNC_ELEMENTS = "sync_elements"
+    PRESET_EDIT_SYNC_ELEMENTS = "edit_sync_elements"
+        
     PRESET_SYNC_SCENES =  "sync_scenes"
     
     ACTION_CREATE_SCENES = f"{TASK_TEXT_GENERATE}-preset-{PRESET_CREATE_SCENES}"
@@ -117,6 +119,7 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, YAMLAssetsMixin, models.Model
 
     ACTION_SYNC_SCENES = f"{TASK_TEXT_GENERATE}-preset-{PRESET_SYNC_SCENES}-schema-{settings.SCHEMA_STORY_SCENES}"
     ACTION_SYNC_ELEMENTS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_SYNC_ELEMENTS}-schema-{settings.SCHEMA_ASSETS}"
+    ACTION_EDIT_SYNC_ELEMENTS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_SYNC_ELEMENTS}-schema-{settings.SCHEMA_ASSETS}"
 
     ACTION_CHOICES = (
         (ACTION_CREATE_SCENES, _("Create story scenes")),
@@ -125,6 +128,8 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, YAMLAssetsMixin, models.Model
         (ACTION_EDIT_ELEMENTS, _("Edit story elements")),
         (ACTION_SYNC_SCENES, _("Sync story scenes")),
         (ACTION_SYNC_ELEMENTS, _("Sync story elements")),
+        (ACTION_EDIT_SYNC_ELEMENTS, _("Edit Sync elements")),
+                
     ) + settings.COMMON_TEXT_ACTION_CHOICES
 
 
@@ -135,6 +140,7 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, YAMLAssetsMixin, models.Model
         (PRESET_EDIT_ELEMENTS, _("Edit story elements")),
         (PRESET_SYNC_ELEMENTS, _("Sync story elements")),
         (PRESET_SYNC_SCENES, _("Sync story scenes")),  
+        (PRESET_EDIT_SYNC_ELEMENTS, _("Edit Sync elements")),
     )
 
     RENDER_TYPE_FILM = 'film'
@@ -296,6 +302,8 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, YAMLAssetsMixin, models.Model
         elif preset in [self.PRESET_SYNC_SCENES, self.PRESET_EDIT_SCENES]:
                 parts.append(self.prompt)
                 parts.append(self.get_elements_as_yaml())
+        elif preset == self.PRESET_EDIT_SYNC_ELEMENTS:
+            parts.append(self.get_elements_as_yaml())
         elif preset in [self.PRESET_CREATE_ELEMENTS]:
             parts.append(self.prompt)
             parts.append(self.get_elements_as_yaml())

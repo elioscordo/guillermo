@@ -113,7 +113,7 @@ class StoryAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHisto
         RenderSection,
         PromptFormSection
     ]
-    list_display = ['__str__', 'items', 'add_scene', 'last_tasks']
+    list_display = ['__str__', 'items', 'scenes_dropdown', 'add_scene', 'last_tasks']
     actions = ['clone', 'add_me_as_author', 'generate_scene_elements','generate_render', 'refresh_render']
 
     fieldsets = (
@@ -146,6 +146,44 @@ class StoryAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHisto
             )
         return "-"
     add_scene.short_description = _("Add Scene")
+
+    def scenes_dropdown(self, obj):
+        scenes = obj.scenes.all().order_by('order')
+        count = scenes.count()
+        if count == 0:
+            return "-"
+        
+        links = []
+        for scene in scenes:
+            url = reverse("admin:scene_scene_changelist") + f"?id__exact={scene.id}"
+            name = scene.name or f"Scene {scene.id}"
+            links.append(format_html(
+                '<a href="{}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-base-800 dark:hover:text-white transition-colors truncate">{}</a>',
+                url, name
+            ))
+
+        return format_html(
+            '<div x-data="{{ open: false }}" class="relative inline-block text-left">'
+                '<button @click="open = !open" @click.away="open = false" type="button" class="items-dropdown-trigger inline-flex items-center gap-1 bg-base-100 hover:bg-base-200 text-font-default-light dark:bg-base-800 dark:hover:bg-base-700 dark:text-font-default-dark px-2.5 py-1.5 rounded-md text-xs font-semibold shadow-xs">'
+                    '<span>Scenes ({})</span>'
+                    '<span class="material-symbols-outlined text-[16px] transition-transform duration-200" :class="open ? \'rotate-180\' : \'\'">keyboard_arrow_down</span>'
+                '</button>'
+                '<div x-show="open" '
+                     'x-transition:enter="transition ease-out duration-100" '
+                     'x-transition:enter-start="transform opacity-0 scale-95" '
+                     'x-transition:enter-end="transform opacity-100 scale-100" '
+                     'x-transition:leave="transition ease-in duration-75" '
+                     'x-transition:leave-start="transform opacity-100 scale-100" '
+                     'x-transition:leave-end="transform opacity-0 scale-95" '
+                     'class="absolute left-0 mt-1 w-56 rounded-md shadow-lg bg-white dark:bg-base-900 ring-1 ring-black ring-opacity-5 focus:outline-none z-50 py-1" '
+                     'style="display: none;">'
+                     '{}'
+                '</div>'
+            '</div>',
+            count,
+            mark_safe("".join(links))
+        )
+    scenes_dropdown.short_description = _("Scenes")
 
     def scene_links(self, obj):
         return format_html("<a href='/admin/scene/Scene/?story__id__exact={0}'>Edit ({1})</a>", obj.id, obj.scenes.count())
@@ -373,7 +411,7 @@ class SceneOrganizerAdmin(AjaxSectionAdminMixin, AdminActionsMixin, AdminLinker,
 
 
 @admin.register(Voice)
-class VoiceAdmin(PromptMarkdownMixin, SimpleHistoryAdmin, AdminActionsMixin, AdminLinker, AjaxTaskModelAdmin):
+class VoiceAdmin(PromptMarkdownMixin, SimpleHistoryAdmin, StoryFilterMixin, AdminActionsMixin, AdminLinker, AjaxTaskModelAdmin):
     list_display = ('__str__', 'prompt', 'google_voice', 'sample_text', 'link_story' , 'voice_player', 'last_tasks')
     list_editable = ['prompt']
     list_refresh = ['voice_player']    

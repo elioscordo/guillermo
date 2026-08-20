@@ -207,6 +207,28 @@ class StoryFilterMixin:
             
         return qs
 
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "voice":
+            story = None
+            resolver_match = getattr(request, 'resolver_match', None)
+            if resolver_match:
+                obj_id = resolver_match.kwargs.get('object_id')
+                if obj_id:
+                    try:
+                        obj = self.get_object(request, obj_id)
+                        if hasattr(obj, 'scene') and obj.scene:
+                            story = obj.scene.story
+                        elif hasattr(obj, 'story') and obj.story:
+                            story = obj.story
+                    except Exception:
+                        pass
+            if not story and hasattr(request.user, 'story_profile'):
+                story = request.user.story_profile.get_current_story()
+            if story:
+                from .models import Voice
+                kwargs["queryset"] = Voice.objects.filter(story=story)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
 class StaffReadOnlyMixin:
     def get_readonly_fields(self, request, obj=None):
         readonly_fields = list(super().get_readonly_fields(request, obj))

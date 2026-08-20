@@ -60,9 +60,11 @@ INSTALLED_APPS = [
     'import_export',
     'unfold.contrib.import_export',
     'django_celery_beat',
+    "unfold_markdown",
     'crispy_forms',
     "unfold.contrib.simple_history",  # Makes the history UI match Unfold's Tailwind theme
-    "simple_history"
+    "simple_history",
+
 ]
 
 
@@ -144,7 +146,6 @@ from django.templatetags.static import static
 UNFOLD = {
     "SITE_TITLE": _("Guillermo"),  # Appears in the title and in the top left corner
     "SITE_HEADER": _("Guillermo"),
-    "SHOW_HISTORY": True,
     "SITE_SUBHEADER": _("The power of your story"),
     "STYLES": [
         lambda request: static("css/unfold_filer_custom.css"),

@@ -403,3 +403,18 @@ video {
 .chat-image-container {
     max-height: 400px;
 }
+
+/* Unfold Top-Right Actions Bar Visibility */
+#header-inner ul.container.hidden,
+#header-inner ul.hidden,
+div[x-data*="showActions"] ul.hidden,
+div[x-data*="showActions"] ul {
+    display: flex !important;
+    position: static !important;
+    flex-direction: row !important;
+    gap: 0.5rem !important;
+}
+
+div[x-data*="showActions"] > button {
+    display: none !important;
+}
