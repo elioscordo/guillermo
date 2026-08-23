@@ -1,8 +1,12 @@
 import yaml
 from django.contrib import admin
+try:
+    from unfold.decorators import action
+except ImportError:
+    from django.contrib.admin import action
 from django.utils.html import format_html
 from .schemas import AssetsSchema, BackgroundSchema, CharacterSchema, PropSchema, VoiceSchema
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_lazy as _, get_language
 from django.urls import path
 from django.conf import settings
 from task.models import Task
@@ -11,7 +15,6 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.contrib.auth.models import Group, Permission, User
 from django.conf import settings
-import secrets
 import secrets
 import string
 from django.http import JsonResponse
@@ -33,7 +36,11 @@ ELEMENT_FIELDSETS = (
 ACTION_FIELDSETS = (
         ("Composition", {
             "classes": ["tab"],
-            "fields": ["name", "scene", "prompt","order", "actor", "props", "cast", "background", "consistent_with",  "image"],
+            "fields": ["name", "scene", "prompt", "order", "actor", "props", "cast", "background", "consistent_with", "image"],
+        }),
+        ("Translations", {
+            "classes": ["tab"],
+            "fields": ["prompt_comic", "image_comic", "prompt_voice", "audio_voice"],
         }),
         ("Video", {
             "classes": ["tab"],
@@ -48,6 +55,87 @@ ACTION_FIELDSETS = (
             "fields": ["action"],
         }),
     )
+
+class CurrentLanguageListMixin:
+    """Ensures translated fields in list_display, list_editable, and ajax_shift_fields show and edit only the current active language."""
+
+    def __init__(self, model, admin_site):
+        self._orig_list_display = tuple(getattr(self, 'list_display', ()))
+        self._orig_list_editable = tuple(getattr(self, 'list_editable', ()))
+        super().__init__(model, admin_site)
+
+    def _is_translated_field(self, field_name):
+        if not field_name or not isinstance(field_name, str):
+            return None
+        for code, lang_name in getattr(settings, 'LANGUAGES', ()):
+            if field_name.endswith(f"_{code}"):
+                base = field_name[:-len(code)-1]
+                try:
+                    self.model._meta.get_field(f"{base}_{code}")
+                    return base
+                except Exception:
+                    pass
+        for code, lang_name in getattr(settings, 'LANGUAGES', ()):
+            try:
+                self.model._meta.get_field(f"{field_name}_{code}")
+                return field_name
+            except Exception:
+                pass
+        return None
+
+    def _map_current_lang_fields(self, field_list):
+        if not field_list:
+            return field_list
+        lang = (get_language() or 'en').replace('-', '_').split('_')[0]
+
+        result = []
+        seen = set()
+        for field in field_list:
+            base_field = self._is_translated_field(field)
+            if base_field:
+                lang_field = f"{base_field}_{lang}"
+                try:
+                    self.model._meta.get_field(lang_field)
+                    target = lang_field
+                except Exception:
+                    default_field = f"{base_field}_en"
+                    try:
+                        self.model._meta.get_field(default_field)
+                        target = default_field
+                    except Exception:
+                        target = field
+                if target not in seen:
+                    seen.add(target)
+                    result.append(target)
+            else:
+                if field not in seen:
+                    seen.add(field)
+                    result.append(field)
+        return tuple(result) if isinstance(field_list, tuple) else list(result)
+
+    def patch_translation_fields(self, fields):
+        """Prevent TranslationAdmin from expanding fields to all configured languages."""
+        return self._map_current_lang_fields(fields)
+
+    def get_list_display(self, request):
+        fields = getattr(self, '_orig_list_display', None) or getattr(self, 'list_display', ())
+        return self._map_current_lang_fields(fields)
+
+    def get_list_editable(self, request):
+        fields = getattr(self, '_orig_list_editable', None) or getattr(self, 'list_editable', ())
+        return self._map_current_lang_fields(fields)
+
+    def get_changelist_instance(self, request):
+        cl = super().get_changelist_instance(request)
+        cl.list_display = self._map_current_lang_fields(cl.list_display)
+        if hasattr(cl, 'list_editable'):
+            cl.list_editable = self._map_current_lang_fields(cl.list_editable)
+        return cl
+
+    def ajax_config_view(self, request):
+        fields = getattr(self, 'ajax_shift_fields', [])
+        mapped = self._map_current_lang_fields(fields)
+        return JsonResponse({'ajax_shift_fields': list(mapped)})
 
 class ModelDisplayMixin:
     MAX_IMAGE_HEIGHT = 400
@@ -142,8 +230,21 @@ class ModelDisplayMixin:
     video_player.short_description = _("Video Player")
     
     def voice_player(self):
-        audio_voice = getattr(self, 'audio_voice', None)
-        if audio_voice:
+        audio_voice = None
+        lang = (get_language() or 'en').replace('-', '_').split('_')[0]
+        for attr in (f"audio_voice_{lang}", "audio_voice_en", "audio_voice"):
+            val = getattr(self, attr, None)
+            if val and hasattr(val, 'url') and val.url:
+                audio_voice = val
+                break
+        if not audio_voice:
+            for code, lang_name in getattr(settings, 'LANGUAGES', ()):
+                val = getattr(self, f"audio_voice_{code}", None)
+                if val and hasattr(val, 'url') and val.url:
+                    audio_voice = val
+                    break
+
+        if audio_voice and hasattr(audio_voice, 'url') and audio_voice.url:
             uid = secrets.token_hex(4)
             audio_id = f"audio_{self.pk}_{uid}"
             return format_html(
@@ -312,7 +413,7 @@ class PromptPreviewMixin:
         return JsonResponse({"content": text})
 
 class AdminActionsMixin:
-    @admin.action(description="Add to comic video")
+    @action(description=_("Add to comic video"), icon="playlist_add")
     def comic_to_video(self, request, queryset):
         Render = apps.get_model('scene', 'Render')
         RenderItem = apps.get_model('scene', 'RenderItem')
@@ -324,7 +425,7 @@ class AdminActionsMixin:
                 order=obj.order,
             )
 
-    @admin.action(description="Add to scene video")
+    @action(description=_("Add to scene video"), icon="playlist_add")
     def video_to_scene_video(self, request, queryset):
         Render = apps.get_model('scene', 'Render')
         RenderItem = apps.get_model('scene', 'RenderItem')
@@ -336,7 +437,7 @@ class AdminActionsMixin:
                 order=obj.order,
             )
 
-    @admin.action(description="Clone selected items")
+    @action(description=_("Clone selected items"), icon="content_copy")
     def clone(self, request, queryset):
         for obj in queryset:
             props = None
@@ -357,77 +458,77 @@ class AdminActionsMixin:
                 obj.cast.set(cast)
         self.message_user(request, "Selected items have been cloned.")
 
-    @admin.action(description="Generate image")
+    @action(description=_("Generate image"), icon="image")
     def default_generate_image(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_IMAGE, owner=request.user) is None:
                 obj.generate_image(user=request.user)
             self.message_user(request, "Image generated for item ID {}.".format(obj.id))
 
-    @admin.action(description="Refine image")
+    @action(description=_("Refine image"), icon="auto_fix_high")
     def default_refine_image(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_REFINE_IMAGE, owner=request.user) is None:
                 obj.refine_image(user=request.user) 
             self.message_user(request, "Image generated for item ID {}.".format(obj.id))
 
-    @admin.action(description="Refined as image")
+    @action(description=_("Refined as image"), icon="check_circle")
     def accept_refined_image(self, request, queryset):
         for obj in queryset:
             obj.image=obj.image_refine
             obj.save()
             self.message_user(request, "image accepted for item ID {}.".format(obj.id))
 
-    @admin.action(description="Refined as first frame")
+    @action(description=_("Refined as first frame"), icon="first_page")
     def accept_refined_first(self, request, queryset):
         for obj in queryset:
             obj.image_first=obj.image_refine
             obj.save()
             self.message_user(request, "image accepted for item ID {}.".format(obj.id))
 
-    @admin.action(description="Refined as last frame")
+    @action(description=_("Refined as last frame"), icon="last_page")
     def accept_refined_last(self, request, queryset):
         for obj in queryset:
             obj.image_last=obj.image_refine
             obj.save()
             self.message_user(request, "image accepted for item ID {}.".format(obj.id))
 
-    @admin.action(description="Video from image" )
+    @action(description=_("Video from image"), icon="videocam")
     def generate_video(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VIDEO, owner=request.user) is None:
                 obj.generate_video(obj.PRESET_VIDEO, user=request.user)
             self.message_user(request, "video generated for item ID {}.".format(obj.id))
 
-    @admin.action(description="Comic from image" )
+    @action(description=_("Comic from image"), icon="auto_awesome")
     def generate_comic(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_COMIC, owner=request.user) is None:
                 obj.generate_comic(user=request.user)
             self.message_user(request, "comic generated for item ID {}.".format(obj.id))
 
-    @admin.action(description="Video from first to last")
+    @action(description=_("Video from first to last"), icon="movie")
     def generate_video_first_last(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VIDEO_FIRST_LAST, owner=request.user) is None:
                 obj.generate_video(obj.PRESET_VIDEO_FIRST_LAST, user=request.user)
             self.message_user(request, "video generated for item ID {}.".format(obj.id))
 
-    @admin.action(description="Omni Video")
+    @action(description=_("Omni Video"), icon="video_camera_front")
     def generate_omni_video(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_OMNI_VIDEO, owner=request.user) is None:
                 obj.generate_omni_video(obj.PRESET_OMNI_VIDEO, user=request.user)
             self.message_user(request, "omni video generated for item ID {}.".format(obj.id))
 
-    @admin.action(description="Generate Voice")
+    @action(description=_("Generate Voice"), icon="record_voice_over")
     def generate_voice(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user) is None:
                 obj.generate_voice(obj.PRESET_VOICE, user=request.user)
             self.message_user(request, "voice generated for item ID {}.".format(obj.id))
 
-    @admin.action(description="Generate Elements")
+    @action(description=_("Generate Elements"), icon="interests")
     def generate_scene_elements(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_SCENE_ELEMENTS, owner=request.user) is None:
@@ -435,14 +536,14 @@ class AdminActionsMixin:
             model_label = obj._meta.verbose_name
             self.message_user(request, "Generation task for elements started for {}: {}.".format(model_label, obj.name))
 
-    @admin.action(description="Generate Shots")
+    @action(description=_("Generate Shots"), icon="play_arrow")
     def generate_scene_actions(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_SCENE_ACTIONS, owner=request.user) is None:
                 pass
             self.message_user(request, "Generation task for actions started for scene: {}.".format(obj.name))
 
-    @admin.action(description="Generate Voices")
+    @action(description=_("Generate Voices"), icon="record_voice_over")
     def generate_scene_voices(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_SCENE_VOICES, owner=request.user) is None:
@@ -451,34 +552,34 @@ class AdminActionsMixin:
                 pass
             self.message_user(request, "Generation task for voices started for scene: {}.".format(obj.name))
 
-    @admin.action(description="Generate Comics")
+    @action(description=_("Generate Comics"), icon="auto_awesome")
     def generate_scene_comics(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_SCENE_COMICS, owner=request.user) is None:
                 pass
             self.message_user(request, "Generation task for comics started for scene: {}.".format(obj.name))
 
-    @admin.action(description="Add me as author")
+    @action(description=_("Add me as author"), icon="person_add")
     def add_me_as_author(self, request, queryset):
         for obj in queryset:
             if obj.add_author(request.user):
                 self.message_user(request, f"You have been added as an author to story {obj.name}")
 
-    @admin.action(description="Sync Structure" )
+    @action(description=_("Sync Structure"), icon="sync")
     def extract_scene(self, request, queryset):
         for obj in queryset:
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_EXTRACT_SCENE, owner=request.user) is None:
                 obj.generate_scene(user=request.user)
             self.message_user(request, f"Extracting scene from contribution {obj.id} in story {obj.story.id}.")
 
-    @admin.action(description="Generate Render Preview (step 3.5)")
+    @action(description=_("Generate Render Preview (step 3.5)"), icon="preview")
     def generate_render(self, request, queryset):
         for obj in queryset:
             if hasattr(obj, 'generate_render'):
                 obj.generate_render()
                 self.message_user(request, _("Render generated for : {}").format(obj.name))
 
-    @admin.action(description="Refresh Render (step 4)" )
+    @action(description=_("Refresh Render (step 4)"), icon="refresh")
     def refresh_render(self, request, queryset):
         for obj in queryset:
             render = obj.generate_render()

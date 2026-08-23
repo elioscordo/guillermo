@@ -5,11 +5,11 @@ from django.shortcuts import get_object_or_404
 from django.urls import path, reverse
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin
-from django.utils.safestring import mark_safe
-from .utils import handle_ajax_field_save
+from .utils import handle_ajax_field_save, normalize_target_field
 from task.models import Task
 from .serializers import get_generic_serializer
-
+from django.utils.safestring import mark_safe
+       
 
 class AjaxTaskModelAdmin(ModelAdmin):
     list_refresh = []
@@ -107,18 +107,19 @@ class AjaxTaskModelAdmin(ModelAdmin):
 
     def trigger_ajax_task(self, request, obj, target_field):
         """Hook for triggering specific background tasks based on the updated field."""
-        if target_field == 'prompt':
+        field_name = normalize_target_field(target_field)
+        if field_name == 'prompt':
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_IMAGE, owner=request.user) is None:
                 obj.generate_image(user=request.user)
-        elif target_field == 'prompt_refine':
+        elif field_name == 'prompt_refine':
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_REFINE_IMAGE, owner=request.user) is None:
                 obj.refine_image(user=request.user)
-        elif target_field == 'prompt_comic':
+        elif field_name == 'prompt_comic':
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_COMIC, owner=request.user) is None:
                 obj.generate_comic(user=request.user)
-        elif target_field == 'prompt_video':
+        elif field_name == 'prompt_video':
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VIDEO, owner=request.user) is None:
                 obj.generate_omni_video(obj.TASK_TYPE_GENERATE_VIDEO, user=request.user)
-        elif target_field == 'prompt_voice':
+        elif field_name == 'prompt_voice':
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user) is None:
                 obj.generate_voice(obj.PRESET_VOICE, user=request.user)

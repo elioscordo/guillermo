@@ -45,6 +45,7 @@ ALLOWED_HOSTS = ['178.238.234.86', 'guillermoai.duckdns.org', 'www.guillermoai.d
 
 INSTALLED_APPS = [
     'unfold',
+    'modeltranslation',
     'rest_framework',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -64,7 +65,6 @@ INSTALLED_APPS = [
     'crispy_forms',
     "unfold.contrib.simple_history",  # Makes the history UI match Unfold's Tailwind theme
     "simple_history",
-
 ]
 
 
@@ -115,6 +115,7 @@ TEMPLATES = [
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
+                'django.template.context_processors.i18n',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages'
             ],
@@ -147,6 +148,18 @@ UNFOLD = {
     "SITE_TITLE": _("Guillermo"),  # Appears in the title and in the top left corner
     "SITE_HEADER": _("Guillermo"),
     "SITE_SUBHEADER": _("The power of your story"),
+    "SHOW_LANGUAGES": True,
+    "EXTENSIONS": {
+        "modeltranslation": {
+            "flags": {
+                "en": "🇬🇧",
+                "it": "🇮🇹",
+                "es": "🇪🇸",
+                "pt": "🇵🇹",
+                "fr": "🇫🇷",
+            },
+        },
+    },
     "STYLES": [
         lambda request: static("css/unfold_filer_custom.css"),
         lambda request: static("css/custom.css"),
@@ -367,7 +380,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'en'
 
 TIME_ZONE = 'UTC'
 
@@ -375,8 +388,16 @@ USE_I18N = True
 
 LANGUAGES = [
     ('en', _('English')),
+    ('it', _('Italian')),
     ('es', _('Spanish')),
+    ('pt', _('Portuguese')),
+    ('fr', _('French')),
 ]
+
+MODELTRANSLATION_DEFAULT_LANGUAGE = 'en'
+MODELTRANSLATION_LANGUAGES = ('en', 'it', 'es', 'pt', 'fr')
+MODELTRANSLATION_FALLBACK_LANGUAGES = {'default': ('en',)}
+MODELTRANSLATION_PREPOPULATE_LANGUAGE = 'en'
 
 USE_TZ = True
 
@@ -523,12 +544,11 @@ AGENT_SCHEMA_CHOICES = [
 
 AGENT_SCHEMAS = {
     SCHEMA_MULTI_SCENE: "scene.schemas.MultiSceneSchema",
-    SCHEMA_SCENE : "scene.schemas.SceneSchema",    
-    SCHEMA_OUTPUT_WITH_MESSAGE: "scene.schemas.OutputWithMessageSchema",
-    SCHEMA_CREATE_INSTRUCTIONS: "scene.schemas.CreateInstructionsSchema",
+    SCHEMA_SCENE: "scene.schemas.SceneSchema",    
+    SCHEMA_OUTPUT_WITH_MESSAGE: "agent.schemas.OutputWithMessageSchema",
+    SCHEMA_CREATE_INSTRUCTIONS: "agent.schemas.CreateInstructionsSchema",
     SCHEMA_STORY_SCENES: "scene.schemas.StoryScenesSchema",
-    SCHEMA_ASSETS: "scene.schemas.AssetsSchema"
-        
+    SCHEMA_ASSETS: "scene.schemas.AssetsSchema",
 }
 
 PRESET_INFO =  "info"

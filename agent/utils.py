@@ -3,6 +3,16 @@ from django.conf import settings
 import json
 from django.db import models
 
+def normalize_target_field(target_field):
+    """Strips language suffixes (e.g. '_en', '_it') to resolve the base field name."""
+    if not target_field or not isinstance(target_field, str):
+        return target_field
+    for code, _ in getattr(settings, 'LANGUAGES', ()):
+        if target_field.endswith(f"_{code}"):
+            return target_field[:-len(code)-1]
+    return target_field
+
+
 def handle_ajax_field_save(obj, field_name, value):
     """Centralized logic for saving a field via AJAX, handling Filer fields and Booleans."""
     from filer.fields.image import FilerImageField

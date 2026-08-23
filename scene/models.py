@@ -119,7 +119,7 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, YAMLAssetsMixin, models.Model
 
     ACTION_SYNC_SCENES = f"{TASK_TEXT_GENERATE}-preset-{PRESET_SYNC_SCENES}-schema-{settings.SCHEMA_STORY_SCENES}"
     ACTION_SYNC_ELEMENTS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_SYNC_ELEMENTS}-schema-{settings.SCHEMA_ASSETS}"
-    ACTION_EDIT_SYNC_ELEMENTS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_SYNC_ELEMENTS}-schema-{settings.SCHEMA_ASSETS}"
+    ACTION_EDIT_SYNC_ELEMENTS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_EDIT_SYNC_ELEMENTS}-schema-{settings.SCHEMA_ASSETS}"
 
     ACTION_CHOICES = (
         (ACTION_CREATE_SCENES, _("Create story scenes")),
@@ -491,19 +491,17 @@ class Scene(AfterSaveActionMixin, YAMLAssetsMixin, models.Model, TaskHolder, Get
         return self.voices.all()
 
     def get_missing_elements(self):
-        """Collects all backgrounds, characters, and props in a scene's actions that lack an image."""
+        """Collects all locations, cast characters, and props of a scene that lack an image."""
         elements = set()
-        for action in self.actions.all():
-            if action.background and not action.background.image:
-                elements.add(action.background)
-            if action.actor and not action.actor.image:
-                elements.add(action.actor)
-            for char in action.cast.all():
-                if not char.image:
-                    elements.add(char)
-            for prop in action.props.all():
-                if not prop.image:
-                    elements.add(prop)
+        for bg in self.get_locations():
+            if not bg.image:
+                elements.add(bg)
+        for char in self.get_cast():
+            if not char.image:
+                elements.add(char)
+        for prop in self.get_props():
+            if not prop.image:
+                elements.add(prop)
         return elements
 
     def get_elements(self):
@@ -842,7 +840,7 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
     video = FilerFileField(verbose_name=_("video"), null=True, blank=True, on_delete=models.SET_NULL, related_name='actions_video')
     prompt_video = models.TextField(_("prompt video"), null=True, blank=True)
 
-    TASK_TYPE_CHOICES = settings.TASK_TYPE_CHOICES
+    TASK_TYPE_CHOICES = settings.TASK_TYPE_CHOICES#
     action = models.SlugField(_("action"), choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
 
     prompt_comic = models.TextField(_("prompt comic"), null=True, blank=True)
@@ -853,7 +851,13 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
     text = models.TextField(_("text"), null=True, blank=True)
     parameters = models.JSONField(_("configuration"), null=True, blank=True)
     shot_type = models.CharField(_("shot type"), max_length=20, choices=SHOT_TYPE_CHOICES, null=True, blank=True)
-    history = HistoricalRecords()
+    history = HistoricalRecords(
+        excluded_fields=[
+            f"{f}_{lang}"
+            for f in ("prompt_comic", "prompt_voice", "image_comic", "audio_voice")
+            for lang in getattr(settings, "MODELTRANSLATION_LANGUAGES", ("en", "it", "es", "pt", "fr"))
+        ]
+    )
 
     def __str__(self):
         return self.get_name()

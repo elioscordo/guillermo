@@ -178,7 +178,6 @@ class SceneSchema(BaseModel):
         """
         story = scene.story
         was_created = scene._state.adding
-        scene.name = self.name
         scene.save()
 
         # Sync assets using AssetsSchema
@@ -238,26 +237,7 @@ class MultiSceneSchema(BaseModel):
         return results
 
 
-class OutputWithMessageSchema(BaseModel):
-    message: str
-    output: str
-
-    def sync_model(self, source):
-        return dict(self)
-
-    def get_output(self):
-        return self.output
-
-
-class CreateInstructionsSchema(OutputWithMessageSchema):
-    def sync_model(self, source):
-        Prompt.objects.update_or_create(
-            name=f"Prompt Automatically Created",
-            defaults={
-                'prompt': self.output,
-            }
-        )
-        return dict(self)
+from agent.models import OutputWithMessageSchema, CreateInstructionsSchema
 
 
 class StoryScenesSchema(BaseModel):

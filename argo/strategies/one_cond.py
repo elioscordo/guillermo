@@ -21,8 +21,7 @@ from nautilus_trader.model.identifiers import InstrumentId
 from nautilus_trader.model.orders import LimitOrder
 from nautilus_trader.trading import Strategy
 from nautilus_trader.trading.config import StrategyConfig
-
-
+from argo.actors.mixins import AccountSyncMixin
 
 
 # %%
@@ -30,7 +29,7 @@ class SimpleConditionsConfig(StrategyConfig, frozen=True):
     tradable_instrument_id: str | None = "EUR.USD-CASH.IDEALPRO"
 
 
-class SimpleConditionsStrategy(Strategy):
+class SimpleConditionsStrategy(AccountSyncMixin, Strategy):
     def __init__(self, config: SimpleConditionsConfig) -> None:
         super().__init__(config)
         self.tradable_instrument_id = config.tradable_instrument_id
@@ -46,13 +45,7 @@ class SimpleConditionsStrategy(Strategy):
         self.log.info(f"Received event: {event}")
 
     def on_start(self) -> None:
-        accounts = self.cache.accounts()
-        if len(accounts) == 0:
-            self.log.warning("No accounts found in cache")
-        else:
-            self.log.info(f"Found {len(accounts)} accounts in cache")
-            for account in accounts:
-                self.log.info(f"Account: {account}")
+        self.sync_accounts()
         for instrument in self.cache.instruments():
             if str(instrument.id) == self.tradable_instrument_id:
                 self.test_time_condition_order(instrument)

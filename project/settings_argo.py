@@ -16,8 +16,8 @@ import os
 from django.utils.translation import gettext_lazy as _
 from django.urls import reverse_lazy
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-load_dotenv(dotenv_path=os.path.join(BASE_DIR, '.env_argo'))
+ARGO_DIR = os.path.join( BASE_DIR , 'argo' )
+load_dotenv(dotenv_path=os.path.join(ARGO_DIR, '.env'))
 GOOGLE_GENAI_VERTEX_API_KEY= os.getenv("GOOGLE_GENAI_VERTEX_API_KEY")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -45,20 +45,20 @@ ALLOWED_HOSTS = ['178.238.234.86', 'guillermoai.duckdns.org', 'www.guillermoai.d
 
 INSTALLED_APPS = [
     'unfold',
-    'rest_framework',
+    'unfold.contrib.import_export',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'easy_thumbnails',
     'filer',
-    'agent.apps.AgentConfig',
-    'task',
-    'unfold.contrib.import_export',
     'django_celery_beat',
     'crispy_forms',
+    'agent',
+    'task',
     'argo'
 ]
 
@@ -121,28 +121,17 @@ TEMPLATES = [
 WSGI_APPLICATION = 'project.wsgi.application'
 
 
-def agentprofile(request):
-    try:
-        return f"/admin/agent/agentprofile/{request.user.story_profile.id}/change/?next=/admin/scene/story/"
-    except:
-        return "/admin/"
-    
-def token_usage_link(request):
-    return "/admin/agent/tokenusage/"
-
-
 from django.templatetags.static import static
 
 UNFOLD = {
-    "SITE_TITLE": _("Argo"),  # Appears in the title and in the top left corner
+    "SITE_TITLE": _("Argo"),
     "SITE_HEADER": _("Argo"),
     "SITE_SUBHEADER": _("Financial Manager"),
     "STYLES": [
         lambda request: static("css/unfold_filer_custom.css"),
         lambda request: static("css/custom.css"),
     ],
-    "DASHBOARD_CALLBACK": "scene.models.dashboard_callback",
-    "ACCOUNT": {}, # Empty this to prevent duplication at the bottom
+    "ACCOUNT": {},
     
     "COLORS": {
       "font": {
@@ -198,11 +187,11 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv("DB_NAME", "guillermo"),
-            'USER': os.getenv("DB_USER", "postgres"),
-            'PASSWORD': os.getenv("DB_PASSWORD", ""),
-            'HOST': os.getenv("DB_HOST", "localhost"),
-            'PORT': os.getenv("DB_PORT", "5432"),
+            'NAME': os.getenv("POSTGRES_DB", os.getenv("DB_NAME", "argo")),
+            'USER': os.getenv("POSTGRES_USER", os.getenv("DB_USER", "postgres")),
+            'PASSWORD': os.getenv("POSTGRES_PASSWORD", os.getenv("DB_PASSWORD", "your_new_password")),
+            'HOST': os.getenv("POSTGRES_HOST", os.getenv("DB_HOST", "localhost")),
+            'PORT': os.getenv("POSTGRES_PORT", os.getenv("DB_PORT", "5432")),
         }
     }
 
@@ -278,102 +267,60 @@ GENAI_REQUEST_TIMEOUT_MS = int(os.getenv("GENAI_REQUEST_TIMEOUT_MS", "300000"))
 
 
 
-TASK_TYPE_GENERATE_IMAGE = 'generate_image'
-TASK_TYPE_REFINE_IMAGE = 'refine_image'
-TASK_TYPE_GENERATE_VIDEO = 'generate_video'
-TASK_TYPE_GENERATE_OMNI_VIDEO = 'generate_video_multimodal'
-TASK_TYPE_GENERATE_VIDEO_FIRST_LAST = 'generate_video_first_last'
-TASK_TYPE_GENERATE_COMIC = 'generate_comic'
-TASK_TYPE_VIDEO_RENDER = 'video_render'
-TASK_TYPE_GENERATE_SCENE = 'generate_scene_video'
-
-TASK_TYPE_GENERATE_VOICE = 'generate_voice'
-TASK_TYPE_GENERATE_TEXT = 'generate_text'
-TASK_TYPE_GENERATE_SCENE = 'generate_scene'
-
-TASK_TYPE_GENERATE_SCENE_ELEMENTS = 'generate_scene_elements'
-TASK_TYPE_GENERATE_SCENE_ACTIONS = 'generate_scene_actions'
-
-TASK_TYPE_GENERATE_SCENE_VOICES = 'generate_scene_voices'
-TASK_TYPE_GENERATE_SCENE_COMICS = 'generate_scene_comics'
-
-TASK_TYPE_EXTRACT_SCENE = 'extract_scene'
-TASK_TYPE_SYNC_EXPORT = 'sync_export'
-TASK_TYPE_SYNC_IMPORT = 'sync_import'
-
-
-
-
-TASK_DELEGATES = {
-    # generate
-    TASK_TYPE_GENERATE_IMAGE: 'scene.tasks.tasks.TaskGenerateImage',
-    TASK_TYPE_REFINE_IMAGE: 'scene.tasks.tasks.TaskRefineImage',
-    TASK_TYPE_GENERATE_VIDEO: 'scene.tasks.tasks.TaskGenerateVideo',
-    TASK_TYPE_GENERATE_OMNI_VIDEO: 'scene.tasks.tasks.TaskGenerateOmniVideo',
-    TASK_TYPE_GENERATE_VIDEO_FIRST_LAST: 'scene.tasks.tasks.TaskGenerateVideoFirstLast',
-    TASK_TYPE_GENERATE_COMIC: 'scene.tasks.tasks.TaskGenerateComic',
-    TASK_TYPE_GENERATE_VOICE: 'scene.tasks.tasks.TaskGenerateVoice',
-    
-    TASK_TYPE_GENERATE_TEXT: 'scene.tasks.tasks.TaskGenerateText',
-
-    TASK_TYPE_GENERATE_SCENE: 'scene.tasks.tasks.TaskGenerateScene',
-
-    TASK_TYPE_GENERATE_SCENE_ELEMENTS: 'scene.tasks.tasks.TaskGenerateElements',
-    TASK_TYPE_GENERATE_SCENE_ACTIONS: 'scene.tasks.tasks.TaskGenerateShots',
-    
-    TASK_TYPE_GENERATE_SCENE_VOICES: 'scene.tasks.tasks.TaskGenerateVoices',
-    TASK_TYPE_GENERATE_SCENE_COMICS: 'scene.tasks.tasks.TaskGenerateComics',
-
-    TASK_TYPE_EXTRACT_SCENE: 'scene.tasks.tasks.TaskExtractScene',
-    # sync
-    TASK_TYPE_SYNC_EXPORT: 'scene.tasks.sync.TaskSyncExport',
-    TASK_TYPE_SYNC_IMPORT: 'scene.tasks.sync.TaskSyncImport',
-    # render
-    TASK_TYPE_VIDEO_RENDER: 'scene.tasks.render.VideoRender',
-    
-}
-IMPORT_EXPORT_TMP_STORAGE_CLASS = 'import_export.tmp_storages.MediaStorage'
-TASK_TYPE_CHOICES = (
-    (TASK_TYPE_GENERATE_IMAGE, _("Generate Image")),
-    (TASK_TYPE_REFINE_IMAGE, _("Refine Image")),
-    (TASK_TYPE_GENERATE_VIDEO, _("Generate Video")),
-    (TASK_TYPE_GENERATE_VIDEO_FIRST_LAST, _("Video First Last")),
-    (TASK_TYPE_GENERATE_OMNI_VIDEO, _("Video Multimodal")),
-    (TASK_TYPE_GENERATE_COMIC, _("Generate Comic")),
-    (TASK_TYPE_VIDEO_RENDER, _("Render Video")),
-    (TASK_TYPE_GENERATE_VOICE, _("Generate Voice")),
-    (TASK_TYPE_GENERATE_TEXT, _("Generate Text")),
-
-    (TASK_TYPE_GENERATE_SCENE, _("Generate Scene")),
-    (TASK_TYPE_GENERATE_SCENE_ELEMENTS, _("Generate Elements")),
-    (TASK_TYPE_GENERATE_SCENE_ACTIONS, _("Generate Shots")),
-    (TASK_TYPE_GENERATE_SCENE_VOICES, _("Generate Voices")),
-    (TASK_TYPE_GENERATE_SCENE_COMICS, _("Generate Comics")),
-    (TASK_TYPE_EXTRACT_SCENE, _("Extract Scene")),
-    (TASK_TYPE_SYNC_EXPORT, _("Sync Export")),
-    (TASK_TYPE_SYNC_IMPORT, _("Sync Import")),
-    (TASK_TYPE_GENERATE_SCENE, _("Generate Scene Video")),
-
-)
-
-TASK_RETRY_EXCEPTIONS = [
-    'RESOURCE_EXHAUSTED',
-]
-
-# --- Configuración de archivos estáticos ---
-import os
-STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+TASK_TYPE_GENERATE_TEXT = 'generate_text'
+
+TASK_TYPE_CHOICES = (
+    (TASK_TYPE_GENERATE_TEXT, _("Generate Text")),
+)
+
 # Agent Structured Output Schema Settings
-SCHEMA_MULTI_SCENE = "multi_scene"
+SCHEMA_MULTI_SCENE = "multiscene"
 SCHEMA_SCENE = "scene"
+SCHEMA_OUTPUT_WITH_MESSAGE = "outwithmsg"
+SCHEMA_CREATE_INSTRUCTIONS = "create_instructions"
+SCHEMA_ASSETS = "assets"
+SCHEMA_STORY_SCENES = "story_scenes"
+
 AGENT_SCHEMA_CHOICES = [
     (SCHEMA_MULTI_SCENE, _("Multi Scene Storyboard")),
     (SCHEMA_SCENE, _("Single Scene Storyboard")),
+    (SCHEMA_OUTPUT_WITH_MESSAGE, _("Output With Message")),
+    (SCHEMA_CREATE_INSTRUCTIONS, _("Create Instructions")),
+    (SCHEMA_STORY_SCENES, _("Story Scenes")),
+    (SCHEMA_ASSETS, _("Assets")),
 ]
 
 AGENT_SCHEMAS = {
     SCHEMA_MULTI_SCENE: "scene.schemas.MultiSceneSchema",
-    SCHEMA_SCENE : "scene.schemas.SceneSchema",    
+    SCHEMA_SCENE: "scene.schemas.SceneSchema",    
+    SCHEMA_OUTPUT_WITH_MESSAGE: "agent.schemas.OutputWithMessageSchema",
+    SCHEMA_CREATE_INSTRUCTIONS: "agent.schemas.CreateInstructionsSchema",
+    SCHEMA_STORY_SCENES: "scene.schemas.StoryScenesSchema",
+    SCHEMA_ASSETS: "scene.schemas.AssetsSchema",
 }
+
+PRESET_INFO = "info"
+PRESET_INSTRUCTION = "instruction"
+
+COMMON_TEXT_AGENT_PRESETS = (
+    (PRESET_INFO, _("Last message")),
+    (PRESET_INSTRUCTION, _("Instruction")),        
+)
+ACTION_INFO = f"generate_text-preset-{PRESET_INFO}"
+ACTION_INSTRUCTION = f"generate_text-preset-{PRESET_INSTRUCTION}-schema-{SCHEMA_OUTPUT_WITH_MESSAGE}"
+ACTION_INSTRUCTION_COMMIT = f"generate_text-preset-{PRESET_INSTRUCTION}-schema-{SCHEMA_CREATE_INSTRUCTIONS}"
+
+COMMON_TEXT_ACTION_CHOICES = (
+    (ACTION_INFO, _("Info")),
+    (ACTION_INSTRUCTION, _("Instruction")),
+    (ACTION_INSTRUCTION_COMMIT, _("Instruction Commit")),
+)
+
+SYSTEM_PRESETS = [
+    PRESET_INFO,
+    PRESET_INSTRUCTION,
+]
+
+

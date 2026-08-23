@@ -23,6 +23,11 @@ import os
 import threading
 import time
 
+import django
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "argo_project.settings")
+django.setup()
+
+
 from nautilus_trader.adapters.interactive_brokers.common import IB
 from nautilus_trader.adapters.interactive_brokers.common import IBContract
 from nautilus_trader.adapters.interactive_brokers.common import IBOrderTags
@@ -57,6 +62,7 @@ from argo.strategies.one_cond import SimpleConditionsConfig
 from argo.strategies.one_cond import SimpleConditionsStrategy
 from argo.actors.event_logger import EventLoggerActor
 
+# %%
 
 IB_HOST = os.getenv("IB_EXAMPLE_HOST", "127.0.0.1")
 IB_PORT = int(os.getenv("IB_EXAMPLE_PORT", "4001"))
@@ -143,6 +149,10 @@ config_node = TradingNodeConfig(
     timeout_post_stop=10.0,
 )
 
+
+# Instantiate the node with a configuration
+node = TradingNode(config=config_node)
+
 strat_config = SimpleConditionsConfig(
     tradable_instrument_id=tradable_instrument_id,
     manage_stop=True,
@@ -151,9 +161,6 @@ strat_config = SimpleConditionsConfig(
     market_exit_reduce_only=False,
 )
 strategy = SimpleConditionsStrategy(config=strat_config)
-
-# Instantiate the node with a configuration
-node = TradingNode(config=config_node)
 
 # Add your strategies and modules
 node.trader.add_strategy(strategy)

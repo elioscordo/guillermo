@@ -17,14 +17,23 @@ from agent.sections import AjaxSectionAdminMixin, MessageHistorySection
 from django.conf import settings
 from task.models import Task
 from unfold.admin import StackedInline
+try:
+    from modeltranslation.admin import TabbedTranslationAdmin, TranslationAdmin
+except ImportError:
+    class TabbedTranslationAdmin:
+        pass
+    class TranslationAdmin:
+        pass
+
 from .models import ActionOrganizer, Character, Scene, Preset, Action, Background, SceneOrganizer, StoryGroup, Style, Prop, ComicAction, RenderItem, VideoAction, Render, Story, StoryProfile, Voice, VoiceAction, Author, Nudge, ContactRequest, WorkShop, Sync, SyncItem
 from .admin_utils import AdminLinker
 from agent.admin_utils import AjaxTaskModelAdmin
+from agent.utils import normalize_target_field
 from django.utils.translation import gettext_lazy as _
 from django.utils.html import format_html
 from agent.models import Message
 from .sections import AuthorSection, ElementSection, SceneSection, SceneCharactersSection, SceneLocationsSection, ScenePropsSection, RenderSection, MarkDownSection, ScriptSection
-from .mixins import ACTION_FIELDSETS, ELEMENT_FIELDSETS, SceneFilterMixin, StaffReadOnlyMixin, StoryFilterMixin, ViewYourOwnMixin, PromptPreviewMixin, AdminActionsMixin, ChangelistScrollToEditedMixin
+from .mixins import ACTION_FIELDSETS, ELEMENT_FIELDSETS, SceneFilterMixin, StaffReadOnlyMixin, StoryFilterMixin, ViewYourOwnMixin, PromptPreviewMixin, AdminActionsMixin, ChangelistScrollToEditedMixin, CurrentLanguageListMixin
 from unfold.sections import TableSection, TemplateSection, render_to_string
 from rangefilter.filters import NumericRangeFilter
 from django.http import JsonResponse, HttpResponse
@@ -149,40 +158,10 @@ class StoryAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHisto
 
     def scenes_dropdown(self, obj):
         scenes = obj.scenes.all().order_by('order')
-        count = scenes.count()
-        if count == 0:
-            return "-"
-        
-        links = []
-        for scene in scenes:
-            url = reverse("admin:scene_scene_changelist") + f"?id__exact={scene.id}"
-            name = scene.name or f"Scene {scene.id}"
-            links.append(format_html(
-                '<a href="{}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-base-800 dark:hover:text-white transition-colors truncate">{}</a>',
-                url, name
-            ))
-
-        return format_html(
-            '<div x-data="{{ open: false }}" class="relative inline-block text-left">'
-                '<button @click="open = !open" @click.away="open = false" type="button" class="items-dropdown-trigger inline-flex items-center gap-1 bg-base-100 hover:bg-base-200 text-font-default-light dark:bg-base-800 dark:hover:bg-base-700 dark:text-font-default-dark px-2.5 py-1.5 rounded-md text-xs font-semibold shadow-xs">'
-                    '<span>Scenes ({})</span>'
-                    '<span class="material-symbols-outlined text-[16px] transition-transform duration-200" :class="open ? \'rotate-180\' : \'\'">keyboard_arrow_down</span>'
-                '</button>'
-                '<div x-show="open" '
-                     'x-transition:enter="transition ease-out duration-100" '
-                     'x-transition:enter-start="transform opacity-0 scale-95" '
-                     'x-transition:enter-end="transform opacity-100 scale-100" '
-                     'x-transition:leave="transition ease-in duration-75" '
-                     'x-transition:leave-start="transform opacity-100 scale-100" '
-                     'x-transition:leave-end="transform opacity-0 scale-95" '
-                     'class="absolute left-0 mt-1 w-56 rounded-md shadow-lg bg-white dark:bg-base-900 ring-1 ring-black ring-opacity-5 focus:outline-none z-50 py-1" '
-                     'style="display: none;">'
-                     '{}'
-                '</div>'
-            '</div>',
-            count,
-            mark_safe("".join(links))
-        )
+        return render_to_string("story/scenes_dropdown.html", {
+            "instance": obj,
+            "scenes": scenes,
+        })
     scenes_dropdown.short_description = _("Scenes")
 
     def scene_links(self, obj):
@@ -249,10 +228,11 @@ class SceneAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHisto
         super().save_model(request, obj, form, change)
 
     def trigger_ajax_task(self, request, obj, target_field):
-        if target_field == 'prompt':
+        field_name = normalize_target_field(target_field)
+        if field_name == 'prompt':
             # When the main prompt is saved via AJAX, do nothing.
             pass
-        elif target_field == 'prompt_refine':
+        elif field_name == 'prompt_refine':
             agent = obj.story.get_mentor()
             if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_TEXT, thr=agent, owner=request.user) is None:
                 obj.generate_text(request.user, agent)
@@ -290,9 +270,9 @@ class CharacterAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleH
 
 @admin.register(Background)
 class BackgroundAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHistoryAdmin, AjaxSectionAdminMixin, StoryFilterMixin, AdminActionsMixin, AdminLinker, PromptPreviewMixin, AjaxTaskModelAdmin):
-    list_display = ('name', 'pic', 'prompt', 'prompt_refine', 'link_story', 'last_tasks')
+    list_display = ('name', 'pic', 'prompt','link_story', 'last_tasks')
     list_refresh = ['pic']
-    list_editable = ('prompt','prompt_refine')
+    list_editable = ('prompt',)
     list_display_links = ('name',)
     autocomplete_fields = ['story']
     list_filter = ['story', 'id']
@@ -340,7 +320,7 @@ class NudgeAdmin(AdminActionsMixin, ModelAdmin):
     )
 
 @admin.register(Action)
-class ActionAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHistoryAdmin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
+class ActionAdmin(CurrentLanguageListMixin, TabbedTranslationAdmin, ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHistoryAdmin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
     ajax_shift_fields = ['prompt', 'prompt_refine']    
     list_display = ('get_name', 'items', 'pic', 'prompt','prompt_refine', 'last_tasks')
     list_refresh = ['pic']
@@ -356,7 +336,7 @@ class ActionAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHist
     list_sections = [MessageHistorySection]
 
 @admin.register(VideoAction)
-class VideoActionAdmin(PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
+class VideoActionAdmin(CurrentLanguageListMixin, PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
     list_display = ('name', 'items', 'pic', 'prompt_video', 'video_player','last_tasks')
     list_editable = ['prompt_video']
     list_filter = ["scene__story", "scene", "id"]
@@ -369,7 +349,7 @@ class VideoActionAdmin(PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsM
 
 
 @admin.register(ComicAction)
-class ComicActionAdmin(PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
+class ComicActionAdmin(CurrentLanguageListMixin, TabbedTranslationAdmin, PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
     ajax_shift_fields = ['prompt_comic']
     list_display = ('name', 'items', 'pic', 'pic_comic', 'prompt_comic', 'last_tasks')
     list_editable = ['prompt_comic']
@@ -378,13 +358,14 @@ class ComicActionAdmin(PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsM
     list_display_links = ('name',)
     search_fields = ['name']
     actions = ['generate_comic', 'comic_to_video']
+    fieldsets = ACTION_FIELDSETS
     list_sections = [MessageHistorySection]
 
 
 @admin.register(VoiceAction)
-class VoiceActionAdmin(PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
-    list_display = ('name', 'items', 'pic', 'prompt_voice','voice', 'voice_player', 'last_tasks')
-    list_editable = ['prompt_voice', 'voice' ]
+class VoiceActionAdmin(CurrentLanguageListMixin, PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin, TabbedTranslationAdmin):
+    list_display = ('name', 'items', 'pic', 'prompt_voice', 'voice', 'voice_player', 'last_tasks')
+    list_editable = ['prompt_voice', 'voice']
     list_filter = ["scene__story", "scene", "id"]
     list_display_links = ('name',)
     autocomplete_fields = ['actor', 'props', 'cast', 'background', 'consistent_with', 'scene', 'voice']
@@ -394,13 +375,18 @@ class VoiceActionAdmin(PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsM
     fieldsets = ACTION_FIELDSETS
     list_sections = [MessageHistorySection]
 
+    def audio_voice(self, obj):
+        return obj.voice_player()
+    audio_voice.short_description = _("Audio Player")
+
 
 @admin.register(ActionOrganizer)
-class ActionOrganizerAdmin(AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, ModelAdmin):
+class ActionOrganizerAdmin(CurrentLanguageListMixin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, ModelAdmin):
     list_display = ('id', 'name', 'items', 'pic', 'scene', 'is_intro', 'order')
     list_editable = ['name', 'scene', 'is_intro', 'order']
     list_filter = ["scene__story", "scene"]
     search_fields = ['name']
+    fieldsets = ACTION_FIELDSETS
 
 @admin.register(SceneOrganizer)
 class SceneOrganizerAdmin(AjaxSectionAdminMixin, AdminActionsMixin, AdminLinker, StoryFilterMixin, ModelAdmin):
@@ -424,7 +410,8 @@ class VoiceAdmin(PromptMarkdownMixin, SimpleHistoryAdmin, StoryFilterMixin, Admi
     search_fields= ['name']
     
     def trigger_ajax_task(self, request, obj, target_field):
-        if target_field in ['prompt', 'sample_text']:
+        field_name = normalize_target_field(target_field)
+        if field_name in ['prompt', 'sample_text']:
             if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user) is None:
                 obj.generate_voice(obj.PRESET_VOICE, user=request.user)
 

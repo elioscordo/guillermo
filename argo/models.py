@@ -8,6 +8,105 @@ from django.utils.translation import gettext_lazy as _
 
 
 
+class Account(models.Model):
+    """
+    Represents a trading account synchronized from NautilusTrader.
+    """
+    account_id = models.CharField(max_length=100, unique=True, help_text="Nautilus AccountId string.")
+    account_type = models.CharField(max_length=50, blank=True, help_text="e.g. CASH, MARGIN, BETTING.")
+    base_currency = models.CharField(max_length=10, blank=True, help_text="Base currency code (e.g. USD, EUR).")
+    
+    balance_total = models.DecimalField(max_digits=20, decimal_places=4, default=0.0)
+    balance_free = models.DecimalField(max_digits=20, decimal_places=4, default=0.0)
+    balance_locked = models.DecimalField(max_digits=20, decimal_places=4, default=0.0)
+    
+    balances = models.JSONField(default=dict, blank=True, help_text="Multi-currency balance breakdowns.")
+    margins = models.JSONField(default=dict, blank=True, help_text="Margin usage details.")
+    info = models.JSONField(default=dict, blank=True, help_text="Additional broker metadata.")
+    
+    is_reported = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['account_id']
+        verbose_name = _('Account')
+        verbose_name_plural = _('Accounts')
+
+    def __str__(self):
+        return f"{self.account_id} ({self.base_currency} {self.balance_total})"
+
+    @classmethod
+    def sync_from_nautilus(cls, nautilus_account):
+        """
+        Synchronizes a NautilusTrader Account instance or AccountState event to the database.
+        """
+        account_id = str(getattr(nautilus_account, "id", getattr(nautilus_account, "account_id", nautilus_account)))
+        account_type = str(getattr(nautilus_account, "account_type", ""))
+        base_currency = str(getattr(nautilus_account, "base_currency", ""))
+        
+        balances_dict = {}
+        total_bal = 0.0
+        free_bal = 0.0
+        locked_bal = 0.0
+
+        if hasattr(nautilus_account, "balances"):
+            raw_balances = nautilus_account.balances() if callable(nautilus_account.balances) else nautilus_account.balances
+            if isinstance(raw_balances, dict):
+                for curr, bal in raw_balances.items():
+                    curr_str = str(curr)
+                    c_total = float(getattr(bal, "total", getattr(bal, "balance_total", 0.0)))
+                    c_free = float(getattr(bal, "free", getattr(bal, "balance_free", 0.0)))
+                    c_locked = float(getattr(bal, "locked", getattr(bal, "balance_locked", 0.0)))
+                    balances_dict[curr_str] = {"total": c_total, "free": c_free, "locked": c_locked}
+                    if not total_bal or curr_str == base_currency:
+                        total_bal, free_bal, locked_bal = c_total, c_free, c_locked
+            elif isinstance(raw_balances, list):
+                for bal in raw_balances:
+                    curr_str = str(getattr(bal, "currency", base_currency))
+                    c_total = float(getattr(bal, "total", 0.0))
+                    c_free = float(getattr(bal, "free", 0.0))
+                    c_locked = float(getattr(bal, "locked", 0.0))
+                    balances_dict[curr_str] = {"total": c_total, "free": c_free, "locked": c_locked}
+                    if not total_bal or curr_str == base_currency:
+                        total_bal, free_bal, locked_bal = c_total, c_free, c_locked
+
+        if hasattr(nautilus_account, "balance_total"):
+            b_total = getattr(nautilus_account, "balance_total", None)
+            total_bal = float(b_total() if callable(b_total) else b_total) if b_total is not None else total_bal
+        if hasattr(nautilus_account, "balance_free"):
+            b_free = getattr(nautilus_account, "balance_free", None)
+            free_bal = float(b_free() if callable(b_free) else b_free) if b_free is not None else free_bal
+        if hasattr(nautilus_account, "balance_locked"):
+            b_locked = getattr(nautilus_account, "balance_locked", None)
+            locked_bal = float(b_locked() if callable(b_locked) else b_locked) if b_locked is not None else locked_bal
+
+        margins_dict = {}
+        if hasattr(nautilus_account, "margins"):
+            raw_margins = nautilus_account.margins() if callable(nautilus_account.margins) else nautilus_account.margins
+            if isinstance(raw_margins, dict):
+                margins_dict = {str(k): float(v) if isinstance(v, (int, float)) else str(v) for k, v in raw_margins.items()}
+
+        info_dict = {}
+        if hasattr(nautilus_account, "info"):
+            raw_info = nautilus_account.info
+            info_dict = raw_info if isinstance(raw_info, dict) else {}
+
+        instance, _ = cls.objects.update_or_create(
+            account_id=account_id,
+            defaults={
+                "account_type": account_type,
+                "base_currency": base_currency,
+                "balance_total": total_bal,
+                "balance_free": free_bal,
+                "balance_locked": locked_bal,
+                "balances": balances_dict,
+                "margins": margins_dict,
+                "info": info_dict,
+            },
+        )
+        return instance
+
+
 class Position(models.Model):
     class Side(models.TextChoices):
         LONG = 'LONG', 'Long'

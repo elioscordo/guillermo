@@ -98,13 +98,8 @@ class GetContentsMixin:
     def get_contents(self, generate_self=True, preset=None,):
         parts = []
         if preset == settings.PRESET_INSTRUCTION:
-             message =  self.messages.exclude(preset=preset).last()
-             instructions =  [message.parts_instructions().values_list('text', flat=True).first()] if message else []
-             parts.append(f"system_instruction: {instructions}")
-             part_input =  [message.parts_input().values_list('text', flat=True).first()] if message else []
-             parts.append(f"retrieved_context and user_input: {part_input}")
-             part_output =  [message.parts_output().values_list('text', flat=True).first()] if message else []
-             parts.append(f"model_output: {part_output}")
+            message = self.messages.exclude(preset=preset).last()
+            return message.get_contents(generate_self=generate_self, preset=preset) if message else []
         elif preset == self.PRESET_WORKFLOW_OPTIMIZATION:
              return [self.compile_workflow_dag()]
         else:
@@ -859,15 +854,29 @@ class Message(models.Model, GetContentsMixin, TaskHolder):
         return f"{self.id}"
 
     def get_contents(self, generate_self=True, preset=None):
+        parts = []
         if preset == settings.PRESET_INSTRUCTION:
-             parts = []
-             message =  self
-             instructions =  [message.parts_instructions().values_list('text', flat=True).first()] if message else []
-             parts.append(f"system_instruction: {instructions}")
-             part_input =  [message.parts_input().values_list('text', flat=True).first()] if message else []
-             parts.append(f"retrieved_context and user_input: {part_input}")
-             part_output =  [message.parts_output().values_list('text', flat=True).first()] if message else []
-             parts.append(f"model_output: {part_output}")
+            instructions = [p.text for p in self.parts_instructions() if p.text]
+            if instructions:
+                parts.append(f"system_instruction: {instructions}")
+            for p in self.parts_instructions():
+                if p.image:
+                    parts.append(p.image)
+
+            part_input = [p.text for p in self.parts_input() if p.text]
+            if part_input:
+                parts.append(f"retrieved_context and user_input: {part_input}")
+            for p in self.parts_input():
+                if p.image:
+                    parts.append(p.image)
+
+            part_output = [p.text for p in self.parts_output() if p.text]
+            if part_output:
+                parts.append(f"model_output: {part_output}")
+            for p in self.parts_output():
+                if p.image:
+                    parts.append(p.image)
+
         return [p for p in parts if p is not None and (not isinstance(p, str) or p.strip() != "")]
 
     @classmethod
@@ -1020,3 +1029,36 @@ class MessagePart(models.Model):
 
     class Meta:
         ordering = ['order']
+
+
+# =============================================================================
+# AGENT STRUCTURED OUTPUT SCHEMAS
+# =============================================================================
+class OutputWithMessageSchema(BaseModel):
+    message: str
+    output: str
+
+    def sync_model(self, source):
+        return dict(self)
+
+    def get_output(self):
+        return self.output
+
+
+class CreateInstructionsSchema(OutputWithMessageSchema):
+    def sync_model(self, source):
+        Prompt.objects.update_or_create(
+            name="Prompt Automatically Created",
+            defaults={
+                'prompt': self.output,
+            }
+        )
+        return dict(self)
+
+
+import sys
+import types
+_schemas_module = types.ModuleType("agent.schemas")
+_schemas_module.OutputWithMessageSchema = OutputWithMessageSchema
+_schemas_module.CreateInstructionsSchema = CreateInstructionsSchema
+sys.modules["agent.schemas"] = _schemas_module

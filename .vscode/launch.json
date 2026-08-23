@@ -11,10 +11,100 @@
             "args": [
                 "runserver",
                 "localhost:8080",
-                "--noreload"
+                "--noreload",
+                "--settings=argo_project.settings"
             ],
+            "env": {
+                "DJANGO_SETTINGS_MODULE": "argo_project.settings"
+            },
             "django": true,
             "autoStartBrowser": false,
+            "program": "${workspaceFolder}/manage.py"
+        },
+        {
+            "name": "Argo: Celery",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "celery",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "-A",
+                "argo_project.celery_app",
+                "worker",
+                "-l",
+                "info",
+                "-P",
+                "solo",
+                "-E"
+            ],
+            "env": {
+                "DJANGO_SETTINGS_MODULE": "argo_project.settings"
+            }
+        },
+        {
+            "name": "Argo: Celery Beat",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "celery",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "-A",
+                "argo_project.celery_app",
+                "beat",
+                "-l",
+                "info",
+                "-S",
+                "django"
+            ],
+            "env": {
+                "DJANGO_SETTINGS_MODULE": "argo_project.settings"
+            }
+        },
+        {
+            "name": "Argo MakeMigration",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "makemigrations",
+                "--settings=argo_project.settings"
+            ],
+            "env": {
+                "DJANGO_SETTINGS_MODULE": "argo_project.settings"
+            },
+            "django": true,
+            "autoStartBrowser": false,
+            "program": "${workspaceFolder}/manage.py"
+        },
+        {
+            "name": "Argo Migrate",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "migrate",
+                "--settings=argo_project.settings"
+            ],
+            "env": {
+                "DJANGO_SETTINGS_MODULE": "argo_project.settings"
+            },
+            "django": true,
+            "autoStartBrowser": false,
+            "program": "${workspaceFolder}/manage.py"
+        },
+        {
+            "name": "Argo CreateSuperuser",
+            "type": "debugpy",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "args": [
+                "createsuperuser",
+                "--settings=argo_project.settings"
+            ],
+            "env": {
+                "DJANGO_SETTINGS_MODULE": "argo_project.settings"
+            },
+            "django": true,
             "program": "${workspaceFolder}/manage.py"
         },
         {
@@ -97,6 +187,18 @@
             "autoStartBrowser": false,
             "program": "${workspaceFolder}/manage.py"
         },
+        {
+            "name": "Guillermo CreateSuperuser",
+            "type": "debugpy",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "args": [
+                "createsuperuser"
+            ],
+            "django": true,
+            "program": "${workspaceFolder}/manage.py"
+        },
+
         
     ]
 }

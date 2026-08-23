@@ -3,6 +3,20 @@
 from django.db import migrations, models
 
 
+def ensure_message_table(apps, schema_editor):
+    table_names = schema_editor.connection.introspection.table_names()
+    if 'agent_chatmessage' in table_names and 'agent_message' not in table_names:
+        schema_editor.execute('ALTER TABLE agent_chatmessage RENAME TO agent_message;')
+    elif 'agent_message' not in table_names:
+        Message = apps.get_model('agent', 'Message')
+        schema_editor.create_model(Message)
+        return
+
+    with schema_editor.connection.cursor() as cursor:
+        columns = [col.name for col in schema_editor.connection.introspection.get_table_description(cursor, 'agent_message')]
+        if 'input_text' not in columns:
+            schema_editor.execute('ALTER TABLE agent_message ADD COLUMN input_text text;')
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,6 +24,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(ensure_message_table, reverse_code=migrations.RunPython.noop),
         migrations.RemoveField(
             model_name='message',
             name='input_text',

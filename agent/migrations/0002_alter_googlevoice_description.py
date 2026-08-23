@@ -3,6 +3,20 @@
 from django.db import migrations, models
 
 
+def ensure_googlevoice_table(apps, schema_editor):
+    table_names = schema_editor.connection.introspection.table_names()
+    if 'agent_voice' in table_names and 'agent_googlevoice' not in table_names:
+        schema_editor.execute('ALTER TABLE agent_voice RENAME TO agent_googlevoice;')
+    elif 'agent_googlevoice' not in table_names:
+        GoogleVoice = apps.get_model('agent', 'GoogleVoice')
+        schema_editor.create_model(GoogleVoice)
+        return
+
+    with schema_editor.connection.cursor() as cursor:
+        columns = [col.name for col in schema_editor.connection.introspection.get_table_description(cursor, 'agent_googlevoice')]
+        if 'description' not in columns:
+            schema_editor.execute('ALTER TABLE agent_googlevoice ADD COLUMN description text;')
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,6 +24,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(ensure_googlevoice_table, reverse_code=migrations.RunPython.noop),
         migrations.AlterField(
             model_name='googlevoice',
             name='description',
