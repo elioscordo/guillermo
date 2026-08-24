@@ -320,3 +320,80 @@ class Recommendation(models.Model):
         self.status = self.RecommendationStatus.ACCEPTED
         self.save()
         return instance
+
+
+# =============================================================================
+# INSTRUMENT AND BROKER CONTRACT MODELS
+# =============================================================================
+
+class AssetClass(models.TextChoices):
+    EQUITY = 'EQUITY', _('Equity')
+    FUTURE = 'FUTURE', _('Future')
+    OPTION = 'OPTION', _('Option')
+    FX = 'FX', _('Forex')
+    COMMODITY = 'COMMODITY', _('Commodity')
+    CRYPTO = 'CRYPTO', _('Crypto')
+    INDEX = 'INDEX', _('Index')
+
+
+class OptionRight(models.TextChoices):
+    CALL = 'CALL', _('Call')
+    PUT = 'PUT', _('Put')
+
+
+class Instrument(models.Model):
+    """
+    Generalized financial instrument metadata for backtesting and execution.
+    """
+    symbol = models.CharField(max_length=64, db_index=True)
+    venue = models.CharField(max_length=32, db_index=True)
+    asset_class = models.CharField(max_length=16, choices=AssetClass.choices, default=AssetClass.EQUITY)
+    currency = models.CharField(max_length=8, default='USD')
+    quote_currency = models.CharField(max_length=8, null=True, blank=True)
+
+    price_precision = models.PositiveSmallIntegerField(default=2)
+    size_precision = models.PositiveSmallIntegerField(default=0)
+    price_increment = models.DecimalField(max_digits=12, decimal_places=6, default=0.01)
+    size_increment = models.DecimalField(max_digits=12, decimal_places=6, default=1.0)
+    lot_size = models.DecimalField(max_digits=12, decimal_places=4, default=1.0)
+    multiplier = models.DecimalField(max_digits=12, decimal_places=4, default=1.0)
+
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('symbol', 'venue', 'asset_class')
+        ordering = ['symbol', 'venue']
+
+    def __str__(self):
+        return f"{self.symbol}.{self.venue} ({self.asset_class})"
+
+    @property
+    def instrument_id_str(self) -> str:
+        return f"{self.symbol}.{self.venue}"
+
+
+class IBContract(models.Model):
+    """
+    Interactive Brokers contract specification linked 1:1 with an Instrument.
+    """
+    instrument = models.OneToOneField(Instrument, on_delete=models.CASCADE, related_name='ib_contract')
+    con_id = models.PositiveBigIntegerField(unique=True, null=True, blank=True)
+    sec_type = models.CharField(max_length=16, default='STK', help_text="STK, FUT, OPT, CASH, IND, CRYPTO, CFD")
+    exchange = models.CharField(max_length=32, default='SMART')
+    primary_exchange = models.CharField(max_length=32, blank=True)
+    local_symbol = models.CharField(max_length=64, blank=True)
+    trading_class = models.CharField(max_length=32, blank=True)
+
+    expiration = models.DateField(null=True, blank=True)
+    strike = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    option_right = models.CharField(max_length=4, choices=OptionRight.choices, blank=True)
+    include_expired = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = _('IB Contract')
+        verbose_name_plural = _('IB Contracts')
+
+    def __str__(self):
+        return f"IB:{self.sec_type} {self.instrument.symbol} @ {self.exchange} (ID: {self.con_id or 'N/A'})"

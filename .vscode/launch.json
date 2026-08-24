@@ -10,7 +10,7 @@
             "request": "launch",
             "args": [
                 "runserver",
-                "localhost:8080",
+                "localhost:8000",
                 "--noreload",
                 "--settings=argo_project.settings"
             ],

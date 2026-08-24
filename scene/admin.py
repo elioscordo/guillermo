@@ -182,7 +182,7 @@ class SceneAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHisto
     list_refresh = ['items']
     list_display = ['__str__', 'items', 'last_tasks']
     autocomplete_fields = ['story', 'author', 'instructions', 'locations', 'cast', 'props', 'voices']
-    actions = ['clone','extract_scene',  'generate_scene_elements', 'generate_scene_actions', 'generate_scene_voices', 'generate_scene_comics', 'generate_render', 'refresh_render']
+    actions = ['clone', 'extract_scene', 'generate_scene_prompt', 'generate_scene_elements', 'generate_scene_actions', 'generate_scene_voices', 'generate_scene_comics', 'generate_render', 'refresh_render']
     list_filter = ['story', 'id']
     
     fieldsets = (

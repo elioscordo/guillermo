@@ -528,6 +528,14 @@ class AdminActionsMixin:
                 obj.generate_voice(obj.PRESET_VOICE, user=request.user)
             self.message_user(request, "voice generated for item ID {}.".format(obj.id))
 
+    @action(description=_("Generate Prompt"), icon="edit_note")
+    def generate_scene_prompt(self, request, queryset):
+        for obj in queryset:
+            if hasattr(obj, 'task_from_action') and hasattr(obj, 'ACTION_CREATE_PROMPT'):
+                if obj.task_from_action(obj.ACTION_CREATE_PROMPT, request.user) is None:
+                    obj.generate_text(preset=getattr(obj, 'PRESET_CREATE_PROMPT', 'scene_create_prompt'), user=request.user)
+            self.message_user(request, "Generation task for prompt started for scene: {}.".format(obj.name))
+
     @action(description=_("Generate Elements"), icon="interests")
     def generate_scene_elements(self, request, queryset):
         for obj in queryset:
