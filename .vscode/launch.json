@@ -68,6 +68,8 @@
             "request": "launch",
             "args": [
                 "makemigrations",
+                "argo",
+                
                 "--settings=argo_project.settings"
             ],
             "env": {
@@ -114,8 +116,6 @@
             "autoStartBrowser": false,
             "program": "${workspaceFolder}/run_nautilus.py"
         },
-
-
         {
             "name": "Guillermo",
             "type": "debugpy",

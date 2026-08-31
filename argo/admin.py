@@ -14,6 +14,7 @@ from .models import (
     Scanner,
     Signal,
     Recommendation,
+    InstrumentGroup,
     Instrument,
     IBContract,
 )
@@ -98,6 +99,99 @@ class RecommendationAdmin(ModelAdmin):
     readonly_fields = ('created_at',)
 
 
+@admin.register(InstrumentGroup)
+class InstrumentGroupAdmin(ModelAdmin):
+    list_display = ('name', 'code', 'asset_class', 'venue', 'currency', 'instrument_count', 'is_active')
+    list_filter = ('asset_class', 'venue', 'currency', 'is_active')
+    search_fields = ('name', 'code', 'description')
+    actions = ['preview_codes_action', 'create_instruments_action']
+    actions_row = ['preview_codes_row_action', 'populate_symbols_from_ib_row_action', 'create_instruments_row_action']
+
+    def instrument_count(self, obj):
+        return obj.instruments.count()
+    instrument_count.short_description = _("Instruments")
+
+    @action(description=_("Populate from IB (via query)"), icon="search")
+    def populate_symbols_from_ib_row_action(self, request, object_id):
+        group = self.get_object(request, object_id)
+        if group:
+            query = group.code or group.name
+            try:
+                symbols = group.populate_symbols_from_ib(query=query, append=True)
+                self.message_user(
+                    request,
+                    _("Group '%(name)s': populated %(count)d symbol(s) from IB -> %(symbols)s") % {
+                        "name": group.name,
+                        "count": len(symbols),
+                        "symbols": ", ".join(symbols[:15]) + ("..." if len(symbols) > 15 else "")
+                    }
+                )
+            except Exception as e:
+                self.message_user(request, _("IB search failed: %(error)s") % {"error": str(e)}, level="error")
+        return redirect(reverse("admin:argo_instrumentgroup_changelist"))
+
+
+    @action(description=_("Preview codes for selected groups"), icon="visibility")
+    def preview_codes_action(self, request, queryset):
+        for group in queryset:
+            codes = group.get_codes()
+            self.message_user(
+                request,
+                _("Group '%(name)s' (%(code)s): found %(count)d symbol(s) -> %(symbols)s") % {
+                    "name": group.name,
+                    "code": group.code,
+                    "count": len(codes),
+                    "symbols": ", ".join(codes[:15]) + ("..." if len(codes) > 15 else "")
+                }
+            )
+
+    @action(description=_("Create/Sync instruments for selected groups"), icon="add_circle")
+    def create_instruments_action(self, request, queryset):
+        total_created, total_synced = 0, 0
+        for group in queryset:
+            created, total = group.create_instruments()
+            total_created += created
+            total_synced += total
+        self.message_user(
+            request,
+            _("Processed %(groups)d group(s): %(created)d new instruments created, %(total)d synchronized.") % {
+                "groups": queryset.count(),
+                "created": total_created,
+                "total": total_synced,
+            }
+        )
+
+    @action(description=_("Preview Codes"), icon="visibility")
+    def preview_codes_row_action(self, request, object_id):
+        group = self.get_object(request, object_id)
+        if group:
+            codes = group.get_codes()
+            self.message_user(
+                request,
+                _("Group '%(name)s': %(count)d symbol(s) -> %(symbols)s") % {
+                    "name": group.name,
+                    "count": len(codes),
+                    "symbols": ", ".join(codes[:20]) + ("..." if len(codes) > 20 else "")
+                }
+            )
+        return redirect(reverse("admin:argo_instrumentgroup_changelist"))
+
+    @action(description=_("Create Instruments"), icon="add_circle")
+    def create_instruments_row_action(self, request, object_id):
+        group = self.get_object(request, object_id)
+        if group:
+            created, total = group.create_instruments()
+            self.message_user(
+                request,
+                _("Group '%(name)s': %(created)d new instrument(s) created, %(total)d synchronized.") % {
+                    "name": group.name,
+                    "created": created,
+                    "total": total
+                }
+            )
+        return redirect(reverse("admin:argo_instrumentgroup_changelist"))
+
+
 class IBContractInline(StackedInline):
     model = IBContract
     extra = 0
@@ -107,8 +201,9 @@ class IBContractInline(StackedInline):
 @admin.register(Instrument)
 class InstrumentAdmin(ModelAdmin):
     list_display = ('symbol', 'venue', 'asset_class', 'currency', 'price_precision', 'lot_size', 'is_active')
-    list_filter = ('asset_class', 'venue', 'currency', 'is_active')
+    list_filter = ('groups', 'asset_class', 'venue', 'currency', 'is_active')
     search_fields = ('symbol', 'venue')
+    filter_horizontal = ('groups',)
     inlines = [IBContractInline]
 
 
@@ -118,4 +213,5 @@ class IBContractAdmin(ModelAdmin):
     list_filter = ('sec_type', 'exchange', 'option_right')
     search_fields = ('instrument__symbol', 'con_id', 'local_symbol')
     autocomplete_fields = ('instrument',)
+
 

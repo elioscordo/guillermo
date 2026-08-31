@@ -1,6 +1,4 @@
-from django.db import models
-
-# portfolio/models.py
+import re
 from django.db import models
 from .utils import discover_strategies
 from django.utils.translation import gettext_lazy as _
@@ -341,10 +339,86 @@ class OptionRight(models.TextChoices):
     PUT = 'PUT', _('Put')
 
 
+class InstrumentGroup(models.Model):
+    """
+    A collection of instruments grouped for trading universes, scans, or execution.
+    """
+    name = models.CharField(max_length=100, unique=True)
+    code = models.CharField(max_length=50, unique=True, help_text=_("Short identifier for the group (e.g., 'US_TECH', 'FX_MAJORS')."))
+    description = models.TextField(blank=True)
+    asset_class = models.CharField(max_length=16, choices=AssetClass.choices, default=AssetClass.EQUITY)
+    venue = models.CharField(max_length=32, default='SMART', help_text=_("Default venue/exchange for instruments in this group."))
+    currency = models.CharField(max_length=8, default='USD')
+    symbols = models.TextField(blank=True, help_text=_("Comma, space, or newline-separated symbols to populate (e.g., 'AAPL, MSFT, NVDA')."))
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _('Instrument Group')
+        verbose_name_plural = _('Instrument Groups')
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+    def get_codes(self) -> list[str]:
+        """Extracts and deduplicates clean symbol codes from the symbols definition."""
+        if not self.symbols:
+            return []
+        raw_codes = re.split(r'[\s,;]+', self.symbols.strip())
+        return sorted({code.strip().upper() for code in raw_codes if code.strip()})
+
+    def create_instruments(self) -> tuple[int, int]:
+        """Creates Instrument and default IBContract objects for each code in this group."""
+        codes = self.get_codes()
+        created_count = 0
+        sec_type_map = {
+            AssetClass.EQUITY: 'STK',
+            AssetClass.FUTURE: 'FUT',
+            AssetClass.OPTION: 'OPT',
+            AssetClass.FX: 'CASH',
+            AssetClass.CRYPTO: 'CRYPTO',
+            AssetClass.INDEX: 'IND',
+            AssetClass.COMMODITY: 'CMDTY',
+        }
+        default_sec_type = sec_type_map.get(self.asset_class, 'STK')
+
+        for code in codes:
+            instrument, created = Instrument.objects.get_or_create(
+                symbol=code,
+                venue=self.venue,
+                asset_class=self.asset_class,
+                defaults={
+                    'currency': self.currency,
+                    'is_active': True,
+                },
+            )
+            instrument.groups.add(self)
+            IBContract.objects.get_or_create(
+                instrument=instrument,
+                defaults={
+                    'sec_type': default_sec_type,
+                    'exchange': self.venue,
+                },
+            )
+            if created:
+                created_count += 1
+
+        return created_count, len(codes)
+
+    def populate_symbols_from_ib(self, query: str, append: bool = False) -> list[str]:
+        """Discovers symbols matching query via Nautilus IB and updates group symbols."""
+        from argo.instruments.search import SymbolSearchService
+        return SymbolSearchService().populate_group_symbols(self, query=query, append=append)
+
+
+
 class Instrument(models.Model):
     """
     Generalized financial instrument metadata for backtesting and execution.
     """
+    groups = models.ManyToManyField(InstrumentGroup, related_name='instruments', blank=True)
     symbol = models.CharField(max_length=64, db_index=True)
     venue = models.CharField(max_length=32, db_index=True)
     asset_class = models.CharField(max_length=16, choices=AssetClass.choices, default=AssetClass.EQUITY)

@@ -1,9 +1,9 @@
-from typing import Iterable, List, Optional, Set
+from typing import Iterable, List, Optional, Set, Union
 from nautilus_trader.adapters.interactive_brokers.common import IBContract as NautilusIBContract
 from nautilus_trader.model.instruments import Instrument as NautilusInstrument
 from nautilus_trader.persistence.catalog import ParquetDataCatalog
 
-from argo.models import Instrument
+from argo.models import Instrument, InstrumentGroup
 from .factories import IBContractAdapter, NautilusInstrumentFactory
 
 
@@ -47,3 +47,15 @@ class DjangoInstrumentProvider:
         for instrument in instruments:
             node.trader.add_instrument(instrument)
         return len(instruments)
+
+    @classmethod
+    def get_instruments_by_group(cls, group: Union[str, InstrumentGroup]) -> List[NautilusInstrument]:
+        """Loads and converts instruments belonging to a specific group."""
+        grp = group if isinstance(group, InstrumentGroup) else InstrumentGroup.objects.get(code=group, is_active=True)
+        return cls.get_instruments(grp.instruments.filter(is_active=True))
+
+    @classmethod
+    def get_ib_contracts_by_group(cls, group: Union[str, InstrumentGroup]) -> List[NautilusIBContract]:
+        """Loads IB contracts for a specific group."""
+        grp = group if isinstance(group, InstrumentGroup) else InstrumentGroup.objects.get(code=group, is_active=True)
+        return cls.get_ib_contracts(grp.instruments.filter(is_active=True))
