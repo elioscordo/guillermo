@@ -260,3 +260,84 @@ class StoryScenesSchema(BaseModel):
         return {
             'scenes': synced_scenes
         }
+
+
+class ShotTranslationSchema(BaseModel):
+    shot_id: Optional[int] = None
+    shot_name: Optional[str] = None
+    name: Optional[str] = None
+    prompt_voice: Optional[str] = None
+    prompt_voice_en: Optional[str] = None
+    prompt_voice_it: Optional[str] = None
+    prompt_voice_es: Optional[str] = None
+    prompt_voice_pt: Optional[str] = None
+    prompt_voice_fr: Optional[str] = None
+    suggested_default_improvement: Optional[str] = None
+    prompt_comic: Optional[str] = None
+    prompt_comic_en: Optional[str] = None
+    prompt_comic_it: Optional[str] = None
+    prompt_comic_es: Optional[str] = None
+    prompt_comic_pt: Optional[str] = None
+    prompt_comic_fr: Optional[str] = None
+
+
+class SceneTranslationSchema(BaseModel):
+    shots: Optional[List[ShotTranslationSchema]] = []
+
+    def find_action(self, scene, shot_data):
+        from .models import Action
+        actions = scene.actions if hasattr(scene, 'actions') else Action.objects.filter(scene__story=scene)
+        if shot_data.shot_id:
+            action = actions.filter(id=shot_data.shot_id).first()
+            if action:
+                return action
+        name = shot_data.shot_name or shot_data.name
+        if name:
+            return actions.filter(name=name).first()
+        return None
+
+    def apply_shot_translation(self, action, shot_data, default_lang, configured_langs):
+        for lang in configured_langs:
+            voice_val = getattr(shot_data, f"prompt_voice_{lang}", None)
+            if not voice_val and lang == default_lang:
+                voice_val = shot_data.prompt_voice
+            if voice_val:
+                setattr(action, f"prompt_voice_{lang}", voice_val)
+                if lang == default_lang:
+                    action.prompt_voice = voice_val
+
+            comic_val = getattr(shot_data, f"prompt_comic_{lang}", None)
+            if not comic_val and lang == default_lang:
+                comic_val = shot_data.prompt_comic
+            if comic_val:
+                setattr(action, f"prompt_comic_{lang}", comic_val)
+                if lang == default_lang:
+                    action.prompt_comic = comic_val
+
+        if shot_data.suggested_default_improvement:
+            setattr(action, f"prompt_voice_{default_lang}", shot_data.suggested_default_improvement)
+            action.prompt_voice = shot_data.suggested_default_improvement
+
+        action.save()
+        return action
+
+    def sync_model(self, scene):
+        from django.conf import settings
+        default_lang = getattr(settings, 'MODELTRANSLATION_DEFAULT_LANGUAGE', 'en')
+        configured_langs = list(getattr(settings, 'MODELTRANSLATION_LANGUAGES', ('en', 'it', 'es', 'pt', 'fr')))
+
+        shot_reports = []
+        if self.shots:
+            for shot_data in self.shots:
+                action = self.find_action(scene, shot_data)
+                if action:
+                    self.apply_shot_translation(action, shot_data, default_lang, configured_langs)
+                    shot_reports.append(get_asset_sync_info(action, False))
+
+        return {
+            'shots': shot_reports,
+            'scene': get_asset_sync_info(scene, False)
+        }
+
+
+TranslationSchema = SceneTranslationSchema

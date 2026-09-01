@@ -94,6 +94,15 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, YAMLAssetsMixin, models.Model
     prompt = models.TextField(_("prompt"), null=True, blank=True, default="#Plot\n")
     prompt_refine = models.TextField(_("prompt refine"), null=True, blank=True)
     prompt_elements = models.TextField(_("Prompt Elements"), null=True, blank=True, default="#Locations\n#Characters\n#Props\n#Voices\n")
+    prompt_translations = models.TextField(_("Prompt Translations"), null=True, blank=True)
+
+    @property
+    def translations(self):
+        return self.prompt_translations
+
+    @translations.setter
+    def translations(self, value):
+        self.prompt_translations = value
 
     action = models.SlugField(_("action"), choices=settings.TASK_TYPE_CHOICES, null=True, blank=True)
     mentor = models.ForeignKey("agent.Agent", verbose_name=_("mentor"), related_name='mentors_stories', on_delete=models.CASCADE, null=True, blank=True)
@@ -108,8 +117,8 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, YAMLAssetsMixin, models.Model
     PRESET_EDIT_ELEMENTS = "edit_elements"
     PRESET_SYNC_ELEMENTS = "sync_elements"
     PRESET_EDIT_SYNC_ELEMENTS = "edit_sync_elements"
-        
-    PRESET_SYNC_SCENES =  "sync_scenes"
+    PRESET_SYNC_SCENES = "sync_scenes"
+    PRESET_TRANSLATE_SHOTS = "translate_shots"
     
     ACTION_CREATE_SCENES = f"{TASK_TEXT_GENERATE}-preset-{PRESET_CREATE_SCENES}"
     ACTION_EDIT_SCENES = f"{TASK_TEXT_GENERATE}-preset-{PRESET_EDIT_SCENES}"
@@ -120,6 +129,7 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, YAMLAssetsMixin, models.Model
     ACTION_SYNC_SCENES = f"{TASK_TEXT_GENERATE}-preset-{PRESET_SYNC_SCENES}-schema-{settings.SCHEMA_STORY_SCENES}"
     ACTION_SYNC_ELEMENTS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_SYNC_ELEMENTS}-schema-{settings.SCHEMA_ASSETS}"
     ACTION_EDIT_SYNC_ELEMENTS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_EDIT_SYNC_ELEMENTS}-schema-{settings.SCHEMA_ASSETS}"
+    ACTION_TRANSLATE_SHOTS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_TRANSLATE_SHOTS}-target-prompt_translations-schema-{settings.SCHEMA_OUTPUT_WITH_MESSAGE}"
 
     ACTION_CHOICES = (
         (ACTION_CREATE_SCENES, _("Create story scenes")),
@@ -129,7 +139,7 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, YAMLAssetsMixin, models.Model
         (ACTION_SYNC_SCENES, _("Sync story scenes")),
         (ACTION_SYNC_ELEMENTS, _("Sync story elements")),
         (ACTION_EDIT_SYNC_ELEMENTS, _("Edit Sync elements")),
-                
+        (ACTION_TRANSLATE_SHOTS, _("Translate shots")),
     ) + settings.COMMON_TEXT_ACTION_CHOICES
 
 
@@ -141,6 +151,7 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, YAMLAssetsMixin, models.Model
         (PRESET_SYNC_ELEMENTS, _("Sync story elements")),
         (PRESET_SYNC_SCENES, _("Sync story scenes")),  
         (PRESET_EDIT_SYNC_ELEMENTS, _("Edit Sync elements")),
+        (PRESET_TRANSLATE_SHOTS, _("Translate shots")),
     )
 
     RENDER_TYPE_FILM = 'film'
@@ -317,6 +328,48 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, YAMLAssetsMixin, models.Model
                 parts.append(self.style.get_contents(generate_self=False))
         elif preset in [self.PRESET_SYNC_ELEMENTS]:
             parts.append(self.prompt_elements) 
+        elif preset in [self.PRESET_TRANSLATE_SHOTS]:
+            default_lang = getattr(settings, 'MODELTRANSLATION_DEFAULT_LANGUAGE', 'en')
+            configured_langs = list(getattr(settings, 'MODELTRANSLATION_LANGUAGES', ('en', 'it', 'es', 'pt', 'fr')))
+            shots_data = []
+
+            for scene in self.scenes.all().order_by('order', 'id'):
+                for action in scene.actions.all().order_by('order', 'id'):
+                    if not action.prompt_voice and not any(getattr(action, f"prompt_voice_{l}", None) for l in configured_langs):
+                        continue
+                    shot_entry = {
+                        'shot_id': action.id,
+                        'shot_name': action.name,
+                        'scene': scene.name or f"Scene {scene.id}",
+                        'character_voice': action.voice.name if action.voice else "Narrator",
+                    }
+                    for l in configured_langs:
+                        val = getattr(action, f"prompt_voice_{l}", None)
+                        if not val and l == default_lang:
+                            val = action.prompt_voice
+                        shot_entry[f"prompt_voice_{l}"] = val or ""
+                    shots_data.append(shot_entry)
+
+            voice_yaml = yaml.dump({'shots': shots_data}, indent=2, sort_keys=False, allow_unicode=True) if shots_data else "shots: []"
+
+            parts.append(
+                f"### Story Voice Prompt Translation Task\n"
+                f"Default language: `{default_lang}`\n"
+                f"Target languages: `{configured_langs}`\n\n"
+                f"Instructions:\n"
+                f"1. For each shot, translate `prompt_voice_{default_lang}` into all target languages: {', '.join([f'prompt_voice_{l}' for l in configured_langs])}.\n"
+                f"2. If `prompt_voice_{default_lang}` can be improved in quality, tone, or natural dialogue flow, provide a `suggested_default_improvement` field with the improved version.\n"
+                f"3. Return the entire output in clean, valid YAML format matching the following structure:\n\n"
+                f"```yaml\n"
+                f"shots:\n"
+                f"  - shot_id: <id>\n"
+                f"    shot_name: <name>\n"
+                f"    prompt_voice_{default_lang}: <original default text>\n"
+                f"    suggested_default_improvement: <improved default text or null>\n"
+                + "\n".join([f"    prompt_voice_{l}: <translated text in {l}>" for l in configured_langs if l != default_lang]) + "\n"
+                f"```\n\n"
+                f"Current Shot Voice Data:\n```yaml\n{voice_yaml}\n```"
+            )
         else:
             parts = super().get_contents(generate_self=generate_self, preset=preset)
         
@@ -335,18 +388,22 @@ class Scene(AfterSaveActionMixin, YAMLAssetsMixin, models.Model, TaskHolder, Get
     # sync structure
     PRESET_SYNC_ELEMENTS = "scene_sync_elements"
     PRESET_SYNC_SHOTS = "scene_sync_shots"
+    PRESET_SYNC_TRANSLATION = "scene_sync_translation"
 
     # edit a structured scene      
     PRESET_FROM_SHOTS = "scene_from_shots"
-    PRESET_TRANSLATE =  "translate"
+    PRESET_TRANSLATE = "translate"
+    PRESET_TRANSLATE_SHOTS = "translate_shots"
 
     AGENT_PRESETS = (
         (PRESET_CREATE_PROMPT, _("Create prompt")),
         (PRESET_EDIT_PROMPT, _("Refine from prompt")),
         (PRESET_FROM_SHOTS, _("Refine from shots")),
         (PRESET_TRANSLATE, _("Translate from prompt")),
+        (PRESET_TRANSLATE_SHOTS, _("Translate shots")),
         (PRESET_SYNC_SHOTS, _("Scene Sync Shots")),
-        (PRESET_SYNC_ELEMENTS, _("Scene Sync Elements"))
+        (PRESET_SYNC_ELEMENTS, _("Scene Sync Elements")),
+        (PRESET_SYNC_TRANSLATION, _("Scene Sync Translation"))
     ) + settings.COMMON_TEXT_AGENT_PRESETS
 
     # shot prompt (shots)
@@ -356,8 +413,10 @@ class Scene(AfterSaveActionMixin, YAMLAssetsMixin, models.Model, TaskHolder, Get
     ACTION_EDIT_FROM_SHOTS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_FROM_SHOTS}"
     
     ACTION_TRANSLATE_FROM_PROMPT = f"{TASK_TEXT_GENERATE}-preset-{PRESET_TRANSLATE}"
+    ACTION_TRANSLATE_SHOTS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_TRANSLATE_SHOTS}-target-prompt_translations-schema-{settings.SCHEMA_OUTPUT_WITH_MESSAGE}"
     ACTION_SYNC_ELEMENTS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_SYNC_ELEMENTS}-schema-{settings.SCHEMA_ASSETS}"
     ACTION_SYNC_SHOTS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_SYNC_SHOTS}-schema-{settings.SCHEMA_SCENE}"
+    ACTION_SYNC_TRANSLATION = f"{TASK_TEXT_GENERATE}-preset-{PRESET_SYNC_TRANSLATION}-schema-{settings.SCHEMA_TRANSLATION}"
     
 
 
@@ -365,9 +424,11 @@ class Scene(AfterSaveActionMixin, YAMLAssetsMixin, models.Model, TaskHolder, Get
         (ACTION_CREATE_PROMPT, _("Create prompt from plot")),  
         (ACTION_EDIT_PROMPT, _("Edit prompt")), 
         (ACTION_EDIT_FROM_SHOTS, _("Edit shots")),
-        (ACTION_TRANSLATE_FROM_PROMPT, _("Translate shots")),
+        (ACTION_TRANSLATE_FROM_PROMPT, _("Translate from prompt")),
+        (ACTION_TRANSLATE_SHOTS, _("Translate shots")),
         (ACTION_SYNC_ELEMENTS, _("Sync Elements")),
-        (ACTION_SYNC_SHOTS, _("Sync Shots"))
+        (ACTION_SYNC_SHOTS, _("Sync Shots")),
+        (ACTION_SYNC_TRANSLATION, _("Sync Translation"))
     ) + settings.COMMON_TEXT_ACTION_CHOICES
 
 
@@ -376,6 +437,15 @@ class Scene(AfterSaveActionMixin, YAMLAssetsMixin, models.Model, TaskHolder, Get
     prompt_plot = models.TextField(_("Prompt Plot"), null=True, blank=True)
     prompt = models.TextField(_("Prompt Shots from Draft"), null=True, blank=True, default="#Shots\n")    
     prompt_elements = models.TextField(_("Prompt Elements"), null=True, blank=True)
+    prompt_translations = models.TextField(_("Prompt Translations"), null=True, blank=True)
+
+    @property
+    def translations(self):
+        return self.prompt_translations
+
+    @translations.setter
+    def translations(self, value):
+        self.prompt_translations = value
 
     action = models.SlugField(_("action"), max_length=1024, choices=ACTION_CHOICES, null=True, blank=True)
 
@@ -461,6 +531,53 @@ class Scene(AfterSaveActionMixin, YAMLAssetsMixin, models.Model, TaskHolder, Get
                     parts.append(self.prompt)
                 elif self.prompt_plot:
                     parts.append(self.prompt_plot)
+            elif preset in [self.PRESET_TRANSLATE_SHOTS]:
+                default_lang = getattr(settings, 'MODELTRANSLATION_DEFAULT_LANGUAGE', 'en')
+                configured_langs = list(getattr(settings, 'MODELTRANSLATION_LANGUAGES', ('en', 'it', 'es', 'pt', 'fr')))
+                shots_data = []
+
+                for action in self.actions.all().order_by('order', 'id'):
+                    if not action.prompt_voice and not any(getattr(action, f"prompt_voice_{l}", None) for l in configured_langs):
+                        continue
+                    shot_entry = {
+                        'shot_id': action.id,
+                        'shot_name': action.name,
+                        'scene': self.name or f"Scene {self.id}",
+                        'character_voice': action.voice.name if action.voice else "Narrator",
+                    }
+                    for l in configured_langs:
+                        val = getattr(action, f"prompt_voice_{l}", None)
+                        if not val and l == default_lang:
+                            val = action.prompt_voice
+                        shot_entry[f"prompt_voice_{l}"] = val or ""
+                    shots_data.append(shot_entry)
+
+                voice_yaml = yaml.dump({'shots': shots_data}, indent=2, sort_keys=False, allow_unicode=True) if shots_data else "shots: []"
+
+                parts.append(
+                    f"### Scene Voice Prompt Translation Task\n"
+                    f"Scene: `{self.name or self.id}`\n"
+                    f"Default language: `{default_lang}`\n"
+                    f"Target languages: `{configured_langs}`\n\n"
+                    f"Instructions:\n"
+                    f"1. For each shot in this scene, translate `prompt_voice_{default_lang}` into all target languages: {', '.join([f'prompt_voice_{l}' for l in configured_langs])}.\n"
+                    f"2. If `prompt_voice_{default_lang}` can be improved in quality, tone, or natural dialogue flow, provide a `suggested_default_improvement` field with the improved version.\n"
+                    f"3. Return the entire output in clean, valid YAML format matching the following structure:\n\n"
+                    f"```yaml\n"
+                    f"shots:\n"
+                    f"  - shot_id: <id>\n"
+                    f"    shot_name: <name>\n"
+                    f"    prompt_voice_{default_lang}: <original default text>\n"
+                    f"    suggested_default_improvement: <improved default text or null>\n"
+                    + "\n".join([f"    prompt_voice_{l}: <translated text in {l}>" for l in configured_langs if l != default_lang]) + "\n"
+                    f"```\n\n"
+                    f"Current Scene Shot Voice Data:\n```yaml\n{voice_yaml}\n```"
+                )
+                return parts
+            elif preset in [self.PRESET_SYNC_TRANSLATION]:
+                if self.prompt_translations:
+                    parts.append(self.prompt_translations)
+                return parts
         parts.append(self.get_elements_as_yaml())
         if self.story and preset in [
                 self.PRESET_REFINE_PROMPT,
@@ -527,19 +644,21 @@ class Scene(AfterSaveActionMixin, YAMLAssetsMixin, models.Model, TaskHolder, Get
         """
         Renders a summary dropdown of scene elements using a template.
         """
-        context = self.get_elements()
-        context['actions'] = self.actions.all()
+        props_count = self.props.count()
+        chars_count = self.cast.count()
+        locs_count = self.locations.count()
+        voices_count = self.voices.count()
+        actions_count = self.actions.count()
 
-        # Pre-calculate counts and IDs for the template
-        context.update({
-            "count": sum(qs.count() for qs in context.values()) + context['actions'].count(),
-            "prop_ids": ",".join([str(p.id) for p in context['props']]),
-            "char_ids": ",".join([str(c.id) for c in context['characters']]),
-            "loc_ids": ",".join([str(l.id) for l in context['locations']]),
-            "voice_ids": ",".join([str(v.id) for v in context['voices']]),
-            "action_ids": ",".join([str(a.id) for a in context['actions']]),
+        context = {
             "instance": self,
-        })
+            "count": props_count + chars_count + locs_count + voices_count + actions_count,
+            "props_count": props_count,
+            "characters_count": chars_count,
+            "locations_count": locs_count,
+            "voices_count": voices_count,
+            "actions_count": actions_count,
+        }
         return render_to_string("scene/items_dropdown.html", context)
 
     def generate_render(self):
@@ -796,6 +915,8 @@ class StoryProfile(models.Model):
             story = self.story
         if self.group and self.group.story:
             story = self.group.story
+        if not story and self.scene and self.scene.story:
+            story = self.scene.story
         return story
 
 class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, ModelDisplayMixin):
@@ -880,7 +1001,7 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
         }
 
     class Meta:
-        ordering = ['order']
+        ordering = ['order', 'name']
         verbose_name = _('Shot')
         verbose_name_plural = _('Shots')
 
@@ -926,7 +1047,9 @@ class Action(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder, M
         elif preset == self.PRESET_VOICE:
             contents = {}
             contents = self.voice.get_contents(generate_self=False, preset=Voice.PRESET_VOICE)
-            contents["prompt"] += self.prompt_voice
+            lang = (get_language() or 'en').replace('-', '_').split('_')[0]
+            voice_prompt = getattr(self, f"prompt_voice_{lang}", None) or self.prompt_voice or ""
+            contents["prompt"] += voice_prompt
         else:
             # preset refine is handled in the mixin
             contents = super().get_contents(generate_self=generate_self, preset=preset)

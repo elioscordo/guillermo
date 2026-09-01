@@ -260,6 +260,9 @@ class GetContentsMixin:
     def generate_voice(self, preset, user=None, target_field="audio_voice"):
         agent = self.get_agent(Agent.OUTPUT_TYPE_VOICE)
         out = agent.generate(self, preset=preset, user=user, target_field=target_field)
+        lang = (get_language() or 'en').replace('-', '_').split('_')[0]
+        if hasattr(self, f"{target_field}_{lang}"):
+            setattr(self, f"{target_field}_{lang}", out)
         setattr(self, target_field, out)
         self.save()
         return getattr(self, target_field)
@@ -364,7 +367,7 @@ class GoogleVoice(models.Model):
 
 class PromptCategory(models.Model):
     name = models.CharField(_("name"), max_length=100, default="name")
-    slug = models.SlugField(_("slug"), max_length=100, default="slug")
+    slug = models.SlugField(_("slug"), max_length=100, default="slug", unique=True)
 
     def __str__(self):
         return "{}".format(self.name)

@@ -22,6 +22,22 @@
             "program": "${workspaceFolder}/manage.py"
         },
         {
+            "name": "Argo Search test",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "test",
+                "argo.tests.SymbolsSchemaLiveTest",
+                "--settings=argo_project.settings"
+            ],
+            "env": {
+                "DJANGO_SETTINGS_MODULE": "argo_project.settings"
+            },
+            "django": true,
+            "autoStartBrowser": false,
+            "program": "${workspaceFolder}/manage.py"
+        },
+        {
             "name": "Argo: Celery",
             "type": "debugpy",
             "request": "launch",
@@ -68,7 +84,6 @@
             "request": "launch",
             "args": [
                 "makemigrations",
-                "argo",
                 
                 "--settings=argo_project.settings"
             ],

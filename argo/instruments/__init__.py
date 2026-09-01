@@ -1,13 +1,14 @@
 from .factories import IBContractAdapter, NautilusInstrumentFactory
 from .providers import DjangoInstrumentProvider
-from .search import NautilusIBSymbolSearchStrategy, SymbolSearchService, SymbolSearchStrategy
+from .search import IBSearchResult, IBSearchServiceError, InteractiveBrokersSearchService
 
 __all__ = [
     "IBContractAdapter",
     "NautilusInstrumentFactory",
     "DjangoInstrumentProvider",
-    "SymbolSearchStrategy",
-    "NautilusIBSymbolSearchStrategy",
-    "SymbolSearchService",
+    "IBSearchResult",
+    "IBSearchServiceError",
+    "InteractiveBrokersSearchService",
 ]
+
 

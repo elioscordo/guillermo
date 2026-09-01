@@ -3,7 +3,7 @@ from typing import Optional
 
 from ibapi.contract import Contract as IbRawContract
 from nautilus_trader.adapters.interactive_brokers.common import IBContract as NautilusIBContract
-from nautilus_trader.model.currency import Currency
+from nautilus_trader.model.currencies import Currency
 from nautilus_trader.model.enums import AssetClass as NautilusAssetClass
 from nautilus_trader.model.enums import OptionKind
 from nautilus_trader.model.identifiers import InstrumentId, Symbol, Venue

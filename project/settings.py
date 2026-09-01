@@ -15,10 +15,13 @@ from dotenv import load_dotenv
 import os
 from django.utils.translation import gettext_lazy as _
 from django.urls import reverse_lazy
-BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_DIR = Path(__file__).resolve().parent
+BASE_DIR = PROJECT_DIR.parent
 
-load_dotenv(dotenv_path=os.path.join(BASE_DIR, '.env'))
+load_dotenv(dotenv_path=os.path.join(PROJECT_DIR, '.env'))
 GOOGLE_GENAI_VERTEX_API_KEY= os.getenv("GOOGLE_GENAI_VERTEX_API_KEY")
+IB_HOST = os.getenv("IB_HOST", os.getenv("IB_EXAMPLE_HOST", "127.0.0.1"))
+IB_PORT = int(os.getenv("IB_PORT", os.getenv("IB_EXAMPLE_PORT", "4002")))
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 MEDIA_ROOT = os.path.join( BASE_DIR , 'media' )
@@ -111,13 +114,16 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [BASE_DIR / 'templates',],
-        'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.template.context_processors.i18n',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages'
+            ],
+            'loaders': [
+                'django.template.loaders.filesystem.Loader',
+                'django.template.loaders.app_directories.Loader',
             ],
             'debug': DEBUG,
         },
@@ -342,7 +348,7 @@ if DATABASE_TYPE == "sqlite":
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'NAME': BASE_DIR / 'guillermo.sqlite3',
         }
     }
 else:
@@ -531,6 +537,9 @@ SCHEMA_OUTPUT_WITH_MESSAGE = "outwithmsg"
 SCHEMA_CREATE_INSTRUCTIONS = "create_instructions"
 SCHEMA_ASSETS = "assets"
 SCHEMA_STORY_SCENES = "story_scenes"
+SCHEMA_SYMBOLS = "symbols"
+SCHEMA_INSTANCES = "instances"
+SCHEMA_TRANSLATION = "translation"
 
 AGENT_SCHEMA_CHOICES = [
     (SCHEMA_MULTI_SCENE, _("Multi Scene Storyboard")),
@@ -539,7 +548,9 @@ AGENT_SCHEMA_CHOICES = [
     (SCHEMA_CREATE_INSTRUCTIONS, _("Create Instructions")),
     (SCHEMA_STORY_SCENES, _("Story Scenes")),
     (SCHEMA_ASSETS, _("Assets")),
-
+    (SCHEMA_SYMBOLS, _("Symbols")),
+    (SCHEMA_INSTANCES, _("Strategy Instances")),
+    (SCHEMA_TRANSLATION, _("Scene Translation")),
 ]
 
 AGENT_SCHEMAS = {
@@ -549,7 +560,11 @@ AGENT_SCHEMAS = {
     SCHEMA_CREATE_INSTRUCTIONS: "agent.schemas.CreateInstructionsSchema",
     SCHEMA_STORY_SCENES: "scene.schemas.StoryScenesSchema",
     SCHEMA_ASSETS: "scene.schemas.AssetsSchema",
+    SCHEMA_SYMBOLS: "argo.schemas.SymbolsSchema",
+    SCHEMA_INSTANCES: "argo.schemas.StrategyInstancesSchema",
+    SCHEMA_TRANSLATION: "scene.schemas.SceneTranslationSchema",
 }
+
 
 PRESET_INFO =  "info"
 PRESET_INSTRUCTION =  "instruction"

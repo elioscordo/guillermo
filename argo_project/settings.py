@@ -4,10 +4,15 @@ from dotenv import load_dotenv
 from django.utils.translation import gettext_lazy as _
 from django.templatetags.static import static
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-ARGO_ROOT = os.path.join(BASE_DIR, 'argo')
 
-load_dotenv(dotenv_path=os.path.join(ARGO_ROOT, '.env_argo'))
+PROJECT_DIR = Path(__file__).resolve().parent
+
+USE_TASK_QUEUE = True
+BASE_DIR = PROJECT_DIR.parent
+load_dotenv(dotenv_path=os.path.join(PROJECT_DIR, '.env'))
+
+IB_HOST = os.getenv("IB_HOST", os.getenv("IB_EXAMPLE_HOST", "127.0.0.1"))
+IB_PORT = int(os.getenv("IB_PORT", os.getenv("IB_EXAMPLE_PORT", "4002")))
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "your-django-secret")
 DEBUG = True
@@ -27,6 +32,8 @@ INSTALLED_APPS = [
     'filer',
     'django_celery_beat',
     'crispy_forms',
+    'agent.apps.AgentConfig',
+    'task',
     'argo',
 ]
 
@@ -51,12 +58,15 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages'
+            ],
+            'loaders': [
+                'django.template.loaders.filesystem.Loader',
+                'django.template.loaders.app_directories.Loader',
             ],
             'debug': DEBUG,
         },
@@ -89,7 +99,7 @@ else:
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': os.getenv("POSTGRES_DB", "argo"),
             'USER': os.getenv("POSTGRES_USER", "postgres"),
-            'PASSWORD': os.getenv("POSTGRES_PASSWORD", "your_new_password"),
+            'PASSWORD': os.getenv("POSTGRES_PASSWORD", "postgres"),
             'HOST': os.getenv("POSTGRES_HOST", "localhost"),
             'PORT': os.getenv("POSTGRES_PORT", "5432"),
         }
@@ -123,7 +133,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Celery Configuration
 CELERY_BROKER_TYPE = os.getenv("CELERY_BROKER_TYPE", "sqlite")
-CELERY_BROKER_URL = "sqla+sqlite:///celerydb.sqlite" if CELERY_BROKER_TYPE == "sqlite" else os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_BROKER_URL = "sqla+sqlite:///argo_celerydb.sqlite" if CELERY_BROKER_TYPE == "sqlite" else os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -141,15 +151,29 @@ TASK_TYPE_CHOICES = (
 
 SCHEMA_OUTPUT_WITH_MESSAGE = "outwithmsg"
 SCHEMA_CREATE_INSTRUCTIONS = "create_instructions"
+SCHEMA_SYMBOLS = "symbols"
+SCHEMA_INSTANCES = "instances"
 
 AGENT_SCHEMA_CHOICES = [
     (SCHEMA_OUTPUT_WITH_MESSAGE, _("Output With Message")),
     (SCHEMA_CREATE_INSTRUCTIONS, _("Create Instructions")),
+    (SCHEMA_SYMBOLS, _("Symbols")),
+    (SCHEMA_INSTANCES, _("Strategy Instances")),
 ]
 
 AGENT_SCHEMAS = {
     SCHEMA_OUTPUT_WITH_MESSAGE: "agent.schemas.OutputWithMessageSchema",
     SCHEMA_CREATE_INSTRUCTIONS: "agent.schemas.CreateInstructionsSchema",
+    SCHEMA_SYMBOLS: "argo.schemas.SymbolsSchema",
+    SCHEMA_INSTANCES: "argo.schemas.StrategyInstancesSchema",
+}
+
+
+TASK_TYPE_GENERATE_TEXT = 'generate_text'
+
+
+TASK_DELEGATES = {
+    TASK_TYPE_GENERATE_TEXT: 'agent.tasks.TaskGenerateText',    
 }
 
 PRESET_INFO = "info"

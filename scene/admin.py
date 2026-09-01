@@ -80,6 +80,7 @@ class PromptPreviewSection(TemplateSection):
             "instance": instance,
             "request": request,
         }
+
 @admin.register(Style)
 class StyleAdmin(PromptMarkdownMixin, AdminActionsMixin, ModelAdmin):
     list_display = ('id','name', 'prompt')
@@ -132,7 +133,7 @@ class StoryAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHisto
         }),
         ("Refine",{
             "classes": ["tab"],
-            "fields": ["prompt_refine", 'action'],
+            "fields": ["prompt_refine", "prompt_translations", 'action'],
         }),
         ("Settings", {
             "classes": ["tab"],
@@ -196,7 +197,7 @@ class SceneAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHisto
         }),
         ("Refine",{
             "classes": ["tab"],
-            "fields": ["prompt_refine", 'action'],
+            "fields": ["prompt_refine", "prompt_translations", 'action'],
         }),
         ("Settings", {
             "classes": ["tab"],
@@ -262,7 +263,7 @@ class CharacterAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleH
     list_editable = ('prompt', 'prompt_refine')
     list_display_links = ('name',)
     autocomplete_fields = ['story']
-    list_filter = ['story', 'id']
+    list_filter = ['story', 'scenes', 'id']
     actions = ['clone', 'default_generate_image', 'default_refine_image']
     search_fields = ['name']
     fieldsets = ELEMENT_FIELDSETS
@@ -275,7 +276,7 @@ class BackgroundAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, Simple
     list_editable = ('prompt',)
     list_display_links = ('name',)
     autocomplete_fields = ['story']
-    list_filter = ['story', 'id']
+    list_filter = ['story', 'scenes', 'id']
     actions = ['clone', 'default_generate_image', 'default_refine_image']
     search_fields = ['name']
     fieldsets = ELEMENT_FIELDSETS
@@ -290,7 +291,7 @@ class PropAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHistor
     list_display_links = ('name',)
     list_editable = ('prompt','prompt_refine')
     autocomplete_fields = ['story']
-    list_filter = ['story', 'id']
+    list_filter = ['story', 'scenes', 'id']
     actions = ['clone', 'default_generate_image', 'default_refine_image']
     search_fields = ['name']
     fieldsets = ELEMENT_FIELDSETS
@@ -405,6 +406,7 @@ class VoiceAdmin(PromptMarkdownMixin, SimpleHistoryAdmin, StoryFilterMixin, Admi
     actions = ['generate_voice']
     list_filter = (
         'story',
+        'scenes',
         'global_default'
     )
     search_fields= ['name']

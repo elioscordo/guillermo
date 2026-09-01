@@ -232,17 +232,19 @@ class ModelDisplayMixin:
     def voice_player(self):
         audio_voice = None
         lang = (get_language() or 'en').replace('-', '_').split('_')[0]
-        for attr in (f"audio_voice_{lang}", "audio_voice_en", "audio_voice"):
-            val = getattr(self, attr, None)
+        default_lang = getattr(settings, 'MODELTRANSLATION_DEFAULT_LANGUAGE', 'en')
+
+        val = getattr(self, f"audio_voice_{lang}", None)
+        if val and hasattr(val, 'url') and val.url:
+            audio_voice = val
+        elif lang == default_lang:
+            val = getattr(self, "audio_voice", None)
             if val and hasattr(val, 'url') and val.url:
                 audio_voice = val
-                break
-        if not audio_voice:
-            for code, lang_name in getattr(settings, 'LANGUAGES', ()):
-                val = getattr(self, f"audio_voice_{code}", None)
-                if val and hasattr(val, 'url') and val.url:
-                    audio_voice = val
-                    break
+        elif not hasattr(self, f"audio_voice_{default_lang}"):
+            val = getattr(self, "audio_voice", None)
+            if val and hasattr(val, 'url') and val.url:
+                audio_voice = val
 
         if audio_voice and hasattr(audio_voice, 'url') and audio_voice.url:
             uid = secrets.token_hex(4)
@@ -278,34 +280,60 @@ class SceneFilterMixin:
         return qs
 
 class StoryFilterMixin:
-    # anything that has a story foreign key can use this mixin to filter by the user's current scene
+    # anything that has a story or scene foreign key can use this mixin to filter by the user's current story/scene
     
     def save_model(self, request, obj, form, change):
         if not change:
-            story = request.user.story_profile.get_current_story()
-            if story and hasattr(obj, 'story') and getattr(obj, 'story') is None:
-                obj.story = story
+            profile = getattr(request.user, 'story_profile', None)
+            if profile:
+                story = profile.get_current_story()
+                if story and hasattr(obj, 'story') and getattr(obj, 'story') is None:
+                    obj.story = story
+                if profile.scene and hasattr(obj, 'scene') and getattr(obj, 'scene') is None:
+                    obj.scene = profile.scene
         super().save_model(request, obj, form, change)
+
+    def get_changeform_initial_data(self, request):
+        initial = super().get_changeform_initial_data(request)
+        profile = getattr(request.user, 'story_profile', None)
+        if profile:
+            if 'story' not in initial:
+                story = profile.get_current_story()
+                if story:
+                    initial['story'] = story.pk
+            if 'scene' not in initial and profile.scene:
+                initial['scene'] = profile.scene.pk
+        return initial
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         profile = getattr(request.user, 'story_profile', None)
-        
-            
+        if not profile:
+            return qs
+
         story = profile.get_current_story()
-        if not story:
+        scene = profile.scene
+
+        if not story and scene:
+            story = scene.story
+
+        if not story and not scene:
             return qs
 
         model_name = self.model._meta.model_name
         if model_name == 'story':
-            return qs.filter(pk=story.pk)
-        
+            return qs.filter(pk=story.pk) if story else qs
+
         field_names = [f.name for f in self.model._meta.get_fields()]
-        if 'story' in field_names:
-            return qs.filter(story=story)
-        elif 'scene' in field_names:
-            return qs.filter(scene__story=story)
-            
+        if 'scene' in field_names:
+            if scene:
+                return qs.filter(scene=scene)
+            if story:
+                return qs.filter(scene__story=story)
+        elif 'story' in field_names:
+            if story:
+                return qs.filter(story=story)
+
         return qs
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):

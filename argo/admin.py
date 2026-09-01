@@ -4,6 +4,9 @@ from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from unfold.admin import ModelAdmin, StackedInline
 from unfold.decorators import action
+from simple_history.admin import SimpleHistoryAdmin
+from agent.admin_utils import AjaxTaskModelAdmin
+from agent.sections import AjaxSectionAdminMixin, MessageHistorySection
 
 from .models import (
     Account,
@@ -56,23 +59,37 @@ class StrategyAdmin(ModelAdmin):
 class StrategyInstanceInline(StackedInline):
     model = StrategyInstance
     extra = 0
-    autocomplete_fields = ('strategy_model',)
+    autocomplete_fields = ('strategy_model', 'instrument')
 
 
 @admin.register(Portfolio)
-class PortfolioAdmin(ModelAdmin):
-    list_display = ('name', 'is_active', 'description')
-    list_filter = ('is_active',)
+class PortfolioAdmin(SimpleHistoryAdmin, AjaxSectionAdminMixin, AjaxTaskModelAdmin, ModelAdmin):
+    list_display = ('name', 'is_active', 'instance_count', 'group_count', 'description', 'last_tasks')
+    list_filter = ('is_active', 'instrument_groups')
     search_fields = ('name', 'description')
+    autocomplete_fields = ('instrument_groups',)
+    list_sections = [MessageHistorySection]
+    list_refresh = ['instance_count', 'group_count']
     inlines = [StrategyInstanceInline]
+
+    def instance_count(self, obj):
+        return obj.strategy_instances.count()
+    instance_count.short_description = _("Instances")
+
+    def group_count(self, obj):
+        return obj.instrument_groups.count()
+    group_count.short_description = _("Groups")
+
+
 
 
 @admin.register(StrategyInstance)
 class StrategyInstanceAdmin(ModelAdmin):
-    list_display = ('portfolio', 'strategy_model', 'instrument_id', 'is_active')
+    list_display = ('portfolio', 'strategy_model', 'instrument', 'is_active', 'description')
     list_filter = ('is_active', 'portfolio', 'strategy_model')
-    search_fields = ('instrument_id', 'portfolio__name', 'strategy_model__name')
-    autocomplete_fields = ('portfolio', 'strategy_model')
+    search_fields = ('instrument__symbol', 'instrument__venue', 'portfolio__name', 'strategy_model__name', 'description')
+    autocomplete_fields = ('portfolio', 'strategy_model', 'instrument')
+
 
 
 @admin.register(Scanner)
@@ -100,12 +117,14 @@ class RecommendationAdmin(ModelAdmin):
 
 
 @admin.register(InstrumentGroup)
-class InstrumentGroupAdmin(ModelAdmin):
-    list_display = ('name', 'code', 'asset_class', 'venue', 'currency', 'instrument_count', 'is_active')
+class InstrumentGroupAdmin(SimpleHistoryAdmin, AjaxSectionAdminMixin, AjaxTaskModelAdmin, ModelAdmin):
+    list_display = ('name', 'code', 'asset_class', 'venue', 'currency', 'instrument_count', 'is_active', 'last_tasks')
     list_filter = ('asset_class', 'venue', 'currency', 'is_active')
     search_fields = ('name', 'code', 'description')
     actions = ['preview_codes_action', 'create_instruments_action']
     actions_row = ['preview_codes_row_action', 'populate_symbols_from_ib_row_action', 'create_instruments_row_action']
+    list_sections = [MessageHistorySection]
+    list_refresh = ['instrument_count']
 
     def instrument_count(self, obj):
         return obj.instruments.count()

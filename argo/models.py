@@ -1,7 +1,12 @@
 import re
 from django.db import models
+from django.conf import settings
 from .utils import discover_strategies
 from django.utils.translation import gettext_lazy as _
+from simple_history.models import HistoricalRecords
+from task.mixins import AfterSaveActionMixin
+from task.models import TaskHolder
+from agent.models import GetContentsMixin, Agent
 
 
 
@@ -153,16 +158,82 @@ class Strategy(models.Model):
         return self.name
 
 
-class Portfolio(models.Model):
+class Portfolio(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder):
     """
     A collection of strategy instances to be run together.
     """
+    TASK_TEXT_GENERATE = getattr(settings, 'TASK_TYPE_GENERATE_TEXT', 'generate_text')
+
+    PRESET_SYNC_INSTANCES = "sync_instances"
+    PRESET_CREATE_INSTANCES = "create_instances"
+
+    ACTION_CREATE_INSTANCES = f"{TASK_TEXT_GENERATE}-preset-{PRESET_CREATE_INSTANCES}-target-description-schema-instances"
+    ACTION_SYNC_INSTANCES = f"{TASK_TEXT_GENERATE}-preset-{PRESET_SYNC_INSTANCES}-target-description-schema-instances"
+
+    ACTION_CHOICES = (
+        (ACTION_CREATE_INSTANCES, _("Create instances from description")),
+        (ACTION_SYNC_INSTANCES, _("Sync instances")),
+    ) + getattr(settings, 'COMMON_TEXT_ACTION_CHOICES', ())
+
+    AGENT_PRESETS = (
+        (PRESET_CREATE_INSTANCES, _("Create instances")),
+        (PRESET_SYNC_INSTANCES, _("Sync instances")),
+    ) + getattr(settings, 'COMMON_TEXT_AGENT_PRESETS', ())
+
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
+    instrument_groups = models.ManyToManyField('InstrumentGroup', related_name='portfolios', blank=True)
     is_active = models.BooleanField(default=False, help_text="If active, this portfolio will be run by the trading node.")
+    action = models.SlugField(_("action"), max_length=1024, choices=ACTION_CHOICES, null=True, blank=True)
+    history = HistoricalRecords()
+
+    class Meta:
+        verbose_name = _('Portfolio')
+        verbose_name_plural = _('Portfolios')
+        ordering = ['name']
 
     def __str__(self):
         return self.name
+
+    def get_contents(self, generate_self=True, preset=None):
+        parts = []
+        if preset in [self.PRESET_SYNC_INSTANCES, self.PRESET_CREATE_INSTANCES]:
+            if self.name:
+                parts.append(f"Portfolio Name: {self.name}")
+            if self.description:
+                parts.append(f"Portfolio Description: {self.description}")
+
+            instances = self.strategy_instances.select_related('strategy_model', 'instrument').all()
+            inst_lines = [
+                f"- Strategy: {si.strategy_model.name} ({si.strategy_model.class_path}), Instrument: {si.instrument}, Active: {si.is_active}, Params: {si.params}"
+                for si in instances
+            ]
+            parts.append(
+                "### Existing Strategy Instances:\n" + ("\n".join(inst_lines) if inst_lines else "None")
+            )
+
+            # Provide available registered strategies in the system
+            from argo.models import Strategy
+            all_strats = Strategy.objects.all()
+            if all_strats.exists():
+                strat_lines = [
+                    f"- Name: '{s.name}' | Class: '{s.class_path}' | Description: {s.description or 'N/A'}"
+                    for s in all_strats
+                ]
+                parts.append("### Available Registered Strategies in System:\n" + "\n".join(strat_lines))
+        else:
+            parts = super().get_contents(generate_self=generate_self, preset=preset)
+
+        groups = self.instrument_groups.all()
+        if groups.exists():
+            group_lines = [
+                f"- Group: {g.name} ({g.code}), Asset Class: {g.asset_class}, Venue: {g.venue}, Symbols: {g.symbols}\n  Description: {g.description or 'No description'}"
+                for g in groups
+            ]
+            parts.append("### Associated Instrument Groups:\n" + "\n".join(group_lines))
+
+        return parts
+
 
     @classmethod
     def sync_from_node(cls, node):
@@ -202,11 +273,20 @@ class Portfolio(models.Model):
         for strategy in node.strategies:
             class_path = f"{strategy.__class__.__module__}.{strategy.__class__.__name__}"
             strategy_model = Strategy.objects.get(class_path=class_path)
+            raw_id = str(strategy.instrument_id)
+            parts = raw_id.split(".")
+            symbol = parts[0]
+            venue = parts[1] if len(parts) > 1 else "SMART"
+            instrument, _ = Instrument.objects.get_or_create(
+                symbol=symbol,
+                venue=venue,
+                defaults={'is_active': True}
+            )
 
             StrategyInstance.objects.update_or_create(
                 portfolio=portfolio,
                 strategy_model=strategy_model,
-                instrument_id=str(strategy.instrument_id),
+                instrument=instrument,
                 defaults={'params': strategy.config, 'is_active': True}
             )
         print(f"Synced {len(node.strategies)} strategy instance(s).")
@@ -220,12 +300,24 @@ class StrategyInstance(models.Model):
     """
     portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name='strategy_instances')
     strategy_model = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='instances')
-    instrument_id = models.CharField(max_length=100, help_text="The instrument ID this strategy instance will trade (e.g., 'EUR/USD.CASH.IDEALPRO').")
+    instrument = models.ForeignKey(
+        'Instrument',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='strategy_instances',
+        help_text=_("The instrument this strategy instance trades.")
+    )
+    description = models.TextField(blank=True, help_text=_("Description or trading rationale for this instance."))
     params = models.JSONField(default=dict, blank=True, help_text="JSON object of strategy-specific parameters.")
     is_active = models.BooleanField(default=True)
 
+    @property
+    def instrument_id(self) -> str:
+        return self.instrument.instrument_id_str if self.instrument else ""
+
     def __str__(self):
-        return f"{self.strategy_model.name} on {self.instrument_id} in {self.portfolio.name}"
+        return f"{self.strategy_model.name} on {self.instrument} in {self.portfolio.name}"
 
 
 # =============================================================================
@@ -306,10 +398,18 @@ class Recommendation(models.Model):
 
     def accept(self, portfolio: Portfolio):
         """Creates and activates a StrategyInstance based on this recommendation."""
+        parts = self.signal.instrument_id.split(".")
+        symbol = parts[0]
+        venue = parts[1] if len(parts) > 1 else "SMART"
+        instrument, _ = Instrument.objects.get_or_create(
+            symbol=symbol,
+            venue=venue,
+            defaults={'is_active': True}
+        )
         instance, created = StrategyInstance.objects.update_or_create(
             portfolio=portfolio,
-            instrument_id=self.signal.instrument_id,
             strategy_model=self.recommended_strategy,
+            instrument=instrument,
             defaults={
                 'params': self.recommended_params,
                 'is_active': True,
@@ -339,10 +439,28 @@ class OptionRight(models.TextChoices):
     PUT = 'PUT', _('Put')
 
 
-class InstrumentGroup(models.Model):
+class InstrumentGroup(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder):
     """
     A collection of instruments grouped for trading universes, scans, or execution.
     """
+    TASK_TEXT_GENERATE = getattr(settings, 'TASK_TYPE_GENERATE_TEXT', 'generate_text')
+
+    PRESET_CREATE_SYMBOLS = "create_symbols"
+    PRESET_SYNC_SYMBOLS = "sync_symbols"
+
+    ACTION_CREATE_SYMBOLS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_CREATE_SYMBOLS}-target-symbols-schema-outwithmsg"
+    ACTION_SYNC_SYMBOLS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_SYNC_SYMBOLS}-target-symbols-schema-symbols"
+
+    ACTION_CHOICES = (
+        (ACTION_CREATE_SYMBOLS, _("Create symbols from description")),
+        (ACTION_SYNC_SYMBOLS, _("Sync symbols")),
+    ) + getattr(settings, 'COMMON_TEXT_ACTION_CHOICES', ())
+
+    AGENT_PRESETS = (
+        (PRESET_CREATE_SYMBOLS, _("Create symbols")),
+        (PRESET_SYNC_SYMBOLS, _("Sync symbols")),
+    ) + getattr(settings, 'COMMON_TEXT_AGENT_PRESETS', ())
+
     name = models.CharField(max_length=100, unique=True)
     code = models.CharField(max_length=50, unique=True, help_text=_("Short identifier for the group (e.g., 'US_TECH', 'FX_MAJORS')."))
     description = models.TextField(blank=True)
@@ -351,6 +469,10 @@ class InstrumentGroup(models.Model):
     currency = models.CharField(max_length=8, default='USD')
     symbols = models.TextField(blank=True, help_text=_("Comma, space, or newline-separated symbols to populate (e.g., 'AAPL, MSFT, NVDA')."))
     is_active = models.BooleanField(default=True)
+
+    action = models.SlugField(_("action"), max_length=1024, choices=ACTION_CHOICES, null=True, blank=True)
+    history = HistoricalRecords()
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -361,6 +483,25 @@ class InstrumentGroup(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.code})"
+
+
+    def get_contents(self, generate_self=True, preset=None):
+        parts = []
+        if preset in [self.PRESET_CREATE_SYMBOLS]:
+            if self.description:
+                parts.append(f"Description: {self.description}")
+            if self.name:
+                parts.append(f"Group Name: {self.name}")
+        elif preset in [self.PRESET_SYNC_SYMBOLS]:
+            parts.append(f"<Symbols>{self.symbols}<Symbols>")
+        else:
+            parts = super().get_contents(generate_self=generate_self, preset=preset)
+        return parts
+
+    def get_symbols_as_json(self) -> str:
+        from .schemas import SymbolsSchema
+        return SymbolsSchema.from_group(self).model_dump_json(indent=2)
+
 
     def get_codes(self) -> list[str]:
         """Extracts and deduplicates clean symbol codes from the symbols definition."""
@@ -408,9 +549,10 @@ class InstrumentGroup(models.Model):
         return created_count, len(codes)
 
     def populate_symbols_from_ib(self, query: str, append: bool = False) -> list[str]:
-        """Discovers symbols matching query via Nautilus IB and updates group symbols."""
-        from argo.instruments.search import SymbolSearchService
-        return SymbolSearchService().populate_group_symbols(self, query=query, append=append)
+        """Discovers symbols matching query via IB and updates group symbols."""
+        from argo.instruments.search import InteractiveBrokersSearchService
+        return InteractiveBrokersSearchService().populate_group(self, query=query, append=append)
+
 
 
 

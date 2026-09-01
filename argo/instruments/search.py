@@ -1,13 +1,10 @@
 import asyncio
-import os
-from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from typing import Iterable, List, Optional
 
-from nautilus_trader.adapters.interactive_brokers.client import InteractiveBrokersClient
-from nautilus_trader.adapters.interactive_brokers.common import IBContract
-from nautilus_trader.cache.cache import Cache
-from nautilus_trader.common.component import LiveClock, MessageBus
-from nautilus_trader.model.identifiers import TraderId
+from django.conf import settings
+from ib_async import IB, ContractDescription
 
 from argo.models import AssetClass
 
@@ -22,33 +19,40 @@ ASSET_CLASS_TO_SEC_TYPE: dict[str, str] = {
     AssetClass.COMMODITY: "CMDTY",
 }
 
-
-class SymbolSearchStrategy(ABC):
-    """Abstract Strategy interface for symbol discovery."""
-
-    @abstractmethod
-    async def search_async(
-        self,
-        query: str,
-        sec_type: Optional[str] = None,
-        currency: Optional[str] = None,
-    ) -> List[str]:
-        """Asynchronously searches and returns matched ticker symbols."""
-        pass
-
-    def search(
-        self,
-        query: str,
-        sec_type: Optional[str] = None,
-        currency: Optional[str] = None,
-    ) -> List[str]:
-        """Synchronous wrapper for searching symbols."""
-        return asyncio.run(self.search_async(query, sec_type=sec_type, currency=currency))
+SEC_TYPE_TO_ASSET_CLASS: dict[str, str] = {
+    "STK": AssetClass.EQUITY,
+    "FUT": AssetClass.FUTURE,
+    "OPT": AssetClass.OPTION,
+    "CASH": AssetClass.FX,
+    "CRYPTO": AssetClass.CRYPTO,
+    "IND": AssetClass.INDEX,
+    "CMDTY": AssetClass.COMMODITY,
+}
 
 
-class NautilusIBSymbolSearchStrategy(SymbolSearchStrategy):
+@dataclass(frozen=True)
+class IBSearchResult:
+    """Rich contract metadata returned from Interactive Brokers symbol search."""
+    con_id: int
+    symbol: str
+    sec_type: str
+    primary_exchange: str
+    currency: str
+    exchange: str = "SMART"
+    local_symbol: str = ""
+    trading_class: str = ""
+    asset_class: str = AssetClass.EQUITY
+    derivative_sec_types: tuple = ()
+
+
+class IBSearchServiceError(RuntimeError):
+    """Raised when Interactive Brokers service is unreachable or encounters an error."""
+    pass
+
+
+class InteractiveBrokersSearchService:
     """
-    Concrete Strategy searching Interactive Brokers contracts via Nautilus Trader client.
+    Lean service for querying matching contract symbols and details from Interactive Brokers (TWS/Gateway).
     """
 
     def __init__(
@@ -56,102 +60,101 @@ class NautilusIBSymbolSearchStrategy(SymbolSearchStrategy):
         host: Optional[str] = None,
         port: Optional[int] = None,
         client_id: int = 98,
-        timeout: int = 15,
-        client: Optional[InteractiveBrokersClient] = None,
+        timeout: float = 10.0,
     ):
-        self.host = host or os.getenv("IB_HOST", "127.0.0.1")
-        self.port = port or int(os.getenv("IB_PORT", "7497"))
+        self.host = host or getattr(settings, "IB_HOST", "127.0.0.1")
+        self.port = port or getattr(settings, "IB_PORT", 4002)
         self.client_id = client_id
         self.timeout = timeout
-        self.client = client
-
-    def _create_temp_client(self, loop: asyncio.AbstractEventLoop) -> InteractiveBrokersClient:
-        """Factory method for initializing a dedicated Nautilus IB client."""
-        clock = LiveClock()
-        return InteractiveBrokersClient(
-            loop=loop,
-            msgbus=MessageBus(trader_id=TraderId(f"SEARCH-{self.client_id}"), clock=clock),
-            cache=Cache(database=None),
-            clock=clock,
-            host=self.host,
-            port=self.port,
-            client_id=self.client_id,
-            request_timeout_secs=self.timeout,
-        )
-
-    def _filter_contracts(
-        self,
-        contracts: Iterable[IBContract],
-        sec_type: Optional[str] = None,
-        currency: Optional[str] = None,
-    ) -> List[str]:
-        """Filters matching contracts and extracts deduplicated symbols."""
-        matched: set[str] = set()
-        for contract in contracts:
-            if sec_type and contract.secType != sec_type:
-                continue
-            if currency and contract.currency != currency:
-                continue
-            if contract.symbol:
-                matched.add(contract.symbol.upper())
-        return sorted(matched)
-
-    async def _query_client(
-        self,
-        client: InteractiveBrokersClient,
-        query: str,
-        sec_type: Optional[str] = None,
-        currency: Optional[str] = None,
-    ) -> List[str]:
-        """Executes pattern matching request through the Nautilus client."""
-        results = await client.get_matching_contracts(pattern=query)
-        return self._filter_contracts(results or [], sec_type=sec_type, currency=currency)
 
     async def search_async(
         self,
         query: str,
         sec_type: Optional[str] = None,
         currency: Optional[str] = None,
-    ) -> List[str]:
-        """Searches contracts using active or temporary Nautilus IB client."""
-        if self.client and self.client.is_connected:
-            return await self._query_client(self.client, query, sec_type, currency)
-
-        loop = asyncio.get_running_loop()
-        temp_client = self._create_temp_client(loop)
-        await temp_client._start_async()
+    ) -> List[IBSearchResult]:
+        """Asynchronously queries IB Gateway/TWS for matching contracts with complete metadata."""
+        ib = IB()
         try:
-            return await self._query_client(temp_client, query, sec_type, currency)
+            await ib.connectAsync(
+                host=self.host,
+                port=self.port,
+                clientId=self.client_id,
+                timeout=self.timeout,
+            )
+            descriptions = await ib.reqMatchingSymbolsAsync(query)
+            return self._extract_results(descriptions or [], sec_type=sec_type, currency=currency)
+        except Exception as exc:
+            raise IBSearchServiceError(
+                f"Interactive Brokers search service failed at {self.host}:{self.port} "
+                f"(clientId={self.client_id}): {exc}"
+            ) from exc
         finally:
-            await temp_client._stop_async()
+            if ib.isConnected():
+                ib.disconnect()
 
+    def search(
+        self,
+        query: str,
+        sec_type: Optional[str] = None,
+        currency: Optional[str] = None,
+    ) -> List[IBSearchResult]:
+        """Synchronously executes the search query, handling running event loops safely."""
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
 
-class SymbolSearchService:
-    """
-    Service facade orchestrating symbol discovery and InstrumentGroup population.
-    """
+        coro = self.search_async(query, sec_type=sec_type, currency=currency)
+        if loop and loop.is_running():
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(asyncio.run, coro).result()
+        return asyncio.run(coro)
 
-    def __init__(self, strategy: Optional[SymbolSearchStrategy] = None):
-        self.strategy = strategy or NautilusIBSymbolSearchStrategy()
-
-    def search_for_group(self, group, query: str) -> List[str]:
-        """Searches symbols matching the group's asset class and currency."""
+    def populate_group(self, group, query: str, append: bool = False) -> List[str]:
+        """Searches symbols and persists them into the given InstrumentGroup."""
         sec_type = ASSET_CLASS_TO_SEC_TYPE.get(group.asset_class, "STK")
-        return self.strategy.search(query=query, sec_type=sec_type, currency=group.currency)
-
-    async def search_for_group_async(self, group, query: str) -> List[str]:
-        """Asynchronously searches symbols matching the group's asset class and currency."""
-        sec_type = ASSET_CLASS_TO_SEC_TYPE.get(group.asset_class, "STK")
-        return await self.strategy.search_async(query=query, sec_type=sec_type, currency=group.currency)
-
-    def populate_group_symbols(self, group, query: str, append: bool = False) -> List[str]:
-        """Searches symbols and saves them to the InstrumentGroup instance."""
-        symbols = self.search_for_group(group, query)
+        results = self.search(query=query, sec_type=sec_type, currency=group.currency)
+        symbols = sorted({r.symbol for r in results})
         if not symbols:
             return []
 
         existing = set(group.get_codes()) if append else set()
-        combined = sorted(existing.union(symbols))
-        group.symbols = ", ".join(combined)
+        group.symbols = ", ".join(sorted(existing.union(symbols)))
         group.save(update_fields=["symbols", "updated_at"])
         return symbols
+
+    def _extract_results(
+        self,
+        descriptions: Iterable[ContractDescription],
+        sec_type: Optional[str] = None,
+        currency: Optional[str] = None,
+    ) -> List[IBSearchResult]:
+        """Extracts filtered and normalized contract search results."""
+        results = []
+        for desc in descriptions:
+            c = desc.contract
+            if not c.symbol:
+                continue
+            if sec_type and c.secType != sec_type:
+                continue
+            if currency and c.currency != currency:
+                continue
+
+            results.append(
+                IBSearchResult(
+                    con_id=c.conId or 0,
+                    symbol=c.symbol.upper(),
+                    sec_type=c.secType or "STK",
+                    primary_exchange=c.primaryExchange or "",
+                    currency=c.currency or "USD",
+                    exchange=c.exchange or "SMART",
+                    local_symbol=c.localSymbol or "",
+                    trading_class=c.tradingClass or "",
+                    asset_class=SEC_TYPE_TO_ASSET_CLASS.get(c.secType, AssetClass.EQUITY),
+                    derivative_sec_types=tuple(desc.derivativeSecTypes or ()),
+                )
+            )
+        return sorted(results, key=lambda r: (r.symbol, r.con_id))
+
+

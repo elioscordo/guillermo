@@ -17,41 +17,41 @@
                     </span>
                 </a>
               {% endif %}
-              <a href="/admin/scene/prop/?id__in={{ prop_ids }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
+              <a href="/admin/scene/prop/?scenes__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Props" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ props.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ props_count }}</span>
                 </a>
-                <a href="/admin/scene/character/?id__in={{ char_ids }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
+                <a href="/admin/scene/character/?scenes__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Characters" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ characters.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ characters_count }}</span>
                 </a>
-                <a href="/admin/scene/background/?id__in={{ loc_ids }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
+                <a href="/admin/scene/background/?scenes__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Locations" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ locations.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ locations_count }}</span>
                 </a>
-                <a href="/admin/scene/voice/?id__in={{ voice_ids }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
+                <a href="/admin/scene/voice/?scenes__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Voice" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ voices.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ voices_count }}</span>
                 </a>
-                <a href="/admin/scene/action/?id__in={{ action_ids }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
+                <a href="/admin/scene/action/?scene__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Image Shots" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions_count }}</span>
                 </a>
-                <a href="/admin/scene/actionorganizer/?id__in={{ action_ids }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
+                <a href="/admin/scene/actionorganizer/?scene__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Shot Organizer" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions_count }}</span>
                 </a>
-                <a href="/admin/scene/comicaction/?id__in={{ action_ids }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
+                <a href="/admin/scene/comicaction/?scene__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Comic Shots" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions_count }}</span>
                 </a>
-                <a href="/admin/scene/videoaction/?id__in={{ action_ids }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
+                <a href="/admin/scene/videoaction/?scene__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Video Shots" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions_count }}</span>
                 </a>
-                <a href="/admin/scene/voiceaction/?id__in={{ action_ids }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
+                <a href="/admin/scene/voiceaction/?scene__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Voice Shots" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions_count }}</span>
                 </a>
             </div>
         </el-menu>
