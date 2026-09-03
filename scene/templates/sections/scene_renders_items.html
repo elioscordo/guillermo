@@ -3,9 +3,16 @@
 {% for render in renders %}
     <div class="flex flex-col border border-base-200 dark:border-base-800 rounded-lg overflow-hidden bg-white dark:bg-base-800 transition-all hover:shadow-md gallery-card-wrapper" data-id="{{ render.id }}">
         <div class="px-3 py-2 border-b border-base-200 dark:border-base-800 flex justify-between items-center gap-2 bg-white/50 dark:bg-base-900/50">
-            <span class="text-[10px] font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400">
-                {{ render.get_render_type_display }}
-            </span>
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400">
+                    {{ render.get_render_type_display }}
+                </span>
+                {% if render.language %}
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300 border border-primary-200/50 dark:border-primary-800/50 uppercase">
+                        {{ render.language }}
+                    </span>
+                {% endif %}
+            </div>
             <span class="text-[10px] text-font-tertiary-light dark:text-font-tertiary-dark truncate max-w-[120px]" title="{{ render.name }}">
                 {{ render.name }}
             </span>
@@ -22,9 +29,20 @@
             {% endif %}
         </div>
 
-        <div class="p-3 mt-auto flex items-center justify-between border-t border-base-200 dark:border-base-800 bg-white/30 dark:bg-base-950/20">
+        <div class="p-3 mt-auto flex items-center justify-between border-t border-base-200 dark:border-base-800 bg-white/30 dark:bg-base-950/20 text-xs">
+            <div class="flex items-center gap-1 text-[11px] text-font-tertiary-light dark:text-font-tertiary-dark">
+                {% if render.created_at %}
+                    <span class="material-symbols-outlined text-[14px]">schedule</span>
+                    <span>{{ render.created_at|date:"d M Y H:i" }}</span>
+                {% elif render.created %}
+                    <span class="material-symbols-outlined text-[14px]">schedule</span>
+                    <span>{{ render.created|date:"d M Y H:i" }}</span>
+                {% endif %}
+            </div>
             {% if render.video %}
-                {{ render.video_download|safe }}
+                <div class="flex items-center">
+                    {{ render.video_download|safe }}
+                </div>
             {% endif %}
         </div>
     </div>

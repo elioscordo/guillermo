@@ -11,45 +11,45 @@
             <div class="flex flex-col gap-0.5">
                 <a href="/admin/scene/scene/?story__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Scenes" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ scenes.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ scenes_count }}</span>
                 </a>
                 <a href="/admin/scene/character/?story__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Characters" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ characters.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ characters_count }}</span>
                 </a>
                 <a href="/admin/scene/background/?story__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Locations" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ locations.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ locations_count }}</span>
                 </a>
                 <a href="/admin/scene/prop/?story__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Props" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ props.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ props_count }}</span>
                 </a>
                
                 <a href="/admin/scene/voice/?story__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Voice" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ voices.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ voices_count }}</span>
                 </a>
                
                 <a href="/admin/scene/action/?scene__story__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item border-t border-base-100 dark:border-base-800 mt-0.5 pt-2">
                     <span>{% trans "Image Shots" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions_count }}</span>
                 </a>
                 <a href="/admin/scene/videoaction/?scene__story__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Video Shots" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ video_actions.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ video_actions_count }}</span>
                 </a>
                 <a href="/admin/scene/comicaction/?scene__story__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Comic Shots" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ comic_actions.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ comic_actions_count }}</span>
                 </a>
                 <a href="/admin/scene/voiceaction/?scene__story__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Voice Shots" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ voice_actions.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ voice_actions_count }}</span>
                 </a>
                 <a href="/admin/scene/actionorganizer/?scene__story__id__exact={{ instance.id }}" class="flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-base-100 dark:hover:bg-white/[.05] transition-colors rounded-md text-font-secondary-light dark:text-white hover:text-primary-600 dark:hover:text-primary-400 group/item">
                     <span>{% trans "Shots Organizer" %}</span>
-                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ voice_actions.count }}</span>
+                    <span class="font-bold text-font-important-light dark:text-font-important-dark bg-base-100 dark:bg-base-800 px-1.5 py-0.5 rounded text-[10px]">{{ actions_count }}</span>
                 </a>
             </div>
         </el-menu>

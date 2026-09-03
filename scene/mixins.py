@@ -19,7 +19,7 @@ import secrets
 import string
 from django.http import JsonResponse
 from django.apps import apps
-from .utils import render_image_markup
+from .utils import render_image_markup, get_thumbnail_url
 from django.shortcuts import get_object_or_404
 
 ELEMENT_FIELDSETS = (
@@ -149,9 +149,11 @@ class ModelDisplayMixin:
         image = getattr(self, field_name, None)
         url = image.url if image and hasattr(image, 'url') else ""
         h = max_height or self.MAX_IMAGE_HEIGHT
+        thumb_size = (0, min(h, 200))
+        thumb_url = get_thumbnail_url(image, size=thumb_size, crop=False) if image else ""
         model_label = f"{self._meta.app_label}.{self._meta.model_name}"
         
-        return render_image_markup(url, model_label, self.pk, field_name, h, label)
+        return render_image_markup(url, model_label, self.pk, field_name, h, label, thumb_url=thumb_url)
 
     def video_download(self):
         video = getattr(self, 'video', None)
@@ -445,10 +447,12 @@ class AdminActionsMixin:
     def comic_to_video(self, request, queryset):
         Render = apps.get_model('scene', 'Render')
         RenderItem = apps.get_model('scene', 'RenderItem')
+        lang = (get_language() or 'en').replace('-', '_').split('_')[0]
         for obj in queryset:
-            render = Render.get_from_scene(obj.scene)
+            render = Render.get_from_scene(obj.scene, language=lang)
+            comic_img = getattr(obj, f"image_comic_{lang}", None) or obj.image_comic or obj.image
             RenderItem.objects.create(
-                image= obj.image_comic if obj.image_comic else obj.image,
+                image=comic_img,
                 render=render,
                 order=obj.order,
             )
@@ -457,10 +461,11 @@ class AdminActionsMixin:
     def video_to_scene_video(self, request, queryset):
         Render = apps.get_model('scene', 'Render')
         RenderItem = apps.get_model('scene', 'RenderItem')
+        lang = (get_language() or 'en').replace('-', '_').split('_')[0]
         for obj in queryset:
-            render = Render.get_from_scene(obj.scene)
+            render = Render.get_from_scene(obj.scene, language=lang)
             RenderItem.objects.create(
-                video= obj.video,
+                video=obj.video,
                 render=render,
                 order=obj.order,
             )
@@ -610,15 +615,17 @@ class AdminActionsMixin:
 
     @action(description=_("Generate Render Preview (step 3.5)"), icon="preview")
     def generate_render(self, request, queryset):
+        lang = (get_language() or 'en').replace('-', '_').split('_')[0]
         for obj in queryset:
             if hasattr(obj, 'generate_render'):
-                obj.generate_render()
+                obj.generate_render(language=lang)
                 self.message_user(request, _("Render generated for : {}").format(obj.name))
 
     @action(description=_("Refresh Render (step 4)"), icon="refresh")
     def refresh_render(self, request, queryset):
+        lang = (get_language() or 'en').replace('-', '_').split('_')[0]
         for obj in queryset:
-            render = obj.generate_render()
+            render = obj.generate_render(language=lang)
             Task.createTaskIfQueueEnabled(
                 subject=render,
                 task_type=settings.TASK_TYPE_VIDEO_RENDER,

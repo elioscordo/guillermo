@@ -6,7 +6,7 @@ from django.urls import path, reverse
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 from django.utils.safestring import mark_safe
-from .utils import render_image_markup
+from .utils import render_image_markup, get_thumbnail_url
 from task.models import Task
 from .serializers import get_generic_serializer
 
@@ -62,9 +62,10 @@ class AdminLinker:
 
                 url = img.url if img and hasattr(img, "url") else ""
                 max_h = getattr(obj, "MAX_IMAGE_HEIGHT", 80)
+                thumb_url = get_thumbnail_url(img, size=(0, max_h), crop=False) if img else ""
                 model_label = f"{obj._meta.app_label}.{obj._meta.model_name}"
                 label = related_field.replace("_", " ").title()
-                return render_image_markup(url, model_label, obj.pk, related_field, max_h, label)
+                return render_image_markup(url, model_label, obj.pk, related_field, max_h, label, thumb_url=thumb_url)
 
             dynamic_image.short_description = related_field.replace("_", " ").title()
             return dynamic_image

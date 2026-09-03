@@ -132,6 +132,12 @@ class Task(models.Model):
 
     class Meta:
         ordering = ['-modified', 'status']
+        indexes = [
+            models.Index(fields=['subject_ct', 'subject_id']),
+            models.Index(fields=['obj_ct', 'obj_id']),
+            models.Index(fields=['thr_ct', 'thr_id']),
+            models.Index(fields=['-modified', 'status']),
+        ]
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -339,9 +345,11 @@ class TaskHolder:
         """
         mark in the admin with the last tasks
         """
+        cached = getattr(self, '_preloaded_tasks', None)
+        tasks = cached if cached is not None else list(self.tasks[:5])
         out = render_to_string(
             'task_dropdown.html',
-            {'tasks': self.tasks, 'instance': self}
+            {'tasks': tasks, 'instance': self}
         )
         return mark_safe(out)
     

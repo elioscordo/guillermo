@@ -12,7 +12,7 @@ from task.mixins import  AfterSaveActionMixin
 from task.models import TaskHolder, Task
 import yaml
 from .schemas import ActionSchema
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_lazy as _, get_language
 from django.template.loader import render_to_string
 from django.utils.safestring import mark_safe
 from simple_history.models import HistoricalRecords
@@ -259,48 +259,43 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, YAMLAssetsMixin, models.Model
         """
         Renders a summary dropdown of story elements using a template.
         """
-        locations = self.get_locations()
-        characters = self.get_cast()
-        props = self.get_props()
-        voices = self.get_voices()
-        scenes = self.scenes.all()
-        actions = Action.objects.filter(scene__story=self)
-        video_actions = VideoAction.objects.filter(scene__story=self)
-        comic_actions = ComicAction.objects.filter(scene__story=self)
-        voice_actions = VoiceAction.objects.filter(scene__story=self)
+        scenes_count = self.scenes.count()
+        chars_count = self.characters.count()
+        locs_count = self.locations.count()
+        props_count = self.props.count()
+        voices_count = self.voices.count()
+        actions_count = Action.objects.filter(scene__story=self).count()
+        video_actions_count = VideoAction.objects.filter(scene__story=self).count()
+        comic_actions_count = ComicAction.objects.filter(scene__story=self).count()
+        voice_actions_count = VoiceAction.objects.filter(scene__story=self).count()
 
         context = {
-            'locations': locations,
-            'characters': characters,
-            'props': props,
-            'voices': voices,
-            'scenes': scenes,
-            'actions': actions,
-            'video_actions': video_actions,
-            'comic_actions': comic_actions,
-            'voice_actions': voice_actions,
-            'count': (locations.count() + characters.count() + props.count() + 
-                      voices.count() + scenes.count() + actions.count()),
-            "prop_ids": ",".join([str(p.id) for p in props]),
-            "char_ids": ",".join([str(c.id) for c in characters]),
-            "loc_ids": ",".join([str(l.id) for l in locations]),
-            "voice_ids": ",".join([str(v.id) for v in voices]),
-            "action_ids": ",".join([str(a.id) for a in actions]),
-            "scene_ids": ",".join([str(s.id) for s in scenes]),
             "instance": self,
+            "scenes_count": scenes_count,
+            "characters_count": chars_count,
+            "locations_count": locs_count,
+            "props_count": props_count,
+            "voices_count": voices_count,
+            "actions_count": actions_count,
+            "video_actions_count": video_actions_count,
+            "comic_actions_count": comic_actions_count,
+            "voice_actions_count": voice_actions_count,
+            "count": scenes_count + chars_count + locs_count + props_count + voices_count + actions_count,
         }
         return render_to_string("story/items_dropdown.html", context)
 
-    def generate_render(self):
+    def generate_render(self, language=None):
         """
-        Creates a new Render object for this scene based on the story's render type
-        and populates it with RenderItems for each action in the scene.
+        Creates a new Render object for this story based on the story's render type
+        and populates it with RenderItems for each action in the story's scenes.
         """
-        
+        lang = language or (get_language() or 'en').replace('-', '_').split('_')[0]
+        render_type = self.render_type if self.render_type else 'animatic'
         render = Render.objects.create(
             story=self,
-            name=f"Render for {self.name or self.id}",
-            render_type=self.render_type if self.render_type else 'animatic'
+            name=f"Render for {self.name or self.id} ({lang.upper()})",
+            render_type=render_type,
+            language=lang
         )
         render.refresh_render()    
         return render
@@ -661,16 +656,19 @@ class Scene(AfterSaveActionMixin, YAMLAssetsMixin, models.Model, TaskHolder, Get
         }
         return render_to_string("scene/items_dropdown.html", context)
 
-    def generate_render(self):
+    def generate_render(self, language=None):
         """
         Creates a new Render object for this scene based on the story's render type
         and populates it with RenderItems for each action in the scene.
         """
-        
+        lang = language or (get_language() or 'en').replace('-', '_').split('_')[0]
+        render_type = self.story.render_type if (self.story and self.story.render_type) else 'animatic'
         render = Render.objects.create(
             scene=self,
-            name=f"Render for {self.name or self.id}",
-            render_type=self.story.render_type if self.story else 'animatic'
+            story=self.story,
+            name=f"Render for {self.name or self.id} ({lang.upper()})",
+            render_type=render_type,
+            language=lang
         )
         render.refresh_render()
         
@@ -1136,11 +1134,21 @@ class Render(RenderTypeMixin, models.Model, TaskHolder, ModelDisplayMixin):
         default=RENDER_TYPE_FILM,
         help_text=_("The format in which this scene will be synthesized.")
     )
+    language = models.CharField(
+        _("language"),
+        max_length=10,
+        choices=settings.LANGUAGES,
+        default='en',
+        help_text=_("The language for voiceovers and localized assets.")
+    )
+    created_at = models.DateTimeField(_("created at"), auto_now_add=True, null=True, blank=True)
+    modified_at = models.DateTimeField(_("modified at"), auto_now=True, null=True, blank=True)
+
     def __str__(self):
         return "{}".format(self.name)
 
     def _create_item_from_action(self, action, order):
-        """Helper to create a RenderItem based on the current render_type."""
+        """Helper to create a RenderItem based on the current render_type and language."""
         item = RenderItem(
             render=self,
             scene=action.scene,
@@ -1148,14 +1156,18 @@ class Render(RenderTypeMixin, models.Model, TaskHolder, ModelDisplayMixin):
             order=order
         )
 
+        lang = (self.language or 'en').replace('-', '_').split('_')[0]
+
         if self.render_type == self.RENDER_TYPE_FILM:
             item.video = action.video
         elif self.render_type == self.RENDER_TYPE_ANIMATIC:
-            item.image = action.image_comic or action.image  # Fallback to standard image if comic version isn't generated yet
-            item.audio = action.audio_voice
+            audio = getattr(action, f"audio_voice_{lang}", None) or action.audio_voice
+            item.audio = audio
+            comic_img = getattr(action, f"image_comic_{lang}", None) or action.image_comic
+            item.image = comic_img or action.image
         elif self.render_type == self.RENDER_TYPE_GRAPHIC_NOVEL:
-            # Fallback to standard image if comic version isn't generated yet
-            item.image = action.image_comic or action.image
+            comic_img = getattr(action, f"image_comic_{lang}", None) or action.image_comic
+            item.image = comic_img or action.image
 
         item.save()
         return item
@@ -1182,12 +1194,23 @@ class Render(RenderTypeMixin, models.Model, TaskHolder, ModelDisplayMixin):
             self._create_item_from_action(action, order=i)
 
     class Meta:
+        ordering = ['-created_at', '-id']
         verbose_name = _('Render Composition')
         verbose_name_plural = _('Render Compositions')
 
     @classmethod
-    def get_from_scene(cls, scene):
-        return cls.objects.get_or_create(scene=scene, story=scene.story, defaults={'name': f"Render for {scene.name}"})[0]
+    def get_from_scene(cls, scene, language=None):
+        lang = language or (get_language() or 'en').replace('-', '_').split('_')[0]
+        render_type = scene.story.render_type if (scene.story and scene.story.render_type) else cls.RENDER_TYPE_ANIMATIC
+        return cls.objects.get_or_create(
+            scene=scene,
+            story=scene.story,
+            language=lang,
+            defaults={
+                'name': f"Render for {scene.name} ({lang.upper()})",
+                'render_type': render_type,
+            }
+        )[0]
         
 class RenderItem(models.Model, TaskHolder, ModelDisplayMixin):
     DEFAULT_IMAGE_DURATION = 8

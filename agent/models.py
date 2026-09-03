@@ -10,7 +10,7 @@ from django.utils.module_loading import import_string
 from task.mixins import  AfterSaveActionMixin
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_lazy as _, get_language
 from agent.utils import wave_file
 from PIL import Image
 from io import BytesIO
@@ -259,13 +259,26 @@ class GetContentsMixin:
 
     def generate_voice(self, preset, user=None, target_field="audio_voice"):
         agent = self.get_agent(Agent.OUTPUT_TYPE_VOICE)
-        out = agent.generate(self, preset=preset, user=user, target_field=target_field)
-        lang = (get_language() or 'en').replace('-', '_').split('_')[0]
-        if hasattr(self, f"{target_field}_{lang}"):
-            setattr(self, f"{target_field}_{lang}", out)
-        setattr(self, target_field, out)
+        base_field = normalize_target_field(target_field)
+        if base_field == 'prompt_voice':
+            base_field = 'audio_voice'
+
+        lang = None
+        for code, _ in getattr(settings, 'LANGUAGES', ()):
+            if target_field and target_field.endswith(f"_{code}"):
+                lang = code
+                break
+        if not lang:
+            lang = (get_language() or 'en').replace('-', '_').split('_')[0]
+
+        out = agent.generate(self, preset=preset, user=user, target_field=base_field)
+        lang_field = f"{base_field}_{lang}"
+        if hasattr(self, lang_field):
+            setattr(self, lang_field, out)
+        if hasattr(self, base_field):
+            setattr(self, base_field, out)
         self.save()
-        return getattr(self, target_field)
+        return getattr(self, lang_field, None) or getattr(self, base_field, None)
     
 
     def generate_scene(self, preset=PRESET_SYNC_SCENE, user=None):
@@ -552,7 +565,7 @@ class Agent(models.Model):
         filepath_relative = f"agent_voices/{name}"
         filepath_abs = os.path.join( settings.MEDIA_ROOT, filepath_relative)
         wave_file(filepath_abs, data)
-        out = FilerImage.objects.create(
+        out = FilerFile.objects.create(
             original_filename=name,
             file=filepath_relative,
             name=name
@@ -927,10 +940,20 @@ class Message(models.Model, GetContentsMixin, TaskHolder):
             'part_type': part_type,
             'key': key
         }
-        from scene.schemas import SyncReport
+        try:
+            from agent.schemas import SyncReport
+        except ImportError:
+            SyncReport = None
+
+        def is_sync_report(data):
+            if SyncReport and isinstance(data, SyncReport):
+                return True
+            if hasattr(data, 'instance') and hasattr(data, 'fields_edited') and hasattr(data, 'name'):
+                return True
+            return False
 
         def has_sync_report(data):
-            if isinstance(data, SyncReport):
+            if is_sync_report(data):
                 return True
             if isinstance(data, list):
                 return any(has_sync_report(x) for x in data)
@@ -938,13 +961,13 @@ class Message(models.Model, GetContentsMixin, TaskHolder):
                 return any(has_sync_report(x) for x in data.values())
             return False
 
-        if isinstance(part_data, SyncReport):
-            part_kwargs['content_object'] = part_data.instance
-            part_kwargs['text'] = part_data.name
+        if is_sync_report(part_data):
+            part_kwargs['content_object'] = getattr(part_data, 'instance', None)
+            part_kwargs['text'] = str(getattr(part_data, 'name', ''))
             part_kwargs['json'] = {
-                'created': part_data.created,
-                'edited': part_data.edited,
-                'fields_edited': part_data.fields_edited
+                'created': getattr(part_data, 'created', False),
+                'edited': getattr(part_data, 'edited', False),
+                'fields_edited': getattr(part_data, 'fields_edited', [])
             }
         elif isinstance(part_data, list):
             for i, part in enumerate(part_data):
@@ -1034,34 +1057,5 @@ class MessagePart(models.Model):
         ordering = ['order']
 
 
-# =============================================================================
-# AGENT STRUCTURED OUTPUT SCHEMAS
-# =============================================================================
-class OutputWithMessageSchema(BaseModel):
-    message: str
-    output: str
-
-    def sync_model(self, source):
-        return dict(self)
-
-    def get_output(self):
-        return self.output
-
-
-class CreateInstructionsSchema(OutputWithMessageSchema):
-    def sync_model(self, source):
-        Prompt.objects.update_or_create(
-            name="Prompt Automatically Created",
-            defaults={
-                'prompt': self.output,
-            }
-        )
-        return dict(self)
-
-
-import sys
-import types
-_schemas_module = types.ModuleType("agent.schemas")
-_schemas_module.OutputWithMessageSchema = OutputWithMessageSchema
-_schemas_module.CreateInstructionsSchema = CreateInstructionsSchema
-sys.modules["agent.schemas"] = _schemas_module
+# Re-export structured output schemas from agent.schemas
+from .schemas import OutputWithMessageSchema, CreateInstructionsSchema, SyncReport, get_asset_sync_info

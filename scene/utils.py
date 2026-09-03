@@ -2,14 +2,39 @@
 from django.utils.html import format_html
 
 
-def render_image_markup(url, model_label, object_id, field_name, max_height, label=""):
+def get_thumbnail_url(image, size=(0, 150), crop=False, upscale=False):
+    """Safely retrieves or generates an aspect-ratio-preserving thumbnail URL for an image object."""
+    if not image:
+        return ""
+    try:
+        if hasattr(image, 'easy_thumbnails_thumbnailer'):
+            thumb = image.easy_thumbnails_thumbnailer.get_thumbnail({'size': size, 'crop': crop, 'upscale': upscale})
+            return thumb.url if thumb else getattr(image, 'url', '')
+        if hasattr(image, 'file') and hasattr(image.file, 'get_thumbnail'):
+            thumb = image.file.get_thumbnail({'size': size, 'crop': crop, 'upscale': upscale})
+            return thumb.url if thumb else getattr(image, 'url', '')
+        if hasattr(image, 'url'):
+            return image.url
+    except Exception:
+        if hasattr(image, 'url'):
+            try:
+                return image.url
+            except Exception:
+                pass
+    if isinstance(image, str):
+        return image
+    return ""
+
+
+def render_image_markup(url, model_label, object_id, field_name, max_height, label="", thumb_url=None):
     """Shared utility for rendering the standard image markup with menu triggers."""
-    if url:
+    display_src = thumb_url or url
+    if display_src:
         inner_html = format_html(
-            '<img src="{0}" style="max-height: {1}px;" '
+            '<img src="{0}" style="max-height: {1}px;" loading="lazy" '
             'class="cursor-pointer rounded-md border border-gray-200 dark:border-gray-700 shadow-sm max-w-full h-auto block transition-all hover:ring-2 hover:ring-primary-500/50" '
             'alt="{2}" />',
-            url, max_height, label
+            display_src, max_height, label
         )
     else:
         # Render a dashed placeholder if no image exists

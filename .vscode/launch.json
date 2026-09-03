@@ -17,7 +17,8 @@
             "env": {
                 "DJANGO_SETTINGS_MODULE": "argo_project.settings"
             },
-            "django": true,
+            "django": false,
+            "justMyCode": true,
             "autoStartBrowser": false,
             "program": "${workspaceFolder}/manage.py"
         },
@@ -141,7 +142,8 @@
                 "--noreload",
                 "--skip-checks"
             ],
-            "django": true,
+            "django": false,
+            "justMyCode": true,
             "autoStartBrowser": false,
             "program": "${workspaceFolder}/manage.py"
         },

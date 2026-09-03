@@ -143,16 +143,30 @@ class StoryAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHisto
 
     def changelist_view(self, request, extra_context=None):
         self.request = request
+        if request.user.is_authenticated:
+            self._user_author_map = dict(
+                Author.objects.filter(user=request.user).values_list('story_id', 'id')
+            )
         return super().changelist_view(request, extra_context)
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('style', 'theme', 'group').prefetch_related('scenes')
+
     def add_scene(self, obj):
-        author = Author.objects.filter(user=self.request.user, story=obj).first()
-        if author:
+        author_id = getattr(self, '_user_author_map', {}).get(obj.id)
+        if author_id is None and hasattr(self, 'request'):
+            author = Author.objects.filter(user=self.request.user, story=obj).first()
+            author_id = author.id if author else False
+            if not hasattr(self, '_user_author_map'):
+                self._user_author_map = {}
+            self._user_author_map[obj.id] = author_id
+
+        if author_id:
             url = reverse("admin:scene_scene_add")
             return format_html(
                 '<a href="{}?story={}&author={}&next=/admin/scene/story/" class="bg-primary-600 text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-primary-500 transition-colors shadow-sm inline-flex items-center gap-1.5 whitespace-nowrap" style="color: white !important;">'
                 '<span class="material-symbols-outlined text-[18px]">add</span>{}</a>',
-                url, obj.id, author.id, _("Add Scene")
+                url, obj.id, author_id, _("Add Scene")
             )
         return "-"
     add_scene.short_description = _("Add Scene")
@@ -178,6 +192,7 @@ class StoryAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHisto
 
 @admin.register(Scene)
 class SceneAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHistoryAdmin, AjaxSectionAdminMixin, StoryFilterMixin, AdminActionsMixin, AdminLinker, AjaxTaskModelAdmin):
+    show_full_result_count = False
     search_fields = ['name']
     ajax_shift_fields = ['prompt']
     list_refresh = ['items']
@@ -185,6 +200,9 @@ class SceneAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHisto
     autocomplete_fields = ['story', 'author', 'instructions', 'locations', 'cast', 'props', 'voices']
     actions = ['clone', 'extract_scene', 'generate_scene_prompt', 'generate_scene_elements', 'generate_scene_actions', 'generate_scene_voices', 'generate_scene_comics', 'generate_render', 'refresh_render']
     list_filter = ['story', 'id']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('story', 'author')
     
     fieldsets = (
         ("Write",{
@@ -208,9 +226,6 @@ class SceneAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHisto
         MessageHistorySection,
         PlotSection,
         ScriptSection,
-        SceneCharactersSection,
-        SceneLocationsSection,
-        ScenePropsSection,
         RenderSection
     ]
 
@@ -256,8 +271,12 @@ class StoryProfileAdmin(ViewYourOwnMixin, StaffReadOnlyMixin, ModelAdmin):
     autocomplete_fields = ['story', 'group', 'user', 'scene']
     staff_readonly_fields = ['user']
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('user', 'group', 'story', 'scene')
+
 @admin.register(Character)
 class CharacterAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHistoryAdmin, AjaxSectionAdminMixin, StoryFilterMixin, AdminActionsMixin, AdminLinker, PromptPreviewMixin, AjaxTaskModelAdmin):
+    show_full_result_count = False
     list_display = ('name', 'pic', 'prompt', 'prompt_refine', 'link_story', 'last_tasks')
     list_refresh = ['pic']
     list_editable = ('prompt', 'prompt_refine')
@@ -269,8 +288,12 @@ class CharacterAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleH
     fieldsets = ELEMENT_FIELDSETS
     list_sections = [MessageHistorySection]
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('story', 'image')
+
 @admin.register(Background)
 class BackgroundAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHistoryAdmin, AjaxSectionAdminMixin, StoryFilterMixin, AdminActionsMixin, AdminLinker, PromptPreviewMixin, AjaxTaskModelAdmin):
+    show_full_result_count = False
     list_display = ('name', 'pic', 'prompt','link_story', 'last_tasks')
     list_refresh = ['pic']
     list_editable = ('prompt',)
@@ -282,9 +305,13 @@ class BackgroundAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, Simple
     fieldsets = ELEMENT_FIELDSETS
     list_sections = [MessageHistorySection]
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('story', 'image')
+
 
 @admin.register(Prop)
 class PropAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHistoryAdmin, AjaxSectionAdminMixin, StoryFilterMixin, AdminActionsMixin, AdminLinker, PromptPreviewMixin, AjaxTaskModelAdmin):
+    show_full_result_count = False
     search_fields = ['name']#
     list_refresh = ['pic']
     list_display = ('name', 'pic', 'prompt','prompt_refine', 'link_story', 'last_tasks')
@@ -297,6 +324,9 @@ class PropAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHistor
     fieldsets = ELEMENT_FIELDSETS
     list_sections = [MessageHistorySection]
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('story', 'image')
+
 
 @admin.register(Author)
 class AuthorAdmin(AdminActionsMixin, ModelAdmin):
@@ -305,6 +335,9 @@ class AuthorAdmin(AdminActionsMixin, ModelAdmin):
     list_display_links = ('user',)
     autocomplete_fields = ['user', 'story']
     search_fields = ['user__username', 'email']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('user', 'story')
 
 @admin.register(Nudge)
 class NudgeAdmin(AdminActionsMixin, ModelAdmin):
@@ -320,8 +353,12 @@ class NudgeAdmin(AdminActionsMixin, ModelAdmin):
         })
     )
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('sender', 'receiver', 'story')
+
 @admin.register(Action)
 class ActionAdmin(CurrentLanguageListMixin, TabbedTranslationAdmin, ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHistoryAdmin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
+    show_full_result_count = False
     ajax_shift_fields = ['prompt', 'prompt_refine']    
     list_display = ('get_name', 'items', 'pic', 'prompt','prompt_refine', 'last_tasks')
     list_refresh = ['pic']
@@ -336,8 +373,15 @@ class ActionAdmin(CurrentLanguageListMixin, TabbedTranslationAdmin, ChangelistSc
     fieldsets = ACTION_FIELDSETS
     list_sections = [MessageHistorySection]
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'scene', 'scene__story', 'voice', 'background', 'actor',
+            'image', 'image_comic', 'audio_voice', 'video', 'consistent_with'
+        )
+
 @admin.register(VideoAction)
 class VideoActionAdmin(CurrentLanguageListMixin, PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
+    show_full_result_count = False
     list_display = ('name', 'items', 'pic', 'prompt_video', 'video_player','last_tasks')
     list_editable = ['prompt_video']
     list_filter = ["scene__story", "scene", "id"]
@@ -348,9 +392,15 @@ class VideoActionAdmin(CurrentLanguageListMixin, PromptMarkdownMixin, AjaxSectio
     fieldsets = ACTION_FIELDSETS
     list_sections = [MessageHistorySection]
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'scene', 'scene__story', 'video', 'image', 'image_first', 'image_last'
+        )
+
 
 @admin.register(ComicAction)
 class ComicActionAdmin(CurrentLanguageListMixin, TabbedTranslationAdmin, PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
+    show_full_result_count = False
     ajax_shift_fields = ['prompt_comic']
     list_display = ('name', 'items', 'pic', 'pic_comic', 'prompt_comic', 'last_tasks')
     list_editable = ['prompt_comic']
@@ -362,9 +412,15 @@ class ComicActionAdmin(CurrentLanguageListMixin, TabbedTranslationAdmin, PromptM
     fieldsets = ACTION_FIELDSETS
     list_sections = [MessageHistorySection]
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'scene', 'scene__story', 'image_comic', 'image'
+        )
+
 
 @admin.register(VoiceAction)
 class VoiceActionAdmin(CurrentLanguageListMixin, PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin, TabbedTranslationAdmin):
+    show_full_result_count = False
     list_display = ('name', 'items', 'pic', 'prompt_voice', 'voice', 'voice_player', 'last_tasks')
     list_editable = ['prompt_voice', 'voice']
     list_filter = ["scene__story", "scene", "id"]
@@ -376,6 +432,11 @@ class VoiceActionAdmin(CurrentLanguageListMixin, PromptMarkdownMixin, AjaxSectio
     fieldsets = ACTION_FIELDSETS
     list_sections = [MessageHistorySection]
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'scene', 'scene__story', 'voice', 'audio_voice', 'image'
+        )
+
     def audio_voice(self, obj):
         return obj.voice_player()
     audio_voice.short_description = _("Audio Player")
@@ -383,11 +444,15 @@ class VoiceActionAdmin(CurrentLanguageListMixin, PromptMarkdownMixin, AjaxSectio
 
 @admin.register(ActionOrganizer)
 class ActionOrganizerAdmin(CurrentLanguageListMixin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, ModelAdmin):
+    show_full_result_count = False
     list_display = ('id', 'name', 'items', 'pic', 'scene', 'is_intro', 'order')
     list_editable = ['name', 'scene', 'is_intro', 'order']
     list_filter = ["scene__story", "scene"]
     search_fields = ['name']
     fieldsets = ACTION_FIELDSETS
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('scene', 'scene__story', 'image')
 
 @admin.register(SceneOrganizer)
 class SceneOrganizerAdmin(AjaxSectionAdminMixin, AdminActionsMixin, AdminLinker, StoryFilterMixin, ModelAdmin):
@@ -395,6 +460,9 @@ class SceneOrganizerAdmin(AjaxSectionAdminMixin, AdminActionsMixin, AdminLinker,
     list_editable = ['name',  'story']
     list_filter = ["story"]
     search_fields = ['name']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('story')
 
 
 @admin.register(Voice)
@@ -410,6 +478,9 @@ class VoiceAdmin(PromptMarkdownMixin, SimpleHistoryAdmin, StoryFilterMixin, Admi
         'global_default'
     )
     search_fields= ['name']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('story', 'google_voice', 'audio_voice')
     
     def trigger_ajax_task(self, request, obj, target_field):
         field_name = normalize_target_field(target_field)
@@ -424,11 +495,19 @@ class RenderItemAdmin(ModelAdmin):
     list_editable = ('order', 'params', 'config')
     list_filter = ('render',)
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('render', 'render__scene')
+
 @admin.register(Render)
 class RenderAdmin(AjaxSectionAdminMixin, AdminActionsMixin, ModelAdmin):
-    list_display = ('name', 'scene', 'render_items_link', 'render_type', 'video_player', 'video_download', 'last_tasks')
+    show_full_result_count = False
+    list_display = ('name', 'scene', 'render_type', 'language', 'created_at', 'render_items_link', 'video_player', 'video_download', 'last_tasks')
+    list_filter = ('render_type', 'language', 'scene__story')
     list_display_links = ('name',)
     actions = ['refresh_scene_video']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('scene', 'scene__story')
 
     def render_items_link(self, obj):
         count = obj.render_items.count()
@@ -438,6 +517,18 @@ class RenderAdmin(AjaxSectionAdminMixin, AdminActionsMixin, ModelAdmin):
             url, count
         )
     render_items_link.short_description = _("Render Items")
+
+    @admin.action(description=_("Refresh Video Render"), icon="refresh")
+    def refresh_scene_video(self, request, queryset):
+        for render in queryset:
+            render.refresh_render()
+            Task.createTaskIfQueueEnabled(
+                subject=render,
+                task_type=settings.TASK_TYPE_VIDEO_RENDER,
+                thr=render.scene or render.story,
+                owner=request.user
+            )
+            self.message_user(request, _("Video task queued for render: {}").format(render.name))
 
 
 @admin.register(ContactRequest)
@@ -458,12 +549,18 @@ class SyncAdmin(ModelAdmin):
     autocomplete_fields = ['story']
     search_fields = ['story__name']
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('story')
+
 @admin.register(SyncItem)
 class SyncItemAdmin(AjaxSectionAdminMixin, AjaxTaskModelAdmin):
     list_display = ('id', 'sync', 'type', 'zip_file', 'last_tasks')
     list_filter = ('type', 'sync__story')
     autocomplete_fields = ['sync']
     actions = ['trigger_sync']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('sync', 'sync__story')
 
     @admin.action(description=_("Trigger Sync Task"))
     def trigger_sync(self, request, queryset):

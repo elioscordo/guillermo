@@ -101,6 +101,9 @@ class PromptAdmin(SimpleHistoryAdmin, ModelAdmin):
     search_fields = ("name", "prompt")
     ordering_field = "order"
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related('categories', 'content_types')
+
     def display_content_types(self, obj):
         return ", ".join([ct.model for ct in obj.content_types.all()])
     display_content_types.short_description = "Content Types"
@@ -219,7 +222,7 @@ class TokenUsageAdmin(ModelAdmin):
     autocomplete_fields = ['user']
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
+        qs = super().get_queryset(request).select_related('user', 'agent')
         if request.user.is_superuser:
             return qs
         # Users only see themselves
@@ -227,6 +230,7 @@ class TokenUsageAdmin(ModelAdmin):
 
 @admin.register(Message)
 class MessageAdmin(AjaxSectionAdminMixin, AjaxTaskModelAdmin):
+    show_full_result_count = False
     list_display = ('id', 'content_object_link', 'agent','preset', 'target_field', 'input_parts', 'output_parts', 'instruction_parts', 'last_tasks', 'created_at')
     search_fields = ('id', 'preset', 'target_field', 'agent__name', 'user__username')
     readonly_fields = ('created_at',)
@@ -236,6 +240,9 @@ class MessageAdmin(AjaxSectionAdminMixin, AjaxTaskModelAdmin):
         MessageInputsSection,
         MessageOutputsSection,
     ]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('content_type', 'agent', 'user')
 
     def content_object_link(self, obj):
         if not obj.content_object:
