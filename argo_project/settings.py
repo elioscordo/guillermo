@@ -3,6 +3,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from django.utils.translation import gettext_lazy as _
 from django.templatetags.static import static
+from django.urls import reverse_lazy
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
@@ -76,12 +77,123 @@ TEMPLATES = [
 UNFOLD = {
     "SITE_TITLE": _("Argo"),
     "SITE_HEADER": _("Argo"),
-    "SITE_SUBHEADER": _("Financial Manager"),
+    "SITE_SUBHEADER": _("Quantitative Trading & Portfolio Management"),
     "STYLES": [
         lambda request: static("css/unfold_filer_custom.css"),
         lambda request: static("css/custom.css"),
     ],
     "ACCOUNT": {},
+    "SIDEBAR": {
+        "show_all_applications": True,
+        "show_user": True,
+        "navigation": [
+            {
+                "title": _("Trading & Portfolios"),
+                "separator": False,
+                "items": [
+                    {
+                        "title": _("Portfolios"),
+                        "icon": "pie_chart",
+                        "link": reverse_lazy("admin:argo_portfolio_changelist"),
+                    },
+                    {
+                        "title": _("Strategy Instances"),
+                        "icon": "candlestick_chart",
+                        "link": reverse_lazy("admin:argo_strategyinstance_changelist"),
+                    },
+                    {
+                        "title": _("Positions"),
+                        "icon": "trending_up",
+                        "link": reverse_lazy("admin:argo_position_changelist"),
+                    },
+                    {
+                        "title": _("Broker Accounts"),
+                        "icon": "account_balance",
+                        "link": reverse_lazy("admin:argo_account_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": _("Research & Simulation"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Backtests & Optimizations"),
+                        "icon": "science",
+                        "link": reverse_lazy("admin:argo_backtest_changelist"),
+                    },
+                    {
+                        "title": _("Strategies"),
+                        "icon": "psychology",
+                        "link": reverse_lazy("admin:argo_strategy_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": _("Market Universe"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Instruments"),
+                        "icon": "show_chart",
+                        "link": reverse_lazy("admin:argo_instrument_changelist"),
+                    },
+                    {
+                        "title": _("Instrument Groups"),
+                        "icon": "dataset",
+                        "link": reverse_lazy("admin:argo_instrumentgroup_changelist"),
+                    },
+                    {
+                        "title": _("IB Contracts"),
+                        "icon": "receipt_long",
+                        "link": reverse_lazy("admin:argo_ibcontract_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": _("Alpha & Signals"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("Scanners"),
+                        "icon": "radar",
+                        "link": reverse_lazy("admin:argo_scanner_changelist"),
+                    },
+                    {
+                        "title": _("Signals"),
+                        "icon": "bolt",
+                        "link": reverse_lazy("admin:argo_signal_changelist"),
+                    },
+                    {
+                        "title": _("Recommendations"),
+                        "icon": "tips_and_updates",
+                        "link": reverse_lazy("admin:argo_recommendation_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": _("AI Agents & Tasks"),
+                "separator": True,
+                "items": [
+                    {
+                        "title": _("AI Agents"),
+                        "icon": "smart_toy",
+                        "link": reverse_lazy("admin:agent_agent_changelist"),
+                    },
+                    {
+                        "title": _("Prompts"),
+                        "icon": "description",
+                        "link": reverse_lazy("admin:agent_prompt_changelist"),
+                    },
+                    {
+                        "title": _("Background Tasks"),
+                        "icon": "task_alt",
+                        "link": reverse_lazy("admin:task_task_changelist"),
+                    },
+                ],
+            },
+        ],
+    },
 }
 
 # Database
@@ -153,12 +265,14 @@ SCHEMA_OUTPUT_WITH_MESSAGE = "outwithmsg"
 SCHEMA_CREATE_INSTRUCTIONS = "create_instructions"
 SCHEMA_SYMBOLS = "symbols"
 SCHEMA_INSTANCES = "instances"
+SCHEMA_OPTIMIZE = "optimize"
 
 AGENT_SCHEMA_CHOICES = [
     (SCHEMA_OUTPUT_WITH_MESSAGE, _("Output With Message")),
     (SCHEMA_CREATE_INSTRUCTIONS, _("Create Instructions")),
     (SCHEMA_SYMBOLS, _("Symbols")),
     (SCHEMA_INSTANCES, _("Strategy Instances")),
+    (SCHEMA_OPTIMIZE, _("Optimize Strategy Instance")),
 ]
 
 AGENT_SCHEMAS = {
@@ -166,14 +280,18 @@ AGENT_SCHEMAS = {
     SCHEMA_CREATE_INSTRUCTIONS: "agent.schemas.CreateInstructionsSchema",
     SCHEMA_SYMBOLS: "argo.schemas.SymbolsSchema",
     SCHEMA_INSTANCES: "argo.schemas.StrategyInstancesSchema",
+    SCHEMA_OPTIMIZE: "argo.schemas.StrategyInstanceOptimizeSchema",
 }
 
 
 TASK_TYPE_GENERATE_TEXT = 'generate_text'
-
+TASK_RUN_BACKTEST = 'run_backtest'
+TASK_RUN_OPTIMIZATION = 'run_optimization'
 
 TASK_DELEGATES = {
-    TASK_TYPE_GENERATE_TEXT: 'agent.tasks.TaskGenerateText',    
+    TASK_TYPE_GENERATE_TEXT: 'agent.tasks.TaskGenerateText',
+    TASK_RUN_BACKTEST: 'argo.tasks.TaskRunBacktest',
+    TASK_RUN_OPTIMIZATION: 'argo.tasks.TaskRunOptimization',
 }
 
 PRESET_INFO = "info"
@@ -193,6 +311,10 @@ COMMON_TEXT_ACTION_CHOICES = (
     (ACTION_INSTRUCTION, _("Instruction")),
     (ACTION_INSTRUCTION_COMMIT, _("Instruction Commit")),
 )
+
+TASK_RETRY_EXCEPTIONS = [
+    'RESOURCE_EXHAUSTED',
+]
 
 SYSTEM_PRESETS = [
     PRESET_INFO,

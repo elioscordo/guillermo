@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
-from unfold.admin import ModelAdmin, StackedInline
+from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from unfold.decorators import action
 from simple_history.admin import SimpleHistoryAdmin
 from agent.admin_utils import AjaxTaskModelAdmin
@@ -14,6 +14,7 @@ from .models import (
     Strategy,
     Portfolio,
     StrategyInstance,
+    Backtest,
     Scanner,
     Signal,
     Recommendation,
@@ -83,12 +84,42 @@ class PortfolioAdmin(SimpleHistoryAdmin, AjaxSectionAdminMixin, AjaxTaskModelAdm
 
 
 
+class BacktestInline(TabularInline):
+    model = Backtest
+    extra = 0
+    fields = ('name', 'start_date', 'end_date', 'total_pnl', 'return_pct', 'sharpe_ratio', 'max_drawdown_pct', 'win_rate', 'total_trades', 'last_tasks')
+    readonly_fields = ('total_pnl', 'return_pct', 'sharpe_ratio', 'max_drawdown_pct', 'win_rate', 'total_trades', 'last_tasks')
+    show_change_link = True
+
+
 @admin.register(StrategyInstance)
-class StrategyInstanceAdmin(ModelAdmin):
-    list_display = ('portfolio', 'strategy_model', 'instrument', 'is_active', 'description')
+class StrategyInstanceAdmin(SimpleHistoryAdmin, AjaxSectionAdminMixin, AjaxTaskModelAdmin, ModelAdmin):
+    list_display = ('portfolio', 'strategy_model', 'instrument', 'is_active', 'description', 'last_tasks')
     list_filter = ('is_active', 'portfolio', 'strategy_model')
     search_fields = ('instrument__symbol', 'instrument__venue', 'portfolio__name', 'strategy_model__name', 'description')
     autocomplete_fields = ('portfolio', 'strategy_model', 'instrument')
+    list_sections = [MessageHistorySection]
+    inlines = [BacktestInline]
+
+
+@admin.register(Backtest)
+class BacktestAdmin(SimpleHistoryAdmin, AjaxSectionAdminMixin, AjaxTaskModelAdmin, ModelAdmin):
+    list_display = ('__str__', 'strategy_instance', 'total_pnl', 'return_pct', 'sharpe_ratio', 'max_drawdown_pct', 'win_rate', 'total_trades', 'last_tasks')
+    list_filter = ('optimization_objective', 'strategy_instance__strategy_model', 'strategy_instance__portfolio')
+    search_fields = ('name', 'strategy_instance__instrument__symbol', 'strategy_instance__strategy_model__name')
+    autocomplete_fields = ('strategy_instance',)
+    list_sections = [MessageHistorySection]
+    actions = ['apply_best_params_action']
+
+    @admin.action(description=_("Apply winning parameters to StrategyInstance"))
+    def apply_best_params_action(self, request, queryset):
+        count = 0
+        for bt in queryset:
+            if bt.best_params:
+                bt.apply_best_params_to_instance()
+                count += 1
+        self.message_user(request, _(f"Applied optimal parameters from {count} backtest(s) to StrategyInstance(s)."))
+
 
 
 

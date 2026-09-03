@@ -259,11 +259,11 @@ class Story(AfterSaveActionMixin, RenderTypeMixin, YAMLAssetsMixin, models.Model
         """
         Renders a summary dropdown of story elements using a template.
         """
-        scenes_count = self.scenes.count()
-        chars_count = self.characters.count()
-        locs_count = self.locations.count()
-        props_count = self.props.count()
-        voices_count = self.voices.count()
+        scenes_count = self.scenes.all().count()
+        chars_count = self.get_cast().count()
+        locs_count = self.get_locations().count()
+        props_count = self.get_props().count()
+        voices_count = self.get_voices().count()
         actions_count = Action.objects.filter(scene__story=self).count()
         video_actions_count = VideoAction.objects.filter(scene__story=self).count()
         comic_actions_count = ComicAction.objects.filter(scene__story=self).count()

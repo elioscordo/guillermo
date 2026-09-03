@@ -518,7 +518,7 @@ class RenderAdmin(AjaxSectionAdminMixin, AdminActionsMixin, ModelAdmin):
         )
     render_items_link.short_description = _("Render Items")
 
-    @admin.action(description=_("Refresh Video Render"), icon="refresh")
+    @admin.action(description=_("Refresh Video Render"))
     def refresh_scene_video(self, request, queryset):
         for render in queryset:
             render.refresh_render()

@@ -33,6 +33,21 @@ DEFAULT_STRATEGIES = [
         "description": "Classic Turtle Trading breakout system on N-period channel highs and lows."
     },
     {
+        "name": "SuperTrend Volatility Breakout",
+        "class_path": "argo.strategies.supertrend_breakout.SuperTrendBreakoutStrategy",
+        "description": "SuperTrend ATR volatility breakout trend-following system with dynamic trailing stops and multi-factor filtering."
+    },
+    {
+        "name": "Kaufman Adaptive Trend Strategy",
+        "class_path": "argo.strategies.kama_trend.KaufmanAdaptiveTrendStrategy",
+        "description": "Adaptive trend-following using Kaufman Efficiency Ratio (KAMA) to filter noise and capture trends."
+    },
+    {
+        "name": "Triple EMA Continuation Strategy",
+        "class_path": "argo.strategies.triple_ma_trend.TripleMAContinuationStrategy",
+        "description": "Multi-horizon structural trend alignment with pullback continuation triggers and risk forecasting."
+    },
+    {
         "name": "Buy and Hold Benchmark",
         "class_path": "argo.strategies.buy_and_hold.BuyAndHoldStrategy",
         "description": "Baseline passive benchmark holding an asset from start to evaluate strategy alpha."

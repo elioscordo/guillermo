@@ -3,41 +3,7 @@ from typing import List, Optional
 
 from agent.models import Prompt
 
-class SyncReport(dict):
-    def __init__(self, name, instance, created, edited, fields_edited):
-        super().__init__({
-            'name': name,
-            'instance': instance,
-            'created': created,
-            'edited': edited,
-            'fields_edited': fields_edited
-        })
-        self.name = name
-        self.instance = instance
-        self.created = created
-        self.edited = edited
-        self.fields_edited = fields_edited
-
-def get_asset_sync_info(instance, created):
-    fields_edited = []
-    if not created and hasattr(instance, 'history'):
-        try:
-            latest = instance.history.first()
-            if latest:
-                prev = latest.prev_record
-                if prev:
-                    delta = latest.diff_against(prev)
-                    fields_edited = [change.field for change in delta.changes]
-        except Exception:
-            pass
-    
-    return SyncReport(
-        name=getattr(instance, 'name', str(instance)),
-        instance=instance,
-        created=created,
-        edited=not created and len(fields_edited) > 0,
-        fields_edited=fields_edited
-    )
+from agent.schemas import SyncReport, get_asset_sync_info
 
 class Parameters(BaseModel):
     buffer_in: Optional[float] = None

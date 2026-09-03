@@ -493,9 +493,11 @@ TASK_DELEGATES = {
     # sync
     TASK_TYPE_SYNC_EXPORT: 'scene.tasks.sync.TaskSyncExport',
     TASK_TYPE_SYNC_IMPORT: 'scene.tasks.sync.TaskSyncImport',
+    # backtesting
+    'run_backtest': 'argo.tasks.TaskRunBacktest',
+    'run_optimization': 'argo.tasks.TaskRunOptimization',
     # render
     TASK_TYPE_VIDEO_RENDER: 'scene.tasks.render.VideoRender',
-    
 }
 IMPORT_EXPORT_TMP_STORAGE_CLASS = 'import_export.tmp_storages.MediaStorage'
 TASK_TYPE_CHOICES = (
@@ -540,6 +542,7 @@ SCHEMA_STORY_SCENES = "story_scenes"
 SCHEMA_SYMBOLS = "symbols"
 SCHEMA_INSTANCES = "instances"
 SCHEMA_TRANSLATION = "translation"
+SCHEMA_OPTIMIZE = "optimize"
 
 AGENT_SCHEMA_CHOICES = [
     (SCHEMA_MULTI_SCENE, _("Multi Scene Storyboard")),
@@ -551,6 +554,7 @@ AGENT_SCHEMA_CHOICES = [
     (SCHEMA_SYMBOLS, _("Symbols")),
     (SCHEMA_INSTANCES, _("Strategy Instances")),
     (SCHEMA_TRANSLATION, _("Scene Translation")),
+    (SCHEMA_OPTIMIZE, _("Optimize Strategy Instance")),
 ]
 
 AGENT_SCHEMAS = {
@@ -563,6 +567,7 @@ AGENT_SCHEMAS = {
     SCHEMA_SYMBOLS: "argo.schemas.SymbolsSchema",
     SCHEMA_INSTANCES: "argo.schemas.StrategyInstancesSchema",
     SCHEMA_TRANSLATION: "scene.schemas.SceneTranslationSchema",
+    SCHEMA_OPTIMIZE: "argo.schemas.StrategyInstanceOptimizeSchema",
 }
 
 

@@ -1,43 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
-
-
-class SyncReport(dict):
-    def __init__(self, name, instance, created, edited, fields_edited):
-        super().__init__({
-            'name': name,
-            'instance': instance,
-            'created': created,
-            'edited': edited,
-            'fields_edited': fields_edited
-        })
-        self.name = name
-        self.instance = instance
-        self.created = created
-        self.edited = edited
-        self.fields_edited = fields_edited
-
-
-def get_asset_sync_info(instance, created):
-    fields_edited = []
-    if not created and hasattr(instance, 'history'):
-        try:
-            latest = instance.history.first()
-            if latest:
-                prev = latest.prev_record
-                if prev:
-                    delta = latest.diff_against(prev)
-                    fields_edited = [change.field for change in delta.changes]
-        except Exception:
-            pass
-    
-    return SyncReport(
-        name=getattr(instance, 'name', getattr(instance, 'symbol', str(instance))),
-        instance=instance,
-        created=created,
-        edited=not created and len(fields_edited) > 0,
-        fields_edited=fields_edited
-    )
+from agent.schemas import SyncReport, get_asset_sync_info
 
 
 class SymbolItemSchema(BaseModel):
@@ -239,3 +202,106 @@ class StrategyInstancesSchema(BaseModel):
             'total_created': len(created_reports),
             'total_skipped': len(skipped_reports),
         }
+
+
+class StrategyInstanceOptimizeSchema(BaseModel):
+    strategy: Optional[str] = Field(None, description="Exact name or class path of the trading strategy.")
+    symbol: str = Field(..., description="The instrument symbol code (e.g. 'AAPL', 'EURUSD', 'NVDA', 'SPY').")
+    venue: Optional[str] = Field("SMART", description="Exchange / venue (e.g. 'SMART', 'IDEALPRO', 'CME').")
+    asset_class: Optional[str] = Field(None, description="Asset class ('EQUITY', 'FX', 'CRYPTO', 'FUTURE', 'OPTION').")
+    currency: Optional[str] = Field("USD", description="Currency (e.g. 'USD', 'EUR').")
+    description: Optional[str] = Field(None, description="Trading rationale and parameter optimization summary.")
+    params: dict = Field(default_factory=dict, description="Dictionary of optimized strategy parameters.")
+    is_active: bool = Field(True, description="Whether the instance is active.")
+
+    def sync_model(self, instance) -> dict:
+        from django.db.models import Q
+        from argo.models import Strategy, Instrument, AssetClass
+
+        if self.strategy:
+            strat_query = self.strategy.strip()
+            strat_obj = Strategy.objects.filter(
+                Q(name__iexact=strat_query) | Q(class_path__iexact=strat_query) | Q(name__icontains=strat_query)
+            ).first()
+            if strat_obj:
+                instance.strategy_model = strat_obj
+
+        symbol_code = self.symbol.strip().upper()
+        venue = self.venue or "SMART"
+        asset_class = self.asset_class or AssetClass.EQUITY
+        currency = self.currency or "USD"
+
+        instrument = self._resolve_instrument(symbol_code, venue, asset_class, currency)
+        instance.instrument = instrument
+
+        # Populate and merge default strategy parameters with optimized params
+        defaults = self._get_default_strategy_params(instance.strategy_model)
+        merged_params = {**defaults, **(self.params or {})}
+        instance.params = merged_params
+
+        if self.description:
+            instance.description = self.description
+        instance.is_active = self.is_active
+        instance.save()
+
+        report = get_asset_sync_info(instance, created=False)
+        return {
+            'instance_id': instance.id,
+            'strategy': str(instance.strategy_model),
+            'instrument': str(instance.instrument),
+            'params': instance.params,
+            'report': report,
+        }
+
+    def _get_default_strategy_params(self, strategy_model) -> dict:
+        """Extracts default parameters from the strategy Config class."""
+        if not strategy_model or not strategy_model.class_path:
+            return {}
+        try:
+            import importlib
+            module_path, class_name = strategy_model.class_path.rsplit(".", 1)
+            module = importlib.import_module(module_path)
+            config_class = getattr(module, f"{class_name}Config", None)
+            if not config_class:
+                return {}
+            defaults = {}
+            if hasattr(config_class, "__annotations__"):
+                for field_name in config_class.__annotations__:
+                    if field_name not in ["instrument_id", "bar_type"] and hasattr(config_class, field_name):
+                        defaults[field_name] = getattr(config_class, field_name)
+            return defaults
+        except Exception:
+            return {}
+
+    def _resolve_instrument(self, symbol_code: str, venue: str, asset_class: str, currency: str):
+        from argo.models import Instrument
+        from argo.instruments.search import InteractiveBrokersSearchService, ASSET_CLASS_TO_SEC_TYPE
+
+        instrument = Instrument.objects.filter(symbol=symbol_code, venue=venue).first()
+        if instrument:
+            return instrument
+
+        search_service = InteractiveBrokersSearchService()
+        try:
+            sec_type = ASSET_CLASS_TO_SEC_TYPE.get(asset_class, 'STK')
+            matches = search_service.search(query=symbol_code, sec_type=sec_type, currency=currency)
+            match = next((m for m in matches if m.symbol == symbol_code), None)
+            if match:
+                contract_venue = venue or match.primary_exchange or match.exchange or "SMART"
+                instrument, _ = Instrument.objects.get_or_create(
+                    symbol=match.symbol,
+                    venue=contract_venue,
+                    asset_class=match.asset_class or asset_class,
+                    defaults={'currency': match.currency or currency, 'is_active': True}
+                )
+                return instrument
+        except Exception:
+            pass
+
+        instrument, _ = Instrument.objects.get_or_create(
+            symbol=symbol_code,
+            venue=venue,
+            asset_class=asset_class,
+            defaults={'currency': currency, 'is_active': True}
+        )
+        return instrument

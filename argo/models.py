@@ -138,7 +138,7 @@ class Position(models.Model):
 
 
 
-class Strategy(models.Model):
+class Strategy(models.Model, GetContentsMixin):
     """
     Represents a strategy class available in the system.
     """
@@ -156,6 +156,63 @@ class Strategy(models.Model):
 
     def __str__(self):
         return self.name
+
+    def get_contents(self, generate_self=True, preset=None):
+        parts = [
+            f"### Strategy: {self.name}",
+            f"- Class Path: `{self.class_path}`",
+        ]
+        if self.description:
+            parts.append(f"- Description: {self.description}")
+
+        source_code = self._get_strategy_source()
+        if source_code:
+            parts.append(f"### Strategy Source Code, Documentation & Optimization Tips:\n```python\n{source_code}\n```")
+        else:
+            config_summary = self._get_config_summary()
+            if config_summary:
+                parts.append(config_summary)
+        return parts
+
+    def _get_strategy_source(self) -> str:
+        """Loads the complete source code of the strategy module including optimization tips and docstrings."""
+        try:
+            import importlib, inspect
+            module_path, class_name = self.class_path.rsplit(".", 1)
+            module = importlib.import_module(module_path)
+            source_file = inspect.getsourcefile(module)
+            if source_file:
+                with open(source_file, "r", encoding="utf-8") as f:
+                    return f.read()
+            return inspect.getsource(module)
+        except Exception:
+            return ""
+
+    def _get_config_summary(self) -> str:
+        """Inspects and returns configuration parameter specifications for this strategy."""
+        try:
+            import importlib, inspect
+            module_path, class_name = self.class_path.rsplit(".", 1)
+            module = importlib.import_module(module_path)
+            config_class = getattr(module, f"{class_name}Config", None)
+            if not config_class:
+                return ""
+            doc = inspect.getdoc(config_class) or ""
+            fields = []
+            if hasattr(config_class, "__annotations__"):
+                for name, typ in config_class.__annotations__.items():
+                    val = getattr(config_class, name, "<required>")
+                    fields.append(f"  - `{name}` ({getattr(typ, '__name__', str(typ))}): default={val}")
+            lines = [f"- Config Schema: `{config_class.__name__}`"]
+            if fields:
+                lines.append("- Parameters:\n" + "\n".join(fields))
+            if doc:
+                lines.append(f"- Documentation:\n```\n{doc}\n```")
+            return "\n".join(lines)
+        except Exception:
+            return ""
+
+
 
 
 class Portfolio(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder):
@@ -293,13 +350,27 @@ class Portfolio(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder
         return portfolio
 
 
-class StrategyInstance(models.Model):
+class StrategyInstance(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder):
     """
     A specific, parameterized instance of a strategy for a given instrument,
     assigned to a portfolio.
     """
+    TASK_TEXT_GENERATE = getattr(settings, 'TASK_TYPE_GENERATE_TEXT', 'generate_text')
+
+    PRESET_OPTIMIZE = "optimize"
+
+    ACTION_OPTIMIZE = f"{TASK_TEXT_GENERATE}-preset-{PRESET_OPTIMIZE}-schema-optimize"
+
+    ACTION_CHOICES = (
+        (ACTION_OPTIMIZE, _("Optimize Parameters & Instrument")),
+    ) + getattr(settings, 'COMMON_TEXT_ACTION_CHOICES', ())
+
+    AGENT_PRESETS = (
+        (PRESET_OPTIMIZE, _("Optimize")),
+    ) + getattr(settings, 'COMMON_TEXT_AGENT_PRESETS', ())
+
     portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name='strategy_instances')
-    strategy_model = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='instances')
+    strategy_model = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='instances', null=True, blank=True)
     instrument = models.ForeignKey(
         'Instrument',
         on_delete=models.SET_NULL,
@@ -311,13 +382,158 @@ class StrategyInstance(models.Model):
     description = models.TextField(blank=True, help_text=_("Description or trading rationale for this instance."))
     params = models.JSONField(default=dict, blank=True, help_text="JSON object of strategy-specific parameters.")
     is_active = models.BooleanField(default=True)
+    action = models.SlugField(_("action"), max_length=1024, choices=ACTION_CHOICES, null=True, blank=True)
+    history = HistoricalRecords()
 
     @property
     def instrument_id(self) -> str:
         return self.instrument.instrument_id_str if self.instrument else ""
 
     def __str__(self):
-        return f"{self.strategy_model.name} on {self.instrument} in {self.portfolio.name}"
+        strat_name = self.strategy_model.name if self.strategy_model else "Unassigned Strategy"
+        port_name = self.portfolio.name if self.portfolio else "No Portfolio"
+        return f"{strat_name} on {self.instrument} in {port_name}"
+
+    def get_contents(self, generate_self=True, preset=None):
+        parts = []
+        if self.description:
+            parts.append(f"### Trading Objective / Description:\n{self.description}")
+
+        if self.portfolio:
+            parts.append(f"### Portfolio: {self.portfolio.name}")
+            if self.portfolio.description:
+                parts.append(f"Portfolio Description: {self.portfolio.description}")
+            groups = self.portfolio.instrument_groups.all()
+            if groups.exists():
+                group_lines = [f"- Group '{g.name}' ({g.code}): {g.symbols}" for g in groups]
+                parts.append("### Available Instrument Groups:\n" + "\n".join(group_lines))
+
+        if self.instrument:
+            parts.append(f"### Target Instrument:\nSymbol: {self.instrument.symbol}, Venue: {self.instrument.venue}, Asset Class: {self.instrument.asset_class}, Currency: {self.instrument.currency}")
+
+        if self.params:
+            import json
+            parts.append(f"### Current Configured Parameters:\n```json\n{json.dumps(self.params, indent=2)}\n```")
+
+        # If the strategy is set, pass only that strategy; otherwise pass all strategies via get_contents()
+        if self.strategy_model:
+            parts.append("### Assigned Strategy Details:")
+            strat_parts = self.strategy_model.get_contents(generate_self=generate_self, preset=preset)
+            parts.extend(strat_parts if isinstance(strat_parts, list) else [str(strat_parts)])
+        else:
+            from argo.models import Strategy
+            all_strats = Strategy.objects.all()
+            parts.append("### All Available Strategies in System:")
+            for s in all_strats:
+                strat_parts = s.get_contents(generate_self=generate_self, preset=preset)
+                parts.extend(strat_parts if isinstance(strat_parts, list) else [str(strat_parts)])
+
+        return parts
+
+
+class Backtest(AfterSaveActionMixin, models.Model, GetContentsMixin, TaskHolder):
+    """
+    Represents an isolated backtesting or parameter optimization experiment 
+    for a StrategyInstance.
+    """
+    TASK_RUN_BACKTEST = "run_backtest"
+    TASK_RUN_OPTIMIZATION = "run_optimization"
+
+    ACTION_RUN_BACKTEST = TASK_RUN_BACKTEST
+    ACTION_RUN_OPTIMIZATION = TASK_RUN_OPTIMIZATION
+
+    ACTION_CHOICES = (
+        (ACTION_RUN_BACKTEST, _("Run Backtest")),
+        (ACTION_RUN_OPTIMIZATION, _("Run Parameter Optimization")),
+    ) + getattr(settings, 'COMMON_TEXT_ACTION_CHOICES', ())
+
+    AGENT_PRESETS = (
+        (TASK_RUN_BACKTEST, _("Backtest")),
+        (TASK_RUN_OPTIMIZATION, _("Optimization")),
+    ) + getattr(settings, 'COMMON_TEXT_AGENT_PRESETS', ())
+
+    strategy_instance = models.ForeignKey(
+        StrategyInstance,
+        on_delete=models.CASCADE,
+        related_name='backtests',
+        help_text=_("The StrategyInstance being evaluated.")
+    )
+
+
+    name = models.CharField(max_length=150, blank=True, help_text=_("Experiment name (e.g. '2024 Macro Trend Run')."))
+    start_date = models.DateTimeField(help_text=_("Backtest start timestamp."))
+    end_date = models.DateTimeField(help_text=_("Backtest end timestamp."))
+    initial_capital = models.DecimalField(max_digits=18, decimal_places=2, default=100000.0)
+    commission_rate = models.FloatField(default=0.0001, help_text=_("Simulated broker commission percentage."))
+
+    params_override = models.JSONField(default=dict, blank=True, help_text=_("Specific parameters override for single backtest."))
+    param_grid = models.JSONField(default=dict, blank=True, help_text=_("Parameter ranges for optimization sweep."))
+    optimization_objective = models.CharField(
+        max_length=50,
+        default="sharpe",
+        choices=[
+            ("sharpe", _("Sharpe Ratio")),
+            ("calmar", _("Calmar Ratio")),
+            ("profit_factor", _("Profit Factor")),
+            ("pnl", _("Total PnL")),
+        ]
+    )
+
+    total_pnl = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
+    return_pct = models.FloatField(null=True, blank=True)
+    sharpe_ratio = models.FloatField(null=True, blank=True)
+    sortino_ratio = models.FloatField(null=True, blank=True)
+    calmar_ratio = models.FloatField(null=True, blank=True)
+    max_drawdown_pct = models.FloatField(null=True, blank=True)
+    profit_factor = models.FloatField(null=True, blank=True)
+    win_rate = models.FloatField(null=True, blank=True)
+    total_trades = models.IntegerField(null=True, blank=True)
+
+    best_params = models.JSONField(default=dict, blank=True, help_text=_("Optimal parameters from sweep."))
+    leaderboard = models.JSONField(default=list, blank=True, help_text=_("Ranked leaderboard of parameter combinations."))
+
+    action = models.SlugField(_("action"), max_length=1024, choices=ACTION_CHOICES, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _('Backtest')
+        verbose_name_plural = _('Backtests')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        label = self.name or f"Backtest #{self.id}"
+        return f"{label} ({self.strategy_instance})"
+
+    def apply_best_params_to_instance(self):
+        """Promotes the winning parameters back to the parent StrategyInstance."""
+        if self.best_params and self.strategy_instance:
+            self.strategy_instance.params = {**(self.strategy_instance.params or {}), **self.best_params}
+            self.strategy_instance.save(update_fields=['params'])
+
+    def get_contents(self, generate_self=True, preset=None):
+        strat = self.strategy_instance.strategy_model if self.strategy_instance else "None"
+        instr = self.strategy_instance.instrument if self.strategy_instance else "None"
+        parts = [
+            f"### Backtest: {self}",
+            f"- Strategy: {strat}",
+            f"- Instrument: {instr}",
+            f"- Period: {self.start_date} to {self.end_date}",
+            f"- Initial Capital: ${self.initial_capital:,.2f}",
+        ]
+        if self.total_pnl is not None:
+            parts.append(
+                f"### Performance Metrics:\n"
+                f"- PnL: ${self.total_pnl:,.2f} ({self.return_pct:.2%})\n"
+                f"- Sharpe Ratio: {self.sharpe_ratio:.2f} | Sortino: {self.sortino_ratio:.2f} | Calmar: {self.calmar_ratio:.2f}\n"
+                f"- Max Drawdown: {self.max_drawdown_pct:.2%} | Win Rate: {self.win_rate:.1%}\n"
+                f"- Total Trades: {self.total_trades}"
+            )
+        if self.best_params:
+            import json
+            parts.append(f"### Best Optimized Parameters:\n```json\n{json.dumps(self.best_params, indent=2)}\n```")
+        return parts
+
 
 
 # =============================================================================
