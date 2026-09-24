@@ -9,6 +9,8 @@ from .utils import handle_ajax_field_save, normalize_target_field
 from task.models import Task
 from .serializers import get_generic_serializer
 from django.utils.safestring import mark_safe
+from django.utils.translation import get_language
+from .mixins import ModelActionsAdminMixin
        
 
 class AjaxTaskModelAdmin(ModelAdmin):
@@ -108,6 +110,12 @@ class AjaxTaskModelAdmin(ModelAdmin):
     def trigger_ajax_task(self, request, obj, target_field):
         """Hook for triggering specific background tasks based on the updated field."""
         field_name = normalize_target_field(target_field)
+        lang = (get_language() or 'en').replace('-', '_').split('_')[0]
+        for code, _ in getattr(settings, 'LANGUAGES', ()):
+            if target_field and target_field.endswith(f"_{code}"):
+                lang = code
+                break
+
         if field_name == 'prompt':
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_IMAGE, owner=request.user) is None:
                 obj.generate_image(user=request.user)
@@ -121,5 +129,5 @@ class AjaxTaskModelAdmin(ModelAdmin):
             if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VIDEO, owner=request.user) is None:
                 obj.generate_omni_video(obj.TASK_TYPE_GENERATE_VIDEO, user=request.user)
         elif field_name == 'prompt_voice':
-            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user) is None:
+            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user, payload={'target_language': lang}) is None:
                 obj.generate_voice(obj.PRESET_VOICE, user=request.user)

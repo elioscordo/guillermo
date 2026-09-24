@@ -24,8 +24,9 @@ IB_HOST = os.getenv("IB_HOST", os.getenv("IB_EXAMPLE_HOST", "127.0.0.1"))
 IB_PORT = int(os.getenv("IB_PORT", os.getenv("IB_EXAMPLE_PORT", "4002")))
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-MEDIA_ROOT = os.path.join( BASE_DIR , 'media' )
+MEDIA_ROOT = os.getenv("MEDIA_ROOT", os.path.join(BASE_DIR, 'media'))
 MEDIA_URL = '/media/'
+HISTORICAL_ROOT = os.getenv("HISTORICAL_ROOT", os.path.join(BASE_DIR, "historical_data"))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -428,7 +429,7 @@ USE_TASK_QUEUE = True
 
 CELERY_BROKER_TYPE = os.getenv("CELERY_BROKER_TYPE", "sqlite")
 if CELERY_BROKER_TYPE == "sqlite":
-    CELERY_BROKER_URL = "sqla+sqlite:///celerydb.sqlite"
+    CELERY_BROKER_URL = f"sqla+sqlite:///{BASE_DIR / 'celerydb.sqlite'}"
 else:
     CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 
@@ -438,6 +439,12 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TASK_SOFT_TIME_LIMIT = int(os.getenv("CELERY_TASK_SOFT_TIME_LIMIT", "7200"))
 CELERY_TASK_TIME_LIMIT = int(os.getenv("CELERY_TASK_TIME_LIMIT", "7260"))
 CELERY_WORKER_PREFETCH_MULTIPLIER = int(os.getenv("CELERY_WORKER_PREFETCH_MULTIPLIER", "1"))
+
+# Queue and schedule isolation for Guillermo
+CELERY_TASK_DEFAULT_QUEUE = 'guillermo'
+CELERY_TASK_DEFAULT_EXCHANGE = 'guillermo'
+CELERY_TASK_DEFAULT_ROUTING_KEY = 'guillermo'
+CELERY_BEAT_SCHEDULE_FILENAME = str(BASE_DIR / 'celerybeat-guillermo-schedule')
 
 GENAI_REQUEST_TIMEOUT_MS = int(os.getenv("GENAI_REQUEST_TIMEOUT_MS", "300000"))
 
@@ -493,10 +500,6 @@ TASK_DELEGATES = {
     # sync
     TASK_TYPE_SYNC_EXPORT: 'scene.tasks.sync.TaskSyncExport',
     TASK_TYPE_SYNC_IMPORT: 'scene.tasks.sync.TaskSyncImport',
-    # backtesting
-    'run_backtest': 'argo.tasks.TaskRunBacktest',
-    'run_optimization': 'argo.tasks.TaskRunOptimization',
-    # render
     TASK_TYPE_VIDEO_RENDER: 'scene.tasks.render.VideoRender',
 }
 IMPORT_EXPORT_TMP_STORAGE_CLASS = 'import_export.tmp_storages.MediaStorage'

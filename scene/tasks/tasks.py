@@ -66,6 +66,10 @@ class TaskGenerateVoice:
         self.task = task
     def process(self):
         item = self.task.subject
+        lang = self.task.payload.get('target_language') if self.task.payload else None
+        if lang:
+            from django.utils.translation import activate
+            activate(lang)
         item.generate_voice(GetContentsMixin.PRESET_VOICE, user=self.task.owner)
 
 class TaskGenerateVideoFirstLast:
@@ -211,19 +215,47 @@ class TaskGenerateVoices:
     def __init__(self, task):
         self.task = task
 
+    def _get_target_language(self):
+        return self.task.payload.get('target_language') if self.task.payload else None
+
+    def _is_voice_missing(self, action, lang):
+        if not action.voice:
+            return False
+        prompt = getattr(action, f"prompt_voice_{lang}", None) or action.prompt_voice if lang else action.prompt_voice
+        if not prompt:
+            return False
+        audio = getattr(action, f"audio_voice_{lang}", None) if (lang and hasattr(action, f"audio_voice_{lang}")) else action.audio_voice
+        return not bool(audio)
+
     def process(self):
         scene = self.task.subject
-        voices = set()
+        lang = self._get_target_language()
+        if lang:
+            from django.utils.translation import activate
+            activate(lang)
 
-        for action in scene.actions.all():
-           if action.prompt_voice and action.voice and not action.voice.audio_voice:
-                self.task.log(f"Queueing voice generation for {action.name}")
-                Task.createTaskIfQueueEnabled(
+        timestamp = get_next_scheduled_timestamp()
+        voice_tasks = []
+        payload = {'target_language': lang} if lang else None
+
+        for action in scene.actions.all().order_by('order'):
+            if self._is_voice_missing(action, lang):
+                task = Task.createTaskIfQueueEnabled(
                     subject=action,
                     task_type=settings.TASK_TYPE_GENERATE_VOICE,
                     thr=scene,
-                    owner=self.task.owner
+                    owner=self.task.owner,
+                    payload=payload,
+                    process=False
                 )
+                if task:
+                    self.task.log(f"Queueing voice generation for {action.name}")
+                    voice_tasks.append(task)
+
+        seconds_offset = 30
+        for i, v_task in enumerate(voice_tasks):
+            task_timestamp = timestamp + timedelta(seconds=(i * seconds_offset))
+            v_task.process(timestamp=task_timestamp)
 
 class TaskGenerateComics:
     def __init__(self, task):

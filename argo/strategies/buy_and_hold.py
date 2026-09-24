@@ -1,10 +1,11 @@
-from nautilus_trader.config import ImportableActorConfig
-from nautilus_trader.model.data import Bar, BarType
+from nautilus_trader.trading.config import StrategyConfig
+from nautilus_trader.model.data import Bar
 from nautilus_trader.model.enums import OrderSide, TimeInForce
-from nautilus_trader.trading.strategy import Strategy as NautilusStrategy
+
+from argo.strategies.base import ArgoBaseStrategy
 
 
-class BuyAndHoldConfig(ImportableActorConfig):
+class BuyAndHoldConfig(StrategyConfig, frozen=True):
     """
     Configuration for baseline Buy and Hold benchmark strategy.
     """
@@ -13,7 +14,7 @@ class BuyAndHoldConfig(ImportableActorConfig):
     trade_size: float = 100.0
 
 
-class BuyAndHoldStrategy(NautilusStrategy):
+class BuyAndHoldStrategy(ArgoBaseStrategy):
     """
     Buy and Hold Strategy:
     - Buys on the very first received bar and holds until strategy stops.
@@ -22,24 +23,21 @@ class BuyAndHoldStrategy(NautilusStrategy):
 
     def __init__(self, config: BuyAndHoldConfig):
         super().__init__(config=config)
-        self.config = config
         self.position_open = False
-        self._instrument_id = self.instrument_provider.get_instrument(self.config.instrument_id)
-        self._bar_type = BarType.from_str(self.config.bar_type)
 
     def on_start(self):
-        self.log.info(f"Starting BuyAndHoldStrategy benchmark for {self._instrument_id}")
-        self.subscribe_data(self._instrument_id, self._bar_type)
+        super().on_start()
 
     def on_bar(self, bar: Bar):
-        if bar.instrument_id != self._instrument_id.id:
+        if not self.is_matching_bar(bar):
             return
 
         if not self.position_open:
-            self.log.info(f"[{self._instrument_id}] Initial Buy and Hold entry at {bar.close}.")
-            order = self.order_factory.market(self._instrument_id, OrderSide.BUY, self.config.trade_size, TimeInForce.GTC)
+            self.log.info(f"[{self.instrument_id}] Initial Buy and Hold entry at {bar.close}.")
+            qty = self.make_qty(self.config.trade_size)
+            order = self.order_factory.market(self.instrument_id, OrderSide.BUY, qty, TimeInForce.GTC)
             self.submit_order(order)
             self.position_open = True
 
     def on_stop(self):
-        self.log.info(f"Stopping BuyAndHoldStrategy for {self._instrument_id}")
+        self.log.info(f"Stopping BuyAndHoldStrategy for {self.instrument_id}")

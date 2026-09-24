@@ -14,6 +14,8 @@ class TaskRunBacktest:
 
     def process(self):
         backtest = self.task.subject
+        if not backtest.is_covered():
+            backtest.load_data()
         instance = backtest.strategy_instance
         runner = StrategyBacktestRunner(starting_balance=float(backtest.initial_capital))
 
@@ -46,6 +48,8 @@ class TaskRunBacktest:
             f"- Sharpe: {result.sharpe_ratio:.2f} | Sortino: {result.sortino_ratio:.2f} | Calmar: {result.calmar_ratio:.2f}\n"
             f"- Max DD: {result.max_drawdown_pct:.2%} | Win Rate: {result.win_rate:.1%} ({result.total_trades} trades)"
         )
+        if result.total_trades == 0:
+            summary_msg += "\n[DIAGNOSTIC] 0 trades executed. Review strategy filter parameters (min_adx, min_vol_pct) or instrument volatility."
         self.task.log(summary_msg)
 
 
@@ -59,6 +63,8 @@ class TaskRunOptimization:
 
     def process(self):
         backtest = self.task.subject
+        if not backtest.is_covered():
+            backtest.load_data()
         instance = backtest.strategy_instance
         runner = StrategyBacktestRunner(starting_balance=float(backtest.initial_capital))
         optimizer = ParameterOptimizer(runner=runner, objective=backtest.optimization_objective or "sharpe")
@@ -100,3 +106,52 @@ class TaskRunOptimization:
             f"- Best PnL: ${getattr(report.best_result, 'total_pnl', 0.0):,.2f}"
         )
         self.task.log(summary_msg)
+
+
+class TaskLoadData:
+    """
+    Celery task delegate checking and loading historical market data for Backtest or HistoricalData model instances.
+    """
+
+    def __init__(self, task):
+        self.task = task
+
+    def process(self):
+        subject = self.task.subject
+        if hasattr(subject, 'load_data'):
+            data_record = subject.load_data()
+        else:
+            raise ValueError(f"Subject {subject} does not implement load_data.")
+
+        summary_msg = (
+            f"Historical Data Ready for {subject}:\n"
+            f"- Instrument: {data_record.instrument.symbol}\n"
+            f"- Bar Type: {data_record.bar_type}\n"
+            f"- Range: {data_record.start_date.strftime('%Y-%m-%d %H:%M')} -> {data_record.end_date.strftime('%Y-%m-%d %H:%M')}\n"
+            f"- Total Bars: {data_record.bar_count:,}\n"
+            f"- Source: {data_record.get_source_display()}\n"
+            f"- Catalog: {data_record.catalog_path}"
+        )
+        self.task.log(summary_msg)
+        return data_record
+
+
+class TaskSearchAndCreateInstruments:
+    """
+    Task delegate executing an IB search for each symbol in an InstrumentGroup
+    and creating the corresponding Instrument and IBContract models.
+    """
+
+    def __init__(self, task):
+        self.task = task
+
+    def process(self):
+        group = self.task.subject
+        created_count, total_count = group.search_and_create_instruments()
+        summary_msg = (
+            f"IB Search & Instrument Creation completed for '{group.name}':\n"
+            f"- Created: {created_count} new instrument(s)\n"
+            f"- Total Processed: {total_count} symbol(s)"
+        )
+        self.task.log(summary_msg)
+

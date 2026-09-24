@@ -407,7 +407,6 @@ class Scene(AfterSaveActionMixin, YAMLAssetsMixin, models.Model, TaskHolder, Get
 
     ACTION_EDIT_FROM_SHOTS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_FROM_SHOTS}"
     
-    ACTION_TRANSLATE_FROM_PROMPT = f"{TASK_TEXT_GENERATE}-preset-{PRESET_TRANSLATE}"
     ACTION_TRANSLATE_SHOTS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_TRANSLATE_SHOTS}-target-prompt_translations-schema-{settings.SCHEMA_OUTPUT_WITH_MESSAGE}"
     ACTION_SYNC_ELEMENTS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_SYNC_ELEMENTS}-schema-{settings.SCHEMA_ASSETS}"
     ACTION_SYNC_SHOTS = f"{TASK_TEXT_GENERATE}-preset-{PRESET_SYNC_SHOTS}-schema-{settings.SCHEMA_SCENE}"
@@ -419,14 +418,14 @@ class Scene(AfterSaveActionMixin, YAMLAssetsMixin, models.Model, TaskHolder, Get
         (ACTION_CREATE_PROMPT, _("Create prompt from plot")),  
         (ACTION_EDIT_PROMPT, _("Edit prompt")), 
         (ACTION_EDIT_FROM_SHOTS, _("Edit shots")),
-        (ACTION_TRANSLATE_FROM_PROMPT, _("Translate from prompt")),
         (ACTION_TRANSLATE_SHOTS, _("Translate shots")),
         (ACTION_SYNC_ELEMENTS, _("Sync Elements")),
         (ACTION_SYNC_SHOTS, _("Sync Shots")),
         (ACTION_SYNC_TRANSLATION, _("Sync Translation"))
     ) + settings.COMMON_TEXT_ACTION_CHOICES
 
-
+    ACTION_NO_INPUT = (ACTION_CREATE_PROMPT, ACTION_TRANSLATE_SHOTS, ACTION_SYNC_SHOTS, ACTION_SYNC_TRANSLATION )
+    ACTIONS_NO_INPUT = ACTION_NO_INPUT
     name = models.CharField(_("name"), max_length=200, null=True, blank=True)
     prompt_refine = models.TextField(_("prompt refine"), null=True, blank=True)
     prompt_plot = models.TextField(_("Prompt Plot"), null=True, blank=True)
@@ -491,6 +490,7 @@ class Scene(AfterSaveActionMixin, YAMLAssetsMixin, models.Model, TaskHolder, Get
         ]
         
         return yaml.dump(action_list, indent=2, default_flow_style=False)
+
     def location_parts(self):
         parts = []
         for location in self.locations.all():
@@ -521,12 +521,14 @@ class Scene(AfterSaveActionMixin, YAMLAssetsMixin, models.Model, TaskHolder, Get
             elif preset == self.PRESET_FROM_SHOTS:
                 if self.shots().exists():
                     parts.append(self.get_shots_as_yaml())
-            elif preset in [self.PRESET_SYNC_SHOTS, self.PRESET_EDIT_PROMPT]:
+            elif preset == self.PRESET_EDIT_PROMPT:
                 if self.prompt:
                     parts.append(self.prompt)
                 elif self.prompt_plot:
                     parts.append(self.prompt_plot)
-            elif preset in [self.PRESET_TRANSLATE_SHOTS]:
+            elif preset == self.PRESET_SYNC_SHOTS:
+                parts.append(f"<MdScript>{self.prompt}</MdScript>")
+            elif preset ==  self.PRESET_TRANSLATE_SHOTS:
                 default_lang = getattr(settings, 'MODELTRANSLATION_DEFAULT_LANGUAGE', 'en')
                 configured_langs = list(getattr(settings, 'MODELTRANSLATION_LANGUAGES', ('en', 'it', 'es', 'pt', 'fr')))
                 shots_data = []
@@ -573,7 +575,6 @@ class Scene(AfterSaveActionMixin, YAMLAssetsMixin, models.Model, TaskHolder, Get
                 if self.prompt_translations:
                     parts.append(self.prompt_translations)
                 return parts
-        parts.append(self.get_elements_as_yaml())
         if self.story and preset in [
                 self.PRESET_REFINE_PROMPT,
                 self.PRESET_FROM_SHOTS,
@@ -1185,11 +1186,10 @@ class Render(RenderTypeMixin, models.Model, TaskHolder, ModelDisplayMixin):
         self.render_items.all().delete()
 
         actions = []
-        if self.story:
-            actions = list(Action.objects.filter(scene__story=self.story).order_by("order"))
-        elif self.scene:
+        if self.scene:
             actions = list(self.scene.actions.all().order_by('order'))
-
+        elif self.story:
+            actions = list(Action.objects.filter(scene__story=self.story).order_by("order"))
         for i, action in enumerate(actions):
             self._create_item_from_action(action, order=i)
 

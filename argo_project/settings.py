@@ -243,9 +243,15 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+HISTORICAL_ROOT = os.getenv("HISTORICAL_ROOT", os.path.join(BASE_DIR, "historical_data"))
+
 # Celery Configuration
 CELERY_BROKER_TYPE = os.getenv("CELERY_BROKER_TYPE", "sqlite")
-CELERY_BROKER_URL = "sqla+sqlite:///argo_celerydb.sqlite" if CELERY_BROKER_TYPE == "sqlite" else os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+if CELERY_BROKER_TYPE == "sqlite":
+    CELERY_BROKER_URL = f"sqla+sqlite:///{BASE_DIR / 'argo_celerydb.sqlite'}"
+else:
+    CELERY_BROKER_URL = os.getenv("ARGO_CELERY_BROKER_URL") or os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
+
 CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -253,12 +259,21 @@ CELERY_TASK_SOFT_TIME_LIMIT = int(os.getenv("CELERY_TASK_SOFT_TIME_LIMIT", "7200
 CELERY_TASK_TIME_LIMIT = int(os.getenv("CELERY_TASK_TIME_LIMIT", "7260"))
 CELERY_WORKER_PREFETCH_MULTIPLIER = int(os.getenv("CELERY_WORKER_PREFETCH_MULTIPLIER", "1"))
 
+# Queue and schedule isolation for Argo
+CELERY_TASK_DEFAULT_QUEUE = 'argo'
+CELERY_TASK_DEFAULT_EXCHANGE = 'argo'
+CELERY_TASK_DEFAULT_ROUTING_KEY = 'argo'
+CELERY_BEAT_SCHEDULE_FILENAME = str(BASE_DIR / 'celerybeat-argo-schedule')
+
 GENAI_REQUEST_TIMEOUT_MS = int(os.getenv("GENAI_REQUEST_TIMEOUT_MS", "300000"))
 
 # Task Constants & Schemas
 TASK_TYPE_GENERATE_TEXT = 'generate_text'
+TASK_EXECUTE_FUNC = 'execute_func'
+TASK_FUNC = 'func'
 TASK_TYPE_CHOICES = (
     (TASK_TYPE_GENERATE_TEXT, _("Generate Text")),
+    (TASK_EXECUTE_FUNC, _("Execute Function")),
 )
 
 SCHEMA_OUTPUT_WITH_MESSAGE = "outwithmsg"
@@ -287,11 +302,19 @@ AGENT_SCHEMAS = {
 TASK_TYPE_GENERATE_TEXT = 'generate_text'
 TASK_RUN_BACKTEST = 'run_backtest'
 TASK_RUN_OPTIMIZATION = 'run_optimization'
+TASK_LOAD_DATA = 'load_data'
+TASK_SEARCH_AND_CREATE_INSTRUMENTS = 'search_and_create_instruments'
+TASK_EXECUTE_FUNC = 'execute_func'
+TASK_FUNC = 'func'
 
 TASK_DELEGATES = {
     TASK_TYPE_GENERATE_TEXT: 'agent.tasks.TaskGenerateText',
     TASK_RUN_BACKTEST: 'argo.tasks.TaskRunBacktest',
     TASK_RUN_OPTIMIZATION: 'argo.tasks.TaskRunOptimization',
+    TASK_LOAD_DATA: 'argo.tasks.TaskLoadData',
+    TASK_SEARCH_AND_CREATE_INSTRUMENTS: 'argo.tasks.TaskSearchAndCreateInstruments',
+    TASK_EXECUTE_FUNC: 'task.tasks.TaskExecuteFunc',
+    TASK_FUNC: 'task.tasks.TaskExecuteFunc',
 }
 
 PRESET_INFO = "info"

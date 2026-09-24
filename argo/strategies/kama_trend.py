@@ -16,11 +16,12 @@ Optimization & Tuning Tips:
 """
 
 from typing import List, Optional
-from nautilus_trader.config import ImportableActorConfig
+from nautilus_trader.trading.config import StrategyConfig
 from nautilus_trader.model.data import Bar, BarType
 from nautilus_trader.model.enums import OrderSide, TimeInForce
 from nautilus_trader.trading.strategy import Strategy as NautilusStrategy
 
+from argo.strategies.base import ArgoBaseStrategy
 from argo.strategies.filters import (
     FilterPipeline,
     ADXTrendStrengthFilter,
@@ -30,13 +31,13 @@ from argo.strategies.filters import (
 from argo.strategies.forecaster import PositionRiskForecaster, PositionRiskMetrics
 
 
-class KaufmanAdaptiveTrendConfig(ImportableActorConfig):
+class KaufmanAdaptiveTrendConfig(StrategyConfig, frozen=True):
     """
     Configuration parameters for KaufmanAdaptiveTrendStrategy.
 
     Attributes:
         instrument_id: Nautilus InstrumentId string (e.g. 'EUR/USD.IB').
-        bar_type: Bar aggregation string (e.g. 'EUR/USD.IB-1-MINUTE-MID-INTERNAL').
+        bar_type: Bar aggregation string (e.g. 'EUR/USD.IB-1-MINUTE-MID-EXTERNAL').
         er_period: Lookback window for Efficiency Ratio calculation (default: 10).
         fast_period: Fastest EMA smoothing period when market is trending (default: 2).
         slow_period: Slowest EMA smoothing period when market is noisy (default: 30).
@@ -54,7 +55,7 @@ class KaufmanAdaptiveTrendConfig(ImportableActorConfig):
     min_adx: float = 20.0
 
 
-class KaufmanAdaptiveTrendStrategy(NautilusStrategy):
+class KaufmanAdaptiveTrendStrategy(ArgoBaseStrategy):
     """
     Kaufman Adaptive Moving Average (KAMA) Trend-Following Strategy:
     - Dynamically adapts smoothing speed based on market efficiency vs noise.
@@ -64,7 +65,6 @@ class KaufmanAdaptiveTrendStrategy(NautilusStrategy):
 
     def __init__(self, config: KaufmanAdaptiveTrendConfig):
         super().__init__(config=config)
-        self.config = config
         self.closes: List[float] = []
         self.highs: List[float] = []
         self.lows: List[float] = []
@@ -74,22 +74,18 @@ class KaufmanAdaptiveTrendStrategy(NautilusStrategy):
         self.entry_price: float = 0.0
         self.latest_forecast: Optional[PositionRiskMetrics] = None
 
-        self._instrument_id = self.instrument_provider.get_instrument(self.config.instrument_id)
-        self._bar_type = BarType.from_str(self.config.bar_type)
-
         self.filter_pipeline = FilterPipeline([
             EfficiencyRatioNoiseFilter(period=self.config.er_period, min_efficiency=self.config.min_efficiency),
             ADXTrendStrengthFilter(period=14, min_adx=self.config.min_adx),
-            ATRVolatilityRegimeFilter(min_vol_pct=0.001, max_vol_pct=0.07),
+            ATRVolatilityRegimeFilter(min_vol_pct=0.00001, max_vol_pct=0.08),
         ])
         self.forecaster = PositionRiskForecaster(lookback_periods=30, stop_atr_mult=2.0, target_atr_mult=3.5)
 
     def on_start(self):
-        self.log.info(f"Starting KaufmanAdaptiveTrendStrategy for {self._instrument_id}")
-        self.subscribe_data(self._instrument_id, self._bar_type)
+        super().on_start()
 
     def on_bar(self, bar: Bar):
-        if bar.instrument_id != self._instrument_id.id:
+        if not self.is_matching_bar(bar):
             return
 
         self._append_bar(bar)
@@ -153,8 +149,9 @@ class KaufmanAdaptiveTrendStrategy(NautilusStrategy):
             self._open_long(close, atr)
 
     def _open_long(self, close: float, atr: float):
-        self.log.info(f"[{self._instrument_id}] KAMA Trend Bullish Acceleration. Going long at {close:.2f}")
-        order = self.order_factory.market(self._instrument_id, OrderSide.BUY, self.config.trade_size, TimeInForce.FOK)
+        self.log.info(f"[{self.instrument_id}] KAMA Trend Bullish Acceleration. Going long at {close:.2f}")
+        qty = self.make_qty(self.config.trade_size)
+        order = self.order_factory.market(self.instrument_id, OrderSide.BUY, qty, TimeInForce.GTC)
         self.submit_order(order)
         self.position_open = True
         self.entry_price = close
@@ -166,14 +163,15 @@ class KaufmanAdaptiveTrendStrategy(NautilusStrategy):
 
         # Exit when price crosses below adaptive KAMA or KAMA slope turns negative
         if close < self.kama or self.kama < self.last_kama:
-            self.log.info(f"[{self._instrument_id}] KAMA Trend Exit ({close:.2f} < KAMA {self.kama:.2f}). Closing long.")
-            order = self.order_factory.market(self._instrument_id, OrderSide.SELL, self.config.trade_size, TimeInForce.FOK)
+            self.log.info(f"[{self.instrument_id}] KAMA Trend Exit ({close:.2f} < KAMA {self.kama:.2f}). Closing long.")
+            qty = self.make_qty(self.config.trade_size)
+            order = self.order_factory.market(self.instrument_id, OrderSide.SELL, qty, TimeInForce.GTC)
             self.submit_order(order)
             self.position_open = False
 
     def _update_forecast(self, current_price: float, atr: float):
         self.latest_forecast = self.forecaster.calculate_forecast(
-            instrument_id=str(self._instrument_id),
+            instrument_id=str(self.instrument_id),
             side=OrderSide.BUY,
             quantity=self.config.trade_size,
             entry_price=self.entry_price,
@@ -184,9 +182,9 @@ class KaufmanAdaptiveTrendStrategy(NautilusStrategy):
         )
         m = self.latest_forecast
         self.log.info(
-            f"[{self._instrument_id}] KAMA Pos Risk: VaR95=${m.var_95_amount:.2f} | CVaR95=${m.cvar_95_amount:.2f} | "
+            f"[{self.instrument_id}] KAMA Pos Risk: VaR95=${m.var_95_amount:.2f} | CVaR95=${m.cvar_95_amount:.2f} | "
             f"EV=${m.expected_value_amount:.2f} ({m.expected_value_pct:.2%}) | WinProb={m.win_probability_forecast:.1%} | Sharpe={m.forecasted_sharpe_ratio:.2f}"
         )
 
     def on_stop(self):
-        self.log.info(f"Stopping KaufmanAdaptiveTrendStrategy for {self._instrument_id}")
+        self.log.info(f"Stopping KaufmanAdaptiveTrendStrategy for {self.instrument_id}")

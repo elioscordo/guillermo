@@ -113,14 +113,15 @@ class InteractiveBrokersSearchService:
 
     def populate_group(self, group, query: str, append: bool = False) -> List[str]:
         """Searches symbols and persists them into the given InstrumentGroup."""
-        sec_type = ASSET_CLASS_TO_SEC_TYPE.get(group.asset_class, "STK")
-        results = self.search(query=query, sec_type=sec_type, currency=group.currency)
+        sec_type = ASSET_CLASS_TO_SEC_TYPE.get(getattr(group, "asset_class", None), None)
+        currency = getattr(group, "currency", None)
+        results = self.search(query=query, sec_type=sec_type, currency=currency)
         symbols = sorted({r.symbol for r in results})
         if not symbols:
             return []
 
         existing = set(group.get_codes()) if append else set()
-        group.symbols = ", ".join(sorted(existing.union(symbols)))
+        group.symbols = sorted(existing.union(symbols))
         group.save(update_fields=["symbols", "updated_at"])
         return symbols
 

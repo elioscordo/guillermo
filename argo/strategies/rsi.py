@@ -1,10 +1,11 @@
-from nautilus_trader.config import ImportableActorConfig
-from nautilus_trader.model.data import Bar, BarType
+from nautilus_trader.trading.config import StrategyConfig
+from nautilus_trader.model.data import Bar
 from nautilus_trader.model.enums import OrderSide, TimeInForce
-from nautilus_trader.trading.strategy import Strategy as NautilusStrategy
+
+from argo.strategies.base import ArgoBaseStrategy
 
 
-class RSIStrategyConfig(ImportableActorConfig):
+class RSIStrategyConfig(StrategyConfig, frozen=True):
     """
     Configuration for RSI Mean Reversion / Momentum Strategy.
     """
@@ -16,7 +17,7 @@ class RSIStrategyConfig(ImportableActorConfig):
     trade_size: float = 100.0
 
 
-class RSIStrategy(NautilusStrategy):
+class RSIStrategy(ArgoBaseStrategy):
     """
     Relative Strength Index (RSI) strategy:
     - Buys when RSI drops below oversold threshold.
@@ -25,18 +26,14 @@ class RSIStrategy(NautilusStrategy):
 
     def __init__(self, config: RSIStrategyConfig):
         super().__init__(config=config)
-        self.config = config
         self.prices: list[float] = []
         self.position_open = False
-        self._instrument_id = self.instrument_provider.get_instrument(self.config.instrument_id)
-        self._bar_type = BarType.from_str(self.config.bar_type)
 
     def on_start(self):
-        self.log.info(f"Starting RSIStrategy for {self._instrument_id}")
-        self.subscribe_data(self._instrument_id, self._bar_type)
+        super().on_start()
 
     def on_bar(self, bar: Bar):
-        if bar.instrument_id != self._instrument_id.id:
+        if not self.is_matching_bar(bar):
             return
 
         close = float(bar.close)
@@ -67,15 +64,17 @@ class RSIStrategy(NautilusStrategy):
             rsi = 100.0 - (100.0 / (1.0 + rs))
 
         if rsi <= self.config.oversold and not self.position_open:
-            self.log.info(f"[{self._instrument_id}] RSI {rsi:.2f} <= {self.config.oversold}. Going long.")
-            order = self.order_factory.market(self._instrument_id, OrderSide.BUY, self.config.trade_size, TimeInForce.FOK)
+            self.log.info(f"[{self.instrument_id}] RSI {rsi:.2f} <= {self.config.oversold}. Going long.")
+            qty = self.make_qty(self.config.trade_size)
+            order = self.order_factory.market(self.instrument_id, OrderSide.BUY, qty, TimeInForce.FOK)
             self.submit_order(order)
             self.position_open = True
         elif rsi >= self.config.overbought and self.position_open:
-            self.log.info(f"[{self._instrument_id}] RSI {rsi:.2f} >= {self.config.overbought}. Closing long.")
-            order = self.order_factory.market(self._instrument_id, OrderSide.SELL, self.config.trade_size, TimeInForce.FOK)
+            self.log.info(f"[{self.instrument_id}] RSI {rsi:.2f} >= {self.config.overbought}. Closing long.")
+            qty = self.make_qty(self.config.trade_size)
+            order = self.order_factory.market(self.instrument_id, OrderSide.SELL, qty, TimeInForce.FOK)
             self.submit_order(order)
             self.position_open = False
 
     def on_stop(self):
-        self.log.info(f"Stopping RSIStrategy for {self._instrument_id}")
+        self.log.info(f"Stopping RSIStrategy for {self.instrument_id}")

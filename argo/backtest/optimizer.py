@@ -117,6 +117,13 @@ class ParameterOptimizer:
                 "medium_period": [25, 30, 40],
                 "slow_period": [80, 100, 150],
             }
+        elif "DualMomentum" in class_name:
+            return {
+                "sma_trend_period": [100, 150, 200],
+                "momentum_period": [10, 20, 30],
+                "atr_multiplier": [2.0, 2.5, 3.0],
+                "min_adx": [15.0, 20.0, 25.0],
+            }
         return {
             "trade_size": [50.0, 100.0, 200.0],
         }

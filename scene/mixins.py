@@ -137,6 +137,19 @@ class CurrentLanguageListMixin:
         mapped = self._map_current_lang_fields(fields)
         return JsonResponse({'ajax_shift_fields': list(mapped)})
 
+
+class ProxyHistoryAdminMixin:
+    """Ensures proxy models delegate history tracking to their concrete model."""
+
+    def __init__(self, model, admin_site):
+        if getattr(model._meta, "proxy", False):
+            concrete_meta = model._meta.concrete_model._meta
+            attr_name = getattr(concrete_meta, "simple_history_manager_attribute", "history")
+            if not hasattr(model._meta, "simple_history_manager_attribute"):
+                setattr(model._meta, "simple_history_manager_attribute", attr_name)
+        super().__init__(model, admin_site)
+
+
 class ModelDisplayMixin:
     MAX_IMAGE_HEIGHT = 400
 
@@ -556,8 +569,9 @@ class AdminActionsMixin:
 
     @action(description=_("Generate Voice"), icon="record_voice_over")
     def generate_voice(self, request, queryset):
+        lang = (get_language() or 'en').replace('-', '_').split('_')[0]
         for obj in queryset:
-            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user) is None:
+            if Task.createTaskIfQueueEnabled( obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user, payload={'target_language': lang}) is None:
                 obj.generate_voice(obj.PRESET_VOICE, user=request.user)
             self.message_user(request, "voice generated for item ID {}.".format(obj.id))
 
@@ -586,8 +600,9 @@ class AdminActionsMixin:
 
     @action(description=_("Generate Voices"), icon="record_voice_over")
     def generate_scene_voices(self, request, queryset):
+        lang = (get_language() or 'en').replace('-', '_').split('_')[0]
         for obj in queryset:
-            if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_SCENE_VOICES, owner=request.user) is None:
+            if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_SCENE_VOICES, owner=request.user, payload={'target_language': lang}) is None:
                 # This block would run if queuing is disabled.
                 # You could add direct execution here if needed.
                 pass
@@ -630,7 +645,8 @@ class AdminActionsMixin:
                 subject=render,
                 task_type=settings.TASK_TYPE_VIDEO_RENDER,
                 thr=obj,
-                owner=request.user
+                owner=request.user,
+                payload={'target_language': lang}
             )
             self.message_user(request, _("Render generated and video task queued for: {}").format(obj.name))
 

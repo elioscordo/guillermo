@@ -76,6 +76,43 @@ def cleanup_stuck_tasks(sender, **kwargs):
     for task in stuck_tasks:
         task.log("Task marked as Error because the Celery worker process died or restarted during execution.")
         task.set_status(Task.TASK_STATUS_ERROR)
+
+
+class TaskExecuteFunc:
+    """
+    Task delegate executing the function or method specified in task.payload['func'].
+    Supports calling a method on task.subject or an importable function path.
+    """
+    def __init__(self, task):
+        self.task = task
+
+    def process(self):
+        payload = self.task.payload or {}
+        func_target = payload.get('func')
+        if not func_target:
+            raise ValueError(f"Task {self.task.id} payload must contain 'func'.")
+
+        args = payload.get('args', [])
+        kwargs = payload.get('kwargs', {})
+
+        if callable(func_target):
+            result = func_target(*args, **kwargs)
+        elif self.task.subject and hasattr(self.task.subject, func_target):
+            method = getattr(self.task.subject, func_target)
+            result = method(*args, **kwargs)
+        elif isinstance(func_target, str) and "." in func_target:
+            mod_name, fn_name = func_target.rsplit(".", 1)
+            module = importlib.import_module(mod_name)
+            func = getattr(module, fn_name)
+            result = func(self.task.subject, *args, **kwargs) if self.task.subject else func(*args, **kwargs)
+        else:
+            raise AttributeError(
+                f"Could not resolve function '{func_target}' on subject {self.task.subject} or as module path."
+            )
+
+        if result is not None:
+            self.task.log(f"Executed {func_target}: {result}")
+        return result
             
 
         

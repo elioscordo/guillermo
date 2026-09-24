@@ -2,10 +2,11 @@ from django.contrib import admin
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
+from django.utils.html import format_html
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from unfold.decorators import action
 from simple_history.admin import SimpleHistoryAdmin
-from agent.admin_utils import AjaxTaskModelAdmin
+from agent.admin_utils import AjaxTaskModelAdmin, ModelActionsAdminMixin
 from agent.sections import AjaxSectionAdminMixin, MessageHistorySection
 
 from .models import (
@@ -15,6 +16,7 @@ from .models import (
     Portfolio,
     StrategyInstance,
     Backtest,
+    HistoricalData,
     Scanner,
     Signal,
     Recommendation,
@@ -71,10 +73,12 @@ class PortfolioAdmin(SimpleHistoryAdmin, AjaxSectionAdminMixin, AjaxTaskModelAdm
     autocomplete_fields = ('instrument_groups',)
     list_sections = [MessageHistorySection]
     list_refresh = ['instance_count', 'group_count']
-    inlines = [StrategyInstanceInline]
+    inlines = []
 
     def instance_count(self, obj):
-        return obj.strategy_instances.count()
+        if hasattr(obj, 'strategy_instances'):
+            return obj.strategy_instances.count()
+        return 0
     instance_count.short_description = _("Instances")
 
     def group_count(self, obj):
@@ -94,22 +98,52 @@ class BacktestInline(TabularInline):
 
 @admin.register(StrategyInstance)
 class StrategyInstanceAdmin(SimpleHistoryAdmin, AjaxSectionAdminMixin, AjaxTaskModelAdmin, ModelAdmin):
-    list_display = ('portfolio', 'strategy_model', 'instrument', 'is_active', 'description', 'last_tasks')
-    list_filter = ('is_active', 'portfolio', 'strategy_model')
-    search_fields = ('instrument__symbol', 'instrument__venue', 'portfolio__name', 'strategy_model__name', 'description')
-    autocomplete_fields = ('portfolio', 'strategy_model', 'instrument')
+    list_display = ('strategy_model', 'instrument', 'is_active', 'description', 'last_tasks')
+    list_filter = ('is_active', 'strategy_model')
+    search_fields = ('instrument__symbol', 'instrument__venue', 'strategy_model__name', 'description')
+    autocomplete_fields = ('strategy_model', 'instrument')
     list_sections = [MessageHistorySection]
     inlines = [BacktestInline]
 
 
+@admin.register(HistoricalData)
+class HistoricalDataAdmin(AjaxSectionAdminMixin, AjaxTaskModelAdmin, ModelAdmin):
+    list_display = ('instrument', 'bar_type', 'start_date', 'end_date', 'bar_count', 'source', 'created_at', 'last_tasks')
+    list_filter = ('bar_type', 'instrument__asset_class')
+    search_fields = ('instrument__symbol', 'bar_type', 'catalog_path')
+    autocomplete_fields = ('instrument',)
+    readonly_fields = ('created_at', 'updated_at', 'catalog_path', 'source', 'last_tasks')
+    actions = ['load_data_action']
+
+    @admin.action(description=_("Load historical data (create Parquet catalog)"))
+    def load_data_action(self, request, queryset):
+        count = 0
+        for item in queryset:
+            item.load_data(as_task=True, owner=request.user)
+            count += 1
+        self.message_user(request, _(f"Triggered catalog load task for {count} dataset(s)."))
+
+
 @admin.register(Backtest)
 class BacktestAdmin(SimpleHistoryAdmin, AjaxSectionAdminMixin, AjaxTaskModelAdmin, ModelAdmin):
-    list_display = ('__str__', 'strategy_instance', 'total_pnl', 'return_pct', 'sharpe_ratio', 'max_drawdown_pct', 'win_rate', 'total_trades', 'last_tasks')
-    list_filter = ('optimization_objective', 'strategy_instance__strategy_model', 'strategy_instance__portfolio')
+    list_display = ('__str__', 'strategy_instance', 'is_data_covered', 'total_pnl', 'return_pct', 'sharpe_ratio', 'max_drawdown_pct', 'win_rate', 'total_trades', 'last_tasks')
+    list_filter = ('optimization_objective', 'strategy_instance__strategy_model')
     search_fields = ('name', 'strategy_instance__instrument__symbol', 'strategy_instance__strategy_model__name')
     autocomplete_fields = ('strategy_instance',)
     list_sections = [MessageHistorySection]
-    actions = ['apply_best_params_action']
+    actions = ['apply_best_params_action', 'load_data_action']
+
+    @admin.display(boolean=True, description=_("Data Covered"))
+    def is_data_covered(self, obj):
+        return obj.is_covered()
+
+    @admin.action(description=_("Load historical data for selected backtests"))
+    def load_data_action(self, request, queryset):
+        count = 0
+        for bt in queryset:
+            bt.load_data()
+            count += 1
+        self.message_user(request, _(f"Checked and loaded historical data for {count} backtest(s)."))
 
     @admin.action(description=_("Apply winning parameters to StrategyInstance"))
     def apply_best_params_action(self, request, queryset):
@@ -148,18 +182,48 @@ class RecommendationAdmin(ModelAdmin):
 
 
 @admin.register(InstrumentGroup)
-class InstrumentGroupAdmin(SimpleHistoryAdmin, AjaxSectionAdminMixin, AjaxTaskModelAdmin, ModelAdmin):
-    list_display = ('name', 'code', 'asset_class', 'venue', 'currency', 'instrument_count', 'is_active', 'last_tasks')
-    list_filter = ('asset_class', 'venue', 'currency', 'is_active')
+class InstrumentGroupAdmin(ModelActionsAdminMixin, SimpleHistoryAdmin, AjaxSectionAdminMixin, AjaxTaskModelAdmin, ModelAdmin):
+    list_display = ('name', 'code', 'symbol_count', 'instrument_count', 'is_active', 'last_tasks')
+    list_filter = ('is_active',)
     search_fields = ('name', 'code', 'description')
-    actions = ['preview_codes_action', 'create_instruments_action']
-    actions_row = ['preview_codes_row_action', 'populate_symbols_from_ib_row_action', 'create_instruments_row_action']
+    actions = ['preview_codes_action']
+    actions_row = [
+        'search_and_create_instruments_row_action',
+        'preview_codes_row_action',
+        'populate_symbols_from_ib_row_action',
+        'view_instruments_row_action',
+    ]
+    readonly_fields = ('instruments_link',)
     list_sections = [MessageHistorySection]
-    list_refresh = ['instrument_count']
+    list_refresh = ['instrument_count', 'symbol_count']
+
+    def symbol_count(self, obj):
+        return len(obj.get_codes())
+    symbol_count.short_description = _("Symbols")
 
     def instrument_count(self, obj):
-        return obj.instruments.count()
+        count = obj.instruments.count()
+        url = reverse("admin:argo_instrument_changelist") + f"?group={obj.id}"
+        return format_html('<a href="{}" class="font-medium text-primary-600 hover:underline">{}</a>', url, count)
     instrument_count.short_description = _("Instruments")
+
+    def instruments_link(self, obj):
+        if not obj or not obj.pk:
+            return "-"
+        count = obj.instruments.count()
+        url = reverse("admin:argo_instrument_changelist") + f"?group={obj.id}"
+        return format_html(
+            '<a href="{}" class="font-medium text-primary-600 hover:underline">{} ({} {})</a>',
+            url,
+            _("View Instruments"),
+            count,
+            _("total")
+        )
+    instruments_link.short_description = _("Linked Instruments")
+
+    @action(description=_("View Instruments"), icon="list")
+    def view_instruments_row_action(self, request, object_id):
+        return redirect(reverse("admin:argo_instrument_changelist") + f"?group={object_id}")
 
     @action(description=_("Populate from IB (via query)"), icon="search")
     def populate_symbols_from_ib_row_action(self, request, object_id):
@@ -180,7 +244,6 @@ class InstrumentGroupAdmin(SimpleHistoryAdmin, AjaxSectionAdminMixin, AjaxTaskMo
                 self.message_user(request, _("IB search failed: %(error)s") % {"error": str(e)}, level="error")
         return redirect(reverse("admin:argo_instrumentgroup_changelist"))
 
-
     @action(description=_("Preview codes for selected groups"), icon="visibility")
     def preview_codes_action(self, request, queryset):
         for group in queryset:
@@ -194,22 +257,6 @@ class InstrumentGroupAdmin(SimpleHistoryAdmin, AjaxSectionAdminMixin, AjaxTaskMo
                     "symbols": ", ".join(codes[:15]) + ("..." if len(codes) > 15 else "")
                 }
             )
-
-    @action(description=_("Create/Sync instruments for selected groups"), icon="add_circle")
-    def create_instruments_action(self, request, queryset):
-        total_created, total_synced = 0, 0
-        for group in queryset:
-            created, total = group.create_instruments()
-            total_created += created
-            total_synced += total
-        self.message_user(
-            request,
-            _("Processed %(groups)d group(s): %(created)d new instruments created, %(total)d synchronized.") % {
-                "groups": queryset.count(),
-                "created": total_created,
-                "total": total_synced,
-            }
-        )
 
     @action(description=_("Preview Codes"), icon="visibility")
     def preview_codes_row_action(self, request, object_id):
@@ -226,19 +273,29 @@ class InstrumentGroupAdmin(SimpleHistoryAdmin, AjaxSectionAdminMixin, AjaxTaskMo
             )
         return redirect(reverse("admin:argo_instrumentgroup_changelist"))
 
-    @action(description=_("Create Instruments"), icon="add_circle")
-    def create_instruments_row_action(self, request, object_id):
+    @action(description=_("Search IB & Create Instruments"), icon="search")
+    def search_and_create_instruments_row_action(self, request, object_id):
         group = self.get_object(request, object_id)
         if group:
-            created, total = group.create_instruments()
-            self.message_user(
-                request,
-                _("Group '%(name)s': %(created)d new instrument(s) created, %(total)d synchronized.") % {
-                    "name": group.name,
-                    "created": created,
-                    "total": total
-                }
-            )
+            task = group.search_and_create_instruments(as_task=True, owner=request.user)
+            if task:
+                self.message_user(
+                    request,
+                    _("Task %(task_id)s scheduled to search IB and create instruments for group '%(name)s'.") % {
+                        "task_id": task.id,
+                        "name": group.name,
+                    }
+                )
+            else:
+                created, total = group.search_and_create_instruments()
+                self.message_user(
+                    request,
+                    _("Group '%(name)s': %(created)d new instrument(s) created, %(total)d processed via IB.") % {
+                        "name": group.name,
+                        "created": created,
+                        "total": total
+                    }
+                )
         return redirect(reverse("admin:argo_instrumentgroup_changelist"))
 
 
@@ -248,13 +305,43 @@ class IBContractInline(StackedInline):
     can_delete = False
 
 
+class InstrumentGroupFilter(admin.SimpleListFilter):
+    title = _("Group")
+    parameter_name = "group"
+
+    def lookups(self, request, model_admin):
+        return [(g.id, f"{g.name} ({g.code})") for g in InstrumentGroup.objects.all().order_by("name")]
+
+    def queryset(self, request, queryset):
+        val = self.value() or request.GET.get("groups__id__exact")
+        if val:
+            return queryset.filter(groups__id=val).distinct()
+        return queryset
+
+
 @admin.register(Instrument)
 class InstrumentAdmin(ModelAdmin):
-    list_display = ('symbol', 'venue', 'asset_class', 'currency', 'price_precision', 'lot_size', 'is_active')
-    list_filter = ('groups', 'asset_class', 'venue', 'currency', 'is_active')
+    list_display = ('symbol', 'venue', 'asset_class', 'currency', 'display_groups', 'price_precision', 'lot_size', 'is_active')
+    list_filter = (InstrumentGroupFilter, 'asset_class', 'venue', 'currency', 'is_active')
     search_fields = ('symbol', 'venue')
     filter_horizontal = ('groups',)
     inlines = [IBContractInline]
+
+    def display_groups(self, obj):
+        groups = obj.groups.all()
+        if not groups:
+            return "-"
+        links = [
+            format_html(
+                '<a href="{}" class="font-medium text-primary-600 hover:underline">{}</a>',
+                reverse("admin:argo_instrument_changelist") + f"?group={g.id}",
+                g.name
+            )
+            for g in groups
+        ]
+        from django.utils.safestring import mark_safe
+        return mark_safe(", ".join(links))
+    display_groups.short_description = _("Groups")
 
 
 @admin.register(IBContract)

@@ -1,6 +1,8 @@
-from .supertrend_breakout import SuperTrendBreakoutStrategy, SuperTrendBreakoutConfig
+from .base import ArgoBaseStrategy
+from .supertrend_breakout import SuperTrendBreakoutStrategy, SuperTrendBreakoutStrategyConfig
 from .kama_trend import KaufmanAdaptiveTrendStrategy, KaufmanAdaptiveTrendConfig
 from .triple_ma_trend import TripleMAContinuationStrategy, TripleMATrendConfig
+from .dual_momentum import DualMomentumStrategy, DualMomentumStrategyConfig
 from .filters import (
     FilterPipeline,
     ADXTrendStrengthFilter,
@@ -11,12 +13,15 @@ from .filters import (
 from .forecaster import PositionRiskForecaster, PositionRiskMetrics
 
 __all__ = [
+    "ArgoBaseStrategy",
     "SuperTrendBreakoutStrategy",
-    "SuperTrendBreakoutConfig",
+    "SuperTrendBreakoutStrategyConfig",
     "KaufmanAdaptiveTrendStrategy",
     "KaufmanAdaptiveTrendConfig",
     "TripleMAContinuationStrategy",
     "TripleMATrendConfig",
+    "DualMomentumStrategy",
+    "DualMomentumStrategyConfig",
     "FilterPipeline",
     "ADXTrendStrengthFilter",
     "ATRVolatilityRegimeFilter",

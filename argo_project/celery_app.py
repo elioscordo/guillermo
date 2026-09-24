@@ -3,6 +3,6 @@ from celery import Celery
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'argo_project.settings')
 
-app = Celery('argo_project')
-app.config_from_object('django.conf:settings', namespace='CELERY')
+app = Celery('argo')
+app.config_from_object('argo_project.settings', namespace='CELERY')
 app.autodiscover_tasks()

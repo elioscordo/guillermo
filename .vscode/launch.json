@@ -10,7 +10,7 @@
             "request": "launch",
             "args": [
                 "runserver",
-                "localhost:8000",
+                "127.0.0.1:8000",
                 "--noreload",
                 "--settings=argo_project.settings"
             ],
@@ -28,7 +28,8 @@
             "request": "launch",
             "args": [
                 "test",
-                "argo.tests.SymbolsSchemaLiveTest",
+                "argo.tests.SymbolsSchemaLiveTest.test_search",
+                "--keepdb",
                 "--settings=argo_project.settings"
             ],
             "env": {
@@ -53,7 +54,11 @@
                 "info",
                 "-P",
                 "solo",
-                "-E"
+                "-E",
+                "-n",
+                "argo@%h",
+                "-Q",
+                "argo"
             ],
             "env": {
                 "DJANGO_SETTINGS_MODULE": "argo_project.settings"
@@ -73,7 +78,10 @@
                 "-l",
                 "info",
                 "-S",
-                "django"
+                "django",
+                "-s",
+                "celerybeat-argo-schedule",
+                "--pidfile=celerybeat-argo.pid"
             ],
             "env": {
                 "DJANGO_SETTINGS_MODULE": "argo_project.settings"
@@ -162,10 +170,17 @@
                 "info",
                 "-P",
                 "solo",
-                "-E"
-            ]
+                "-E",
+                "-n",
+                "guillermo@%h",
+                "-Q",
+                "guillermo,queue.normal,queue.heavy"
+            ],
+            "env": {
+                "DJANGO_SETTINGS_MODULE": "project.settings"
+            }
         },
-                {
+        {
             "name": "Guillermo: Celery Beat",
             "type": "debugpy",
             "request": "launch",
@@ -179,8 +194,14 @@
                 "-l",
                 "info",
                 "-S",
-                "django"
-            ]
+                "django",
+                "-s",
+                "celerybeat-guillermo-schedule",
+                "--pidfile=celerybeat-guillermo.pid"
+            ],
+            "env": {
+                "DJANGO_SETTINGS_MODULE": "project.settings"
+            }
         },
         {
             "name": "Guillermo MakeMigration",

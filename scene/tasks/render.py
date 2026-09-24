@@ -55,8 +55,16 @@ class VideoRender:
         self.task = task
     def process(self):
         item = self.task.subject
+        lang = self.task.payload.get('target_language') if self.task.payload else None
+        if not lang and hasattr(item, 'language') and item.language:
+            lang = item.language
+        if lang:
+            from django.utils.translation import activate
+            activate(lang)
 
-        from filer.models.imagemodels import Image as FilerImage
+        item.refresh_render()
+
+        from filer.models.filemodels import File as FilerFile
         clips = []
         first = None
 
@@ -108,7 +116,7 @@ class VideoRender:
 
             final_clip.write_videofile(filepath_abs, fps=24, codec='libx264',
                      audio_codec='aac', temp_audiofile='temp-audio.m4a', remove_temp=True)
-            out = FilerImage.objects.create(
+            out = FilerFile.objects.create(
                 original_filename=name,
                 file=filepath_relative,
                 name=name

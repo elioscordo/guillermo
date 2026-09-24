@@ -77,10 +77,10 @@ class ADXTrendStrengthFilter(BaseFilter):
         
     Optimization Tips:
         - Parameter `period`: Standard is 14. Lower (e.g. 10) for faster response; higher (e.g. 20) for smoother regime detection.
-        - Parameter `min_adx`: 20-25 indicates developing trend; > 25 confirms a strong established trend.
+        - Parameter `min_adx`: 15-20 indicates developing trend; > 25 confirms a strong established trend. Set to 0 to disable.
     """
 
-    def __init__(self, period: int = 14, min_adx: float = 20.0):
+    def __init__(self, period: int = 14, min_adx: float = 15.0):
         self.period = period
         self.min_adx = min_adx
 
@@ -92,6 +92,9 @@ class ADXTrendStrengthFilter(BaseFilter):
         side: OrderSide,
         current_atr: Optional[float] = None,
     ) -> FilterResult:
+        if self.min_adx <= 0:
+            return FilterResult("ADXFilter", True, 0.0, "ADX filter disabled")
+
         if len(closes) < self.period * 2:
             return FilterResult("ADXFilter", True, 25.0, "Warmup period")
 
@@ -132,11 +135,11 @@ class ATRVolatilityRegimeFilter(BaseFilter):
         Blocks entries when volatility is too low (stagnant/dead market) or excessively high (erratic news spikes).
         
     Optimization Tips:
-        - `min_vol_pct`: Prevents trading during low-liquidity/flat sessions (e.g. 0.001 = 0.10% price movement).
+        - `min_vol_pct`: Prevents trading during low-liquidity/flat sessions (e.g. 0.00001 for 1m bars, 0.001 for daily).
         - `max_vol_pct`: Avoids entering into runaway parabolic spikes or high slippage events (e.g. 0.05-0.08).
     """
 
-    def __init__(self, min_vol_pct: float = 0.001, max_vol_pct: float = 0.08):
+    def __init__(self, min_vol_pct: float = 0.00001, max_vol_pct: float = 0.08):
         self.min_vol_pct = min_vol_pct
         self.max_vol_pct = max_vol_pct
 
@@ -153,8 +156,8 @@ class ATRVolatilityRegimeFilter(BaseFilter):
 
         last_close = closes[-1]
         norm_vol = current_atr / max(last_close, 1e-6)
-        passed = self.min_vol_pct <= norm_vol <= self.max_vol_pct
-        reason = f"Normalized ATR {norm_vol:.4f} in [{self.min_vol_pct}, {self.max_vol_pct}]" if passed else f"Normalized ATR {norm_vol:.4f} out of bounds"
+        passed = (self.min_vol_pct <= 0 or norm_vol >= self.min_vol_pct) and (self.max_vol_pct <= 0 or norm_vol <= self.max_vol_pct)
+        reason = f"Normalized ATR {norm_vol:.5f} in [{self.min_vol_pct}, {self.max_vol_pct}]" if passed else f"Normalized ATR {norm_vol:.5f} out of bounds"
         return FilterResult("ATRVolatilityFilter", passed, norm_vol, reason)
 
 

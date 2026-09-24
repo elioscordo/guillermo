@@ -8,8 +8,7 @@ from unfold.admin import ModelAdmin
 from django.urls import path
 from django.urls import path, reverse
 from django import forms
-from django.conf import settings
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_lazy as _, get_language
 from agent.widgets import DynamicMarkdownWidget as MarkdownWidget
 from agent.sections import MessageHistorySection, PromptFormSection
 from simple_history.admin import SimpleHistoryAdmin
@@ -27,13 +26,13 @@ except ImportError:
 
 from .models import ActionOrganizer, Character, Scene, Preset, Action, Background, SceneOrganizer, StoryGroup, Style, Prop, ComicAction, RenderItem, VideoAction, Render, Story, StoryProfile, Voice, VoiceAction, Author, Nudge, ContactRequest, WorkShop, Sync, SyncItem
 from .admin_utils import AdminLinker
-from agent.admin_utils import AjaxTaskModelAdmin
+from agent.admin_utils import AjaxTaskModelAdmin, ModelActionsAdminMixin
 from agent.utils import normalize_target_field
 from django.utils.translation import gettext_lazy as _
 from django.utils.html import format_html
 from agent.models import Message
 from .sections import AuthorSection, ElementSection, SceneSection, SceneCharactersSection, SceneLocationsSection, ScenePropsSection, RenderSection, MarkDownSection, ScriptSection
-from .mixins import ACTION_FIELDSETS, ELEMENT_FIELDSETS, SceneFilterMixin, StaffReadOnlyMixin, StoryFilterMixin, ViewYourOwnMixin, PromptPreviewMixin, AdminActionsMixin, ChangelistScrollToEditedMixin, CurrentLanguageListMixin
+from .mixins import ACTION_FIELDSETS, ELEMENT_FIELDSETS, SceneFilterMixin, StaffReadOnlyMixin, StoryFilterMixin, ViewYourOwnMixin, PromptPreviewMixin, AdminActionsMixin, ChangelistScrollToEditedMixin, CurrentLanguageListMixin, ProxyHistoryAdminMixin
 from unfold.sections import TableSection, TemplateSection, render_to_string
 from rangefilter.filters import NumericRangeFilter
 from django.http import JsonResponse, HttpResponse
@@ -191,7 +190,7 @@ class StoryAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHisto
 
 
 @admin.register(Scene)
-class SceneAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHistoryAdmin, AjaxSectionAdminMixin, StoryFilterMixin, AdminActionsMixin, AdminLinker, AjaxTaskModelAdmin):
+class SceneAdmin(ModelActionsAdminMixin, ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHistoryAdmin, AjaxSectionAdminMixin, StoryFilterMixin, AdminActionsMixin, AdminLinker, AjaxTaskModelAdmin):
     show_full_result_count = False
     search_fields = ['name']
     ajax_shift_fields = ['prompt']
@@ -254,6 +253,7 @@ class SceneAdmin(ChangelistScrollToEditedMixin, PromptMarkdownMixin, SimpleHisto
                 obj.generate_text(request.user, agent)
         else:
             super().trigger_ajax_task(request, obj, target_field)
+
 
 
 @admin.register(StoryGroup)
@@ -379,8 +379,15 @@ class ActionAdmin(CurrentLanguageListMixin, TabbedTranslationAdmin, ChangelistSc
             'image', 'image_comic', 'audio_voice', 'video', 'consistent_with'
         )
 
+# Ensure proxy models delegate history tracking to concrete model Action
+for _proxy_cls in (VoiceAction, ComicAction, VideoAction):
+    if _proxy_cls._meta.proxy and hasattr(Action._meta, "simple_history_manager_attribute"):
+        if not hasattr(_proxy_cls._meta, "simple_history_manager_attribute"):
+            _proxy_cls._meta.simple_history_manager_attribute = Action._meta.simple_history_manager_attribute
+
+
 @admin.register(VideoAction)
-class VideoActionAdmin(CurrentLanguageListMixin, PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
+class VideoActionAdmin(CurrentLanguageListMixin, ProxyHistoryAdminMixin, SimpleHistoryAdmin, PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
     show_full_result_count = False
     list_display = ('name', 'items', 'pic', 'prompt_video', 'video_player','last_tasks')
     list_editable = ['prompt_video']
@@ -399,7 +406,7 @@ class VideoActionAdmin(CurrentLanguageListMixin, PromptMarkdownMixin, AjaxSectio
 
 
 @admin.register(ComicAction)
-class ComicActionAdmin(CurrentLanguageListMixin, TabbedTranslationAdmin, PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
+class ComicActionAdmin(CurrentLanguageListMixin, TabbedTranslationAdmin, ProxyHistoryAdminMixin, SimpleHistoryAdmin, PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
     show_full_result_count = False
     ajax_shift_fields = ['prompt_comic']
     list_display = ('name', 'items', 'pic', 'pic_comic', 'prompt_comic', 'last_tasks')
@@ -419,7 +426,7 @@ class ComicActionAdmin(CurrentLanguageListMixin, TabbedTranslationAdmin, PromptM
 
 
 @admin.register(VoiceAction)
-class VoiceActionAdmin(CurrentLanguageListMixin, PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin, TabbedTranslationAdmin):
+class VoiceActionAdmin(CurrentLanguageListMixin, TabbedTranslationAdmin, ProxyHistoryAdminMixin, SimpleHistoryAdmin, PromptMarkdownMixin, AjaxSectionAdminMixin, AdminActionsMixin, PromptPreviewMixin, StoryFilterMixin, AjaxTaskModelAdmin):
     show_full_result_count = False
     list_display = ('name', 'items', 'pic', 'prompt_voice', 'voice', 'voice_player', 'last_tasks')
     list_editable = ['prompt_voice', 'voice']
@@ -485,7 +492,8 @@ class VoiceAdmin(PromptMarkdownMixin, SimpleHistoryAdmin, StoryFilterMixin, Admi
     def trigger_ajax_task(self, request, obj, target_field):
         field_name = normalize_target_field(target_field)
         if field_name in ['prompt', 'sample_text']:
-            if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user) is None:
+            lang = (get_language() or 'en').replace('-', '_').split('_')[0]
+            if Task.createTaskIfQueueEnabled(obj, settings.TASK_TYPE_GENERATE_VOICE, owner=request.user, payload={'target_language': lang}) is None:
                 obj.generate_voice(obj.PRESET_VOICE, user=request.user)
 
 

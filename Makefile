@@ -1,4 +1,4 @@
-.PHONY: help install migrate migrations run worker shell superuser clean install-postgres install-redis redis-start redis-stop db-shell db-create
+.PHONY: help install migrate migrations run worker shell superuser clean install-postgres install-redis redis-start redis-stop db-shell db-create ib-recreate
 
 SHELL := /bin/bash
 
@@ -20,6 +20,7 @@ help:
 	@echo "  db-shell     - Access the PostgreSQL shell (psql)"
 	@echo "  db-create    - Create the 'guillermo' database"
 	@echo "  clean        - Remove python compiled files"
+	@echo "  ib-recreate  - Force recreate stuck IB Gateway docker container"
 
 install:
 	pip install -r requirements.txt
@@ -74,3 +75,6 @@ refresh:
 	sudo systemctl restart celery-beat.service && \
 	sudo systemctl restart nginx.service && \
 	sudo systemctl restart gunicorn
+
+ib-recreate:
+	@$(MAKE) -C argo recreate

@@ -21,9 +21,9 @@ class SymbolsSchema(BaseModel):
         return cls(symbols=[
             SymbolItemSchema(
                 symbol=code,
-                asset_class=group.asset_class,
-                venue=group.venue,
-                currency=group.currency
+                asset_class=getattr(group, "asset_class", None),
+                venue=getattr(group, "venue", "SMART"),
+                currency=getattr(group, "currency", "USD")
             )
             for code in group.get_codes()
         ])
@@ -44,9 +44,9 @@ class SymbolsSchema(BaseModel):
             if not code:
                 continue
 
-            asset_class = item.asset_class or (group.asset_class if group else AssetClass.EQUITY)
-            venue = item.venue or (group.venue if group else 'SMART')
-            currency = item.currency or (group.currency if group else 'USD')
+            asset_class = item.asset_class or getattr(group, "asset_class", None) or AssetClass.EQUITY
+            venue = item.venue or getattr(group, "venue", None) or 'SMART'
+            currency = item.currency or getattr(group, "currency", None) or 'USD'
             sec_type = item.sec_type or ASSET_CLASS_TO_SEC_TYPE.get(asset_class, 'STK')
 
             matches = search_service.search(query=code, sec_type=sec_type, currency=currency)
@@ -59,7 +59,7 @@ class SymbolsSchema(BaseModel):
                 })
                 continue
 
-            contract_venue = item.venue or (group.venue if group else (match.primary_exchange or match.exchange or 'SMART'))
+            contract_venue = item.venue or getattr(group, "venue", None) or (match.primary_exchange or match.exchange or 'SMART')
             contract_asset_class = match.asset_class or asset_class
             contract_currency = match.currency or currency
 
@@ -179,7 +179,6 @@ class StrategyInstancesSchema(BaseModel):
                 )
 
             instance_obj, created = StrategyInstance.objects.update_or_create(
-                portfolio=portfolio,
                 strategy_model=strategy_obj,
                 instrument=instrument,
                 defaults={

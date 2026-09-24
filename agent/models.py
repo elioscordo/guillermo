@@ -1,4 +1,5 @@
 import base64
+from email.mime import message
 from pydantic import BaseModel
 from google import genai
 import random
@@ -259,26 +260,14 @@ class GetContentsMixin:
 
     def generate_voice(self, preset, user=None, target_field="audio_voice"):
         agent = self.get_agent(Agent.OUTPUT_TYPE_VOICE)
-        base_field = normalize_target_field(target_field)
-        if base_field == 'prompt_voice':
-            base_field = 'audio_voice'
-
-        lang = None
-        for code, _ in getattr(settings, 'LANGUAGES', ()):
-            if target_field and target_field.endswith(f"_{code}"):
-                lang = code
-                break
-        if not lang:
-            lang = (get_language() or 'en').replace('-', '_').split('_')[0]
-
-        out = agent.generate(self, preset=preset, user=user, target_field=base_field)
-        lang_field = f"{base_field}_{lang}"
-        if hasattr(self, lang_field):
-            setattr(self, lang_field, out)
-        if hasattr(self, base_field):
-            setattr(self, base_field, out)
+        out = agent.generate(self, preset=preset, user=user, target_field=target_field)
+        lang = (get_language() or 'en').replace('-', '_').split('_')[0]
+        if hasattr(self, f"{target_field}_{lang}"):
+            setattr(self, f"{target_field}_{lang}", out)
+        else:
+            setattr(self, target_field, out)
         self.save()
-        return getattr(self, lang_field, None) or getattr(self, base_field, None)
+        return getattr(self, target_field)
     
 
     def generate_scene(self, preset=PRESET_SYNC_SCENE, user=None):
@@ -565,7 +554,7 @@ class Agent(models.Model):
         filepath_relative = f"agent_voices/{name}"
         filepath_abs = os.path.join( settings.MEDIA_ROOT, filepath_relative)
         wave_file(filepath_abs, data)
-        out = FilerFile.objects.create(
+        out = FilerImage.objects.create(
             original_filename=name,
             file=filepath_relative,
             name=name
@@ -733,6 +722,7 @@ class Agent(models.Model):
         with self.get_genai_client(user) as client:
             response = client.models.generate_content(**args)
             self.save_usage(user, response, obj=prompt_obj, preset=preset)
+            message.set_output(response.text)
             if schema is not None:
                 data = schema_class.model_validate_json(response.text)
                 out = data.sync_model(prompt_obj) if hasattr(data, "sync_model") else data

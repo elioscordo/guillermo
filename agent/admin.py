@@ -163,7 +163,6 @@ class GoogleApiKeyForm(forms.ModelForm):
 @admin.register(GoogleApiKey)
 class GoogleApiKeyAdmin(ModelAdmin):
     list_display = ('name', 'user')
-    form = GoogleApiKeyForm
     autocomplete_fields = ['user']
     search_fields = ['name', 'user__username']
 
@@ -174,15 +173,6 @@ class GoogleApiKeyAdmin(ModelAdmin):
         # Users only see themselves
         return qs.filter(id=request.user.id)
 
-    def get_fieldsets(self, request, obj=None):
-        if obj:  # Editing an existing object
-            return (
-                (None, {'fields': ('name', 'user', 'enterprise', 'project', 'api_key_display')}),
-            )
-        # Creating a new object
-        return (
-            (None, {'fields': ('name', 'user', 'enterprise', 'project', 'api_key')}),
-        )
     def has_change_permission(self, request, obj=None):
         if not obj:
             return True

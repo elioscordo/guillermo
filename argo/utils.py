@@ -48,6 +48,11 @@ DEFAULT_STRATEGIES = [
         "description": "Multi-horizon structural trend alignment with pullback continuation triggers and risk forecasting."
     },
     {
+        "name": "Dual Momentum Strategy",
+        "class_path": "argo.strategies.dual_momentum.DualMomentumStrategy",
+        "description": "Dual momentum system combining macro 200-SMA regime gating with momentum breakout execution and multi-factor risk controls."
+    },
+    {
         "name": "Buy and Hold Benchmark",
         "class_path": "argo.strategies.buy_and_hold.BuyAndHoldStrategy",
         "description": "Baseline passive benchmark holding an asset from start to evaluate strategy alpha."
@@ -111,7 +116,13 @@ def load_strategies_from_db(node: TradingNode):
     except (Portfolio.DoesNotExist, Portfolio.MultipleObjectsReturned):
         return
 
-    for instance in active_portfolio.strategy_instances.filter(is_active=True):
+    instances = (
+        active_portfolio.strategy_instances.filter(is_active=True)
+        if hasattr(active_portfolio, "strategy_instances")
+        else apps.get_model("argo", "StrategyInstance").objects.filter(is_active=True)
+    )
+
+    for instance in instances:
         try:
             module_path, class_name = instance.strategy_model.class_path.rsplit(".", 1)
             module = importlib.import_module(module_path)

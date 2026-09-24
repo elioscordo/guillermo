@@ -1,0 +1,10 @@
+
+indicator(etf sector)
+etf - xlk (street technology)
+etf500(open range breakout)
+pltr, msft, appl, orcl, crm, now, crwd, adbe, panw, app
+indicator (etf sp500) (filtra su breakout di sp500)
+top winner
+gap (parametro)
+open range breakout (5 min)
+open position

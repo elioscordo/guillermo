@@ -2,8 +2,45 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 from agent.models import Prompt
-
 from agent.schemas import SyncReport, get_asset_sync_info
+
+
+def remove_null_values(data: dict) -> dict:
+    """
+    Recursively removes keys with None values from dictionaries.
+    Prevents LLM-injected null values from overwriting existing model fields.
+    """
+    clean = {}
+    for key, val in data.items():
+        if val is None:
+            continue
+        if isinstance(val, dict):
+            val = remove_null_values(val)
+            if not val:
+                continue
+        clean[key] = val
+    return clean
+
+
+def update_or_create_clean(model_class, defaults=None, **lookup):
+    """
+    Safe update_or_create pattern that strips null values from defaults
+    before editing existing instances, preventing data loss.
+    """
+    clean_defaults = remove_null_values(defaults or {})
+    obj = model_class.objects.filter(**lookup).first()
+    if obj:
+        if clean_defaults:
+            for key, val in clean_defaults.items():
+                if isinstance(val, dict) and hasattr(obj, key):
+                    existing_val = getattr(obj, key)
+                    if isinstance(existing_val, dict):
+                        val = {**existing_val, **val}
+                setattr(obj, key, val)
+            obj.save()
+        return obj, False
+    return model_class.objects.create(**lookup, **clean_defaults), True
+
 
 class Parameters(BaseModel):
     buffer_in: Optional[float] = None
@@ -13,7 +50,7 @@ class Parameters(BaseModel):
 
 class VoiceSchema(BaseModel):
     name: str
-    prompt: str
+    prompt: Optional[str] = None
     google_voice: Optional[str] = None
 
 class GoogleVoiceSchema(BaseModel):
@@ -22,36 +59,33 @@ class GoogleVoiceSchema(BaseModel):
 
 class CharacterSchema(BaseModel):
     name: str
-    prompt: str
+    prompt: Optional[str] = None
 
 class PropSchema(BaseModel):
     name: str
-    prompt: str
+    prompt: Optional[str] = None
 
 class BackgroundSchema(BaseModel):
     name: str
-    prompt: str
+    prompt: Optional[str] = None
 
 class ActionSchema(BaseModel):
     name: str
-    order: int
-    prompt_comic: str
-    prompt_video: str
-    prompt_voice: str
-    prompt: str
-    cast: List[str]
-    props: List[str]
-    background: str
-    voice: str
-    parameters: Optional[Parameters] = None
-    shot_type: Optional[str] = None
+    prompt: Optional[str] = None
+    prompt_voice: Optional[str] = None
+    prompt_comic: Optional[str] = None
+    prompt_video: Optional[str] = None
+    cast: Optional[List[str]] = None
+    props: Optional[List[str]] = None
+    background: Optional[str] = None
+    voice: Optional[str] = None
 
 
 class AssetsSchema(BaseModel):
-    locations: List[BackgroundSchema]
-    characters: List[CharacterSchema]
-    props: List[PropSchema]
-    voices: List[VoiceSchema]
+    locations: Optional[List[BackgroundSchema]] = None
+    characters: Optional[List[CharacterSchema]] = None
+    props: Optional[List[PropSchema]] = None
+    voices: Optional[List[VoiceSchema]] = None
 
     def sync_model(self, obj):
         from agent.models import GoogleVoice
@@ -67,7 +101,8 @@ class AssetsSchema(BaseModel):
         if self.voices:
             for voice_data in self.voices:
                 gv = GoogleVoice.objects.filter(name=voice_data.google_voice).first() if voice_data.google_voice else None
-                item = Voice.objects.update_or_create(
+                item = update_or_create_clean(
+                    Voice,
                     name=voice_data.name,
                     story=story,
                     defaults={
@@ -80,7 +115,8 @@ class AssetsSchema(BaseModel):
         location_map = {}
         if self.locations:
             for back_data in self.locations:
-                item = Background.objects.update_or_create(
+                item = update_or_create_clean(
+                    Background,
                     name=back_data.name,
                     story=story,
                     defaults={'prompt': back_data.prompt}
@@ -90,7 +126,8 @@ class AssetsSchema(BaseModel):
         char_map = {}
         if self.characters:
             for char_data in self.characters:
-                item = Character.objects.update_or_create(
+                item = update_or_create_clean(
+                    Character,
                     name=char_data.name,
                     story=story,
                     defaults={'prompt': char_data.prompt}
@@ -100,7 +137,8 @@ class AssetsSchema(BaseModel):
         prop_map = {}
         if self.props:
             for prop_data in self.props:
-                item = Prop.objects.update_or_create(
+                item = update_or_create_clean(
+                    Prop,
                     name=prop_data.name,
                     story=story,
                     defaults={'prompt': prop_data.prompt}
@@ -109,13 +147,13 @@ class AssetsSchema(BaseModel):
 
         if scene is not None:
             if location_map:
-                scene.locations.set([item[0] for item in location_map.values()])
+                scene.locations.add(*[item[0] for item in location_map.values()])
             if char_map:
-                scene.cast.set([item[0] for item in char_map.values()])
+                scene.cast.add(*[item[0] for item in char_map.values()])
             if prop_map:
-                scene.props.set([item[0] for item in prop_map.values()])
+                scene.props.add(*[item[0] for item in prop_map.values()])
             if voice_map:
-                scene.voices.set([item[0] for item in voice_map.values()])
+                scene.voices.add(*[item[0] for item in voice_map.values()])
 
         sync_info = {
             'locations': [get_asset_sync_info(item[0], item[1]) for item in location_map.values()],
@@ -128,14 +166,11 @@ class AssetsSchema(BaseModel):
 
 
 class SceneSchema(BaseModel):
-    name: str
-    order: Optional[int] = 0
-    prompt_plot: Optional[str] = None
-    locations: Optional[List[BackgroundSchema]] = []
-    characters: Optional[List[CharacterSchema]] = []
-    props: Optional[List[PropSchema]] = []
-    voices: Optional[List[VoiceSchema]] = []
-    shots: Optional[List[ActionSchema]] = []
+    shots: Optional[List[ActionSchema]] = None
+    locations: Optional[List[BackgroundSchema]] = None
+    characters: Optional[List[CharacterSchema]] = None
+    props: Optional[List[PropSchema]] = None
+    voices: Optional[List[VoiceSchema]] = None
 
     def sync_model(self, scene):
         """
@@ -158,30 +193,60 @@ class SceneSchema(BaseModel):
         # 5. Sync Shots for the Scene
         shot_reports = []
         if self.shots:
-            from .models import Action
+            from .models import Action, Voice, Background, Character, Prop
             for i, shot_data in enumerate(self.shots):
-                voice_obj = voice_map.get(shot_data.voice)[0] if shot_data.voice in voice_map else None
-                bg_obj = location_map.get(shot_data.background)[0] if shot_data.background in location_map else None
+                voice_obj = None
+                if shot_data.voice:
+                    if shot_data.voice in voice_map:
+                        voice_obj = voice_map[shot_data.voice][0]
+                    elif story:
+                        voice_obj = Voice.objects.filter(story=story, name=shot_data.voice).first()
 
-                shot, created = Action.objects.update_or_create(
+                bg_obj = None
+                if shot_data.background:
+                    if shot_data.background in location_map:
+                        bg_obj = location_map[shot_data.background][0]
+                    elif story:
+                        bg_obj = Background.objects.filter(story=story, name=shot_data.background).first()
+
+                shot, created = update_or_create_clean(
+                    Action,
                     scene=scene,
                     name=shot_data.name,
                     defaults={
-                        'order': shot_data.order,
+                        'order': i*2,
                         'prompt': shot_data.prompt,
                         'prompt_comic': shot_data.prompt_comic,
                         'prompt_video': shot_data.prompt_video,
                         'prompt_voice': shot_data.prompt_voice,
-                        'parameters': shot_data.parameters.model_dump() if shot_data.parameters else None,
                         'voice': voice_obj,
                         'background': bg_obj,
-                        'shot_type': shot_data.shot_type
                     }
                 )
-                if shot_data.cast:
-                    shot.cast.set([char_map[name][0] for name in shot_data.cast if name in char_map])
-                if shot_data.props:
-                    shot.props.set([prop_map[name][0] for name in shot_data.props if name in prop_map])
+                if shot_data.cast is not None:
+                    cast_objs = []
+                    for name in shot_data.cast:
+                        if name in char_map:
+                            cast_objs.append(char_map[name][0])
+                        elif story:
+                            char_item = Character.objects.filter(story=story, name=name).first()
+                            if char_item:
+                                cast_objs.append(char_item)
+                    if cast_objs:
+                        shot.cast.set(cast_objs)
+
+                if shot_data.props is not None:
+                    prop_objs = []
+                    for name in shot_data.props:
+                        if name in prop_map:
+                            prop_objs.append(prop_map[name][0])
+                        elif story:
+                            prop_item = Prop.objects.filter(story=story, name=name).first()
+                            if prop_item:
+                                prop_objs.append(prop_item)
+                    if prop_objs:
+                        shot.props.set(prop_objs)
+
                 shot_reports.append(get_asset_sync_info(shot, created))
 
         scene_report = get_asset_sync_info(scene, was_created)
@@ -194,12 +259,13 @@ class SceneSchema(BaseModel):
 
 
 class MultiSceneSchema(BaseModel):
-    scenes: List[SceneSchema]
+    scenes: Optional[List[SceneSchema]] = None
 
     def sync_model(self, source):
         results = []
-        for scene_data in self.scenes:
-            results.append(scene_data.sync_model(source))
+        if self.scenes:
+            for scene_data in self.scenes:
+                results.append(scene_data.sync_model(source))
         return results
 
 
@@ -207,22 +273,24 @@ from agent.models import OutputWithMessageSchema, CreateInstructionsSchema
 
 
 class StoryScenesSchema(BaseModel):
-    scenes: List[SceneSchema]
+    scenes: Optional[List[SceneSchema]] = None
 
     def sync_model(self, story):
         from .models import Scene
         synced_scenes = []
-        for scene_data in self.scenes:
-            scene, created = Scene.objects.update_or_create(
-                story=story,
-                name=scene_data.name,
-                defaults={
-                    'prompt_plot': scene_data.prompt_plot,
-                    'order': scene_data.order or 0,
-                }
-            )
-            scene_data.sync_model(scene)
-            synced_scenes.append(get_asset_sync_info(scene, created))
+        if self.scenes:
+            for scene_data in self.scenes:
+                scene, created = update_or_create_clean(
+                    Scene,
+                    story=story,
+                    name=scene_data.name,
+                    defaults={
+                        'prompt_plot': scene_data.prompt_plot,
+                        'order': scene_data.order,
+                    }
+                )
+                scene_data.sync_model(scene)
+                synced_scenes.append(get_asset_sync_info(scene, created))
         return {
             'scenes': synced_scenes
         }
